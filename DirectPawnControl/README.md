@@ -1,4 +1,4 @@
-# Direct Pawn Control - Play as Any Pawn, with Couch Co-op (Dragon's Dogma 2)
+# Direct Pawn Control - Play as Any Pawn. Includes Couch Co-op (Dragon's Dogma 2)
 
 Take direct control of your pawns. Possess your main pawn or a hired pawn and play it with the game's own player controls, camera and HUD, while the Arisen fights on beside you. Or hand a second player a controller and play couch co-op: player 1 on the Arisen, player 2 on a pawn.
 

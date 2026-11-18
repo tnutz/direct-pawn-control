@@ -1,0 +1,872 @@
+{
+ "id": "dpc-showcase-1",
+ "title": "Direct Pawn Control showcase",
+ "notes": "Party for this list: slot 0 = Fighter main pawn, slot 1 = an Archer, slot 2 = any. DirectPawnControl in developer mode (the commands need it). Record the game picture edge to edge.",
+ "shots": [
+  {
+   "id": "01-switch",
+   "title": "The switch (robot)",
+   "caption": "Your pawn takes orders. Now take the pawn.",
+   "brief": "Open ground, daylight, party standing together, camera behind the Arisen. The robot selects your main pawn, takes it over and runs off.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    }
+   ],
+   "setup_secs": 3,
+   "secs": 9,
+   "actions": [
+    {
+     "at": 0.8,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 0.9,
+      "buttons": [
+       "LRight"
+      ]
+     }
+    },
+    {
+     "at": 2.6,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 0.3,
+      "buttons": [
+       "LTrigTop",
+       "LStickPush"
+      ]
+     }
+    },
+    {
+     "at": 3.8,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 4.5,
+      "stick": [
+       0,
+       1
+      ]
+     }
+    }
+   ],
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "02-pawn-fight",
+   "title": "Playing the Fighter pawn",
+   "caption": "The game's own controls. Every skill.",
+   "brief": "Three goblins that cannot die appear in front of you. You are already the main pawn.",
+   "you": "Fight: an attack chain, guard, two skills, a sprint. Hold L1 once so the skill list shows. Press End when you have a good 15 seconds.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 9,
+     "angle": 0,
+     "spread": 30,
+     "still": false,
+     "tough": true
+    }
+   ],
+   "setup_secs": 3,
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "03-arisen-alone",
+   "title": "The Arisen fights on by himself",
+   "caption": "The Arisen fights on by himself.",
+   "brief": "Same fight, but the star is the Arisen. You are the main pawn; three goblins that cannot die.",
+   "you": "Stand back, turn the camera so the Arisen is in the middle of the frame while he fights. Press End after about 15 seconds.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 9,
+     "angle": 0,
+     "spread": 30,
+     "still": false,
+     "tough": true
+    }
+   ],
+   "setup_secs": 3,
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "04-harpies",
+   "title": "Can't reach them? Switch",
+   "caption": "Can't reach them? Switch.",
+   "brief": "Two harpies overhead. You start as the Fighter pawn, who cannot reach them.",
+   "you": "Swing at the air once, then L1 + left stick click to the Archer, aim and bring one down. Press End when it drops.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 5,
+     "count": 2,
+     "dist": 12,
+     "angle": 0,
+     "spread": 25,
+     "still": false
+    }
+   ],
+   "setup_secs": 4,
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "05-round",
+   "title": "One button walks the party (robot)",
+   "caption": "One button walks the whole party.",
+   "brief": "Party standing together. The robot presses the take-control button four times: pawn, pawn, pawn, Arisen. Watch the hint line change.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    }
+   ],
+   "setup_secs": 3,
+   "secs": 11,
+   "actions": [
+    {
+     "at": 1.0,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 0.3,
+      "buttons": [
+       "LTrigTop",
+       "LStickPush"
+      ]
+     }
+    },
+    {
+     "at": 3.5,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 0.3,
+      "buttons": [
+       "LTrigTop",
+       "LStickPush"
+      ]
+     }
+    },
+    {
+     "at": 6.0,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 0.3,
+      "buttons": [
+       "LTrigTop",
+       "LStickPush"
+      ]
+     }
+    },
+    {
+     "at": 8.5,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 0.3,
+      "buttons": [
+       "LTrigTop",
+       "LStickPush"
+      ]
+     }
+    }
+   ],
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "06-launch",
+   "title": "Order a skill and it holds (robot)",
+   "caption": "Or stay on the Arisen and call the shots.",
+   "brief": "You stay the Arisen. The tool orders your Fighter pawn's Launchboard (skill slot 4: change \"slot\" in the shot list if it sits elsewhere). He holds it.",
+   "you": "Run at him and jump off the shield. Press End after the launch.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    }
+   ],
+   "setup_secs": 3,
+   "actions": [
+    {
+     "at": 1.0,
+     "cmd": {
+      "cmd": "quick",
+      "slot": 4,
+      "idx": 0
+     }
+    }
+   ],
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "07-loot",
+   "title": "Small things: loot and chest",
+   "caption": "Loot.",
+   "brief": "Find a corpse or a chest first, then start the take standing next to it as a pawn.",
+   "you": "Open or loot it as the pawn. Press End.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ],
+   "setup_secs": 1
+  },
+  {
+   "id": "08-revive",
+   "title": "Small things: revive",
+   "caption": "Revive.",
+   "brief": "You are the main pawn. The tool downs the second pawn (index 1).",
+   "you": "Walk to the downed pawn and hold Interact until the ring fills. Press End when they stand up.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    },
+    {
+     "cmd": "down",
+     "idx": 1
+    }
+   ],
+   "setup_secs": 3,
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "09-climb",
+   "title": "Small things: climb",
+   "caption": "Climb.",
+   "brief": "A Cyclops in front of you. You are the main pawn.",
+   "you": "Grab on and climb; hold L1 once so the greyed skill list shows. Press End.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 9,
+     "count": 1,
+     "dist": 12,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    }
+   ],
+   "setup_secs": 4,
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "10b-coop-antics",
+   "title": "Co-op: that is a person (robot)",
+   "caption": "That one is player 2.",
+   "brief": "Co-op on the main pawn, no enemies. The robot, as player 2, runs rings round the Arisen and keeps jumping: nothing a pawn would do by itself.",
+   "you": "You are the Arisen: stand still facing the camera for a few seconds, then jump along or try to hit player 2.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ],
+   "setup_secs": 4,
+   "secs": 14,
+   "actions": [
+    {
+     "at": 0.3,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 14,
+      "antics": true
+     }
+    }
+   ],
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "10-coop",
+   "title": "Couch co-op (robot is player 2)",
+   "caption": "One PC. One copy. Two players.",
+   "brief": "Co-op starts on the main pawn; the robot is player 2 and now goes for the enemy and fights an Ogre that cannot die. Camera Distance must be on.",
+   "you": "You are the Arisen on keyboard and mouse: fight alongside, then walk away from player 2 so the camera pulls back to hold you both. Press End after about 25 seconds.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 8,
+     "count": 1,
+     "dist": 12,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    },
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ],
+   "setup_secs": 4,
+   "actions": [
+    {
+     "at": 0.3,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 29,
+      "fight": true
+     }
+    }
+   ],
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "11-coop-switch",
+   "title": "Co-op: player 2 changes pawn (robot)",
+   "caption": "Player 2 can change pawn too.",
+   "brief": "Co-op on the main pawn; the robot presses the take-control button twice. The camera follows each change.",
+   "you": "Stay near as the Arisen and keep still.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ],
+   "setup_secs": 4,
+   "secs": 9,
+   "actions": [
+    {
+     "at": 1.5,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 0.3,
+      "buttons": [
+       "LTrigTop",
+       "LStickPush"
+      ]
+     }
+    },
+    {
+     "at": 5.0,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 0.3,
+      "buttons": [
+       "LTrigTop",
+       "LStickPush"
+      ]
+     }
+    }
+   ],
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "id": "12-big-finish",
+   "title": "Co-op against a Cyclops",
+   "caption": "The camera keeps you both in view.",
+   "brief": "The closing shot: co-op, a Cyclops that cannot die, the robot as player 2.",
+   "you": "Fight it as the Arisen. Press End on a good moment after 15 to 20 seconds.",
+   "setup": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "selected_pawn_idx",
+     "value": 0,
+     "save": false
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 9,
+     "count": 1,
+     "dist": 14,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    },
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ],
+   "setup_secs": 4,
+   "actions": [
+    {
+     "at": 0.3,
+     "cmd": {
+      "cmd": "robot",
+      "who": "pad",
+      "secs": 29,
+      "fight": true
+     }
+    }
+   ],
+   "cleanup": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  }
+ ]
+}

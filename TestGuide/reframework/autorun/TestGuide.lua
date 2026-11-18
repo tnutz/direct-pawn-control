@@ -45,7 +45,7 @@
 --
 -- Each recorded row gets t (seconds since start), step (1-based) and every probe value (errors -> "ERR: ...").
 
-local VERSION = "2.2"
+local VERSION = "2.3"
 local DIR = "test_guide/"
 local PLAN_FILE, STATUS_FILE = DIR .. "plan.json", DIR .. "status.json"
 local KEY_READY, KEY_SHIFT = 0x23, 0x10           -- End, Shift
@@ -335,7 +335,8 @@ local function sample(now)
 end
 
 local function ready_pressed()
-    local k = reframework:is_key_down(KEY_READY)
+    -- v2.3: Ctrl+End belongs to CaptureGuide (arm / disarm capture mode)
+    local k = reframework:is_key_down(KEY_READY) and not reframework:is_key_down(0x11)
     local pd = (H.pad_buttons() & PAD_READY) == PAD_READY
     local hit = (k and not gs.key_prev) or (pd and not gs.pad_prev)
     gs.key_prev, gs.pad_prev = k, pd
@@ -345,6 +346,9 @@ end
 local function tick()
     local now = os.clock()
     read_dev_status(now)
+    -- v2.3: while CaptureGuide is armed this script keeps quiet: no plan is started and End / Home are not read,
+    -- so a take is never interrupted and nothing of this overlay gets into a recording
+    if _G.CAPTURE_GUIDE_ACTIVE then gs.key_prev, gs.pad_prev = true, true; return end
     if now >= gs.next_poll then
         gs.next_poll = now + 1.0
         if gs.state ~= "running" and gs.state ~= "countdown" then
@@ -541,6 +545,7 @@ local function draw_hud(now)
 end
 
 re.on_frame(function()
+    if _G.CAPTURE_GUIDE_ACTIVE then return end -- v2.3
     local now0 = os.clock()
     local okf, ferr = pcall(flight_tick, now0)
     if not okf then tg_error("flight", ferr) end

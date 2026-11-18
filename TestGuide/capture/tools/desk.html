@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capture desk</title><link rel="icon" href="data:,">
+<style>
+:root { color-scheme: dark; --bg: #14171c; --panel: #1d222a; --line: #303846; --text: #e8e6df; --dim: #98a2ae; --go: #ffd030; --keep: #6fc48a; --bad: #e0736b; --todo: #6fb0e0; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; display: grid; grid-template-columns: minmax(400px, 34%) 1fr; }
+button, select, input, textarea { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; }
+textarea { width: 100%; resize: vertical; font-family: Consolas, ui-monospace, monospace; font-size: 12.5px; }
+textarea.prose { font-family: inherit; font-size: inherit; }
+button { cursor: pointer; } button:hover:not(:disabled) { border-color: var(--dim); } button:disabled { opacity: .45; cursor: default; }
+button.go { background: var(--go); color: #14171c; border-color: var(--go); font-weight: 700; }
+:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
+aside { overflow-y: auto; border-right: 1px solid var(--line); padding: 14px; }
+h1 { font-size: 17px; margin: 0 0 2px; } .sub { color: var(--dim); margin: 0 0 10px; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.job { background: #10131a; border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; margin-bottom: 10px; color: var(--dim); font-size: 12.5px; white-space: pre-wrap; max-height: 130px; overflow-y: auto; }
+.job.bad { border-color: var(--bad); } .job:empty { display: none; }
+.hint { color: var(--todo); margin: 0 0 10px; } .hint:empty { display: none; }
+.shot { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; background: var(--panel); }
+.shot.on { border-color: var(--go); } .shot.skip .top { opacity: .5; }
+.shot .top { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.shot .n { color: var(--dim); font-variant-numeric: tabular-nums; min-width: 1.4em; } .shot .ttl { font-weight: 600; flex: 1; }
+.chip { font-size: 12px; padding: 0 7px; border-radius: 9px; border: 1px solid var(--line); color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chip.todo { color: var(--todo); border-color: var(--todo); } .chip.none { color: var(--bad); border-color: var(--bad); }
+.row { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-top: 7px; }
+.row label { color: var(--dim); display: inline-flex; gap: 5px; align-items: center; }
+.row input[type=number] { width: 74px; } .row input[type=text] { flex: 1; min-width: 150px; } .row select { max-width: 100%; }
+details { margin-top: 8px; } summary { cursor: pointer; color: var(--dim); }
+.f { display: block; margin-top: 7px; color: var(--dim); } .f > input, .f > textarea { display: block; width: 100%; margin-top: 2px; }
+.f.badjson textarea, input.badjson { border-color: var(--bad); }
+.steps { margin-top: 9px; } .steps h3 { font-size: 13px; margin: 0 0 4px; color: var(--dim); font-weight: 600; }
+.step { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 5px 6px; border: 1px solid var(--line); border-radius: 5px; margin-bottom: 4px; background: #181c23; }
+.step label { color: var(--dim); display: inline-flex; gap: 4px; align-items: center; font-size: 12.5px; }
+.step input[type=number] { width: 58px; padding: 3px 5px; } .step input[type=text] { width: 150px; padding: 3px 5px; } .step select { padding: 3px 5px; }
+.step input.wide { flex: 1; min-width: 180px; font-family: Consolas, monospace; font-size: 12px; }
+.step .x { margin-left: auto; display: inline-flex; gap: 3px; } .step .x button { padding: 1px 7px; }
+.steps .adds { display: flex; flex-wrap: wrap; gap: 5px; } .steps .adds button, .steps .adds select { padding: 3px 7px; font-size: 12.5px; }
+.ai { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; } .ai textarea { margin: 5px 0; }
+.ai summary { color: var(--text); }
+main { display: flex; flex-direction: column; min-width: 0; padding: 14px; gap: 8px; }
+.stage { position: relative; background: #000; flex: 1; min-height: 200px; display: flex; align-items: center; justify-content: center; border-radius: 6px; overflow: hidden; }
+video { max-width: 100%; max-height: 100%; } video[hidden] { display: none; }
+.cap { position: absolute; left: 0; right: 0; bottom: 14%; text-align: center; font-weight: 700; font-size: clamp(16px, 2.6vw, 34px); text-shadow: 2px 2px 3px rgba(0,0,0,.85); pointer-events: none; padding: 0 5%; }
+.bar { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.bar .sp { flex: 1; } .info { color: var(--dim); font-variant-numeric: tabular-nums; }
+#scrub { width: 100%; padding: 0; margin: 0; height: 20px; accent-color: var(--go); border: 0; background: none; }
+#trimbar { height: 6px; border-radius: 3px; margin: -4px 8px 2px; background: #2a3340; }
+.tl { display: flex; height: 30px; gap: 2px; }
+.tl div { background: #2a3340; border-radius: 3px; min-width: 6px; position: relative; cursor: pointer; overflow: hidden; font-size: 11px; padding: 2px 4px; color: var(--dim); white-space: nowrap; }
+.tl div.on { background: #4a5a30; color: var(--text); } .tl div i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,208,48,.35); width: 0; }
+.msg { min-height: 1.3em; color: var(--dim); } .msg.bad { color: var(--bad); } .msg.ok { color: var(--keep); }
+kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font: 12px Consolas, monospace; color: var(--dim); }
+@media (max-width: 900px) { body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } aside { border-right: 0; border-bottom: 1px solid var(--line); max-height: 45vh; } }
+</style></head><body>
+<aside>
+  <h1 id="title">Capture desk</h1>
+  <p class="sub" id="sub"></p>
+  <div class="tools"><select id="lists" aria-label="Shot list"></select></div>
+  <div class="tools">
+    <button class="go" id="fetch" type="button">Get new footage</button>
+    <button id="render" type="button">Render video</button>
+    <button id="add" type="button">+ New shot</button>
+    <a id="final" href="/media/final.mp4" target="_blank" rel="noopener" hidden><button type="button">Open final.mp4</button></a>
+  </div>
+  <p class="hint" id="hint"></p>
+  <details class="ai" id="aibox"><summary>Describe a shot and have Claude draft it</summary>
+    <textarea class="prose" id="aitext" rows="3" placeholder="e.g. Player 2 is the archer pawn and keeps shooting a griffin that cannot die while I climb it as the Arisen. About 20 seconds."></textarea>
+    <div class="tools" style="margin:0"><button id="ainew" type="button">Draft a new shot</button><button id="airev" type="button">Change the selected shot</button></div>
+    <p class="sub" style="margin:6px 0 0">Uses the Claude Code program on this PC (your own sign-in). The draft is put in the list for you to check; nothing runs in the game until you shoot or stage it.</p>
+  </details>
+  <div class="job" id="job"></div>
+  <div id="shots"></div>
+  <p class="sub">In the game: <kbd>Ctrl</kbd>+<kbd>End</kbd> arms the capture guide. It reads the shot list again each time it is armed and starts at the first shot that still needs a take.</p>
+</aside>
+<main>
+  <div class="stage"><video id="v" playsinline preload="auto"></video><video id="v2" playsinline preload="auto" hidden></video><div class="cap" id="cap"></div></div>
+  <input type="range" id="scrub" min="0" max="1" step="0.001" value="0" aria-label="Position in the take">
+  <div id="trimbar" title="Bright: the part of the take that is in the cut"></div>
+  <div class="bar">
+    <button id="b10" type="button" title="Back 10 frames (Shift+Left)">&laquo; 10</button>
+    <button id="b1" type="button" title="Back 1 frame (Left)">&lsaquo; 1</button>
+    <button id="pp" type="button" title="Play / pause from here (Space)">Play</button>
+    <button id="f1" type="button" title="Forward 1 frame (Right)">1 &rsaquo;</button>
+    <button id="f10" type="button" title="Forward 10 frames (Shift+Right)">10 &raquo;</button>
+    <span class="info" id="pos"></span><span class="sp"></span>
+    <button id="setin" type="button" title="The shot starts at this frame (I)">Start here</button>
+    <button id="setout" type="button" title="The shot ends at this frame (O)">End here</button>
+    <button id="cleartrim" type="button">Whole take</button>
+  </div>
+  <div class="tl" id="tl"></div>
+  <div class="bar">
+    <button class="go" id="playall" type="button">Play the cut</button>
+    <button id="playone" type="button">Play this shot</button>
+    <button id="stop" type="button">Stop</button>
+    <span class="info" id="info"></span><span class="sp"></span>
+    <span class="msg" id="msg"></span>
+  </div>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let v = $("v"), w = $("v2"); // w waits, loaded, at the start of the next file when a take runs over two recordings
+let S = null, L = null, C = null;   // server state, shot list, edit choices
+let cur = null, open = false;       // selected shot id, its details open
+const P = { id: null, parts: null, pos: 0, k: -1, mode: null }; // player; mode: null | "free" | "one" | "all"
+let busy = false, saveT = {}, pending = 0;
+
+const api = async (path, body) => {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+};
+let noteAt = 0;
+function note(text, kind, quiet) { // quiet: the routine "Saved" does not replace a message shown in the last few seconds
+  if (quiet && Date.now() - noteAt < 6000) return;
+  if (!quiet) noteAt = Date.now();
+  const m = $("msg"); m.textContent = text; m.className = "msg " + (kind || "");
+}
+const fmt = s => { s = Math.max(0, s); return Math.floor(s / 60) + ":" + (s % 60).toFixed(1).padStart(4, "0"); };
+
+// ---- data -----------------------------------------------------------------------------------------------------
+const shotDef = id => L.shots.find(x => x.id === id);
+const takesOf = id => S.takes.filter(t => t.shot === id);
+function ch(id) { if (!C.shots[id]) C.shots[id] = { auto: true, take_index: null, skip: false, trims: {} }; return C.shots[id]; }
+function autoTake(id) { // the newest kept take that is in the recordings, else the newest take that is
+  const ts = takesOf(id).filter(t => t.parts);
+  const kept = ts.filter(t => t.verdict === "keep");
+  const t = kept.length ? kept[kept.length - 1] : ts[ts.length - 1];
+  return t ? t.index : null;
+}
+function takeIdx(id) { const c = ch(id); return c.auto !== false || c.take_index === null ? autoTake(id) : c.take_index; }
+function take(id) { const i = takeIdx(id); const t = i === null ? null : S.takes[i]; return t && t.parts ? t : null; }
+function trim(id) { const c = ch(id), i = takeIdx(id); if (i === null) return { in: 0, out: 0 }; if (!c.trims[i]) c.trims[i] = { in: 0, out: 0 }; return c.trims[i]; }
+const total = id => { const t = take(id); return t ? t.parts.reduce((a, x) => a + x.t1 - x.t0, 0) : 0; };
+const dur = id => { const tr = trim(id); return Math.max(0, total(id) - tr.in - tr.out); };
+const usable = id => !!take(id) && dur(id) > 0.05;
+const live = () => C.order.filter(id => shotDef(id) && !ch(id).skip && usable(id));
+function needsTake(id) { // same rule as the game's guide: a kept take newer than the "shoot again" point
+  const after = +shotDef(id).fresh_after || 0;
+  return !S.takes.some(t => t.shot === id && t.verdict === "keep" && t.index >= after);
+}
+function adopt(state) {
+  S = state; L = S.shots;
+  const old = C || S.choices || {};
+  C = { list: L.id, order: [], shots: {} };
+  for (const s of L.shots) {
+    const o = (old.shots || {})[s.id] || {};
+    const c = { auto: o.auto !== false, take_index: Number.isInteger(o.take_index) ? o.take_index : null, skip: !!o.skip, trims: {} };
+    if (o.trims) for (const k of Object.keys(o.trims)) c.trims[k] = { in: +o.trims[k].in || 0, out: +o.trims[k].out || 0 };
+    else if (c.take_index !== null && (o.trim_in || o.trim_out)) c.trims[c.take_index] = { in: +o.trim_in || 0, out: +o.trim_out || 0 };
+    if (!o.trims && !("auto" in o) && c.take_index !== null) c.auto = false; // an edit saved by the older review page
+    if (o.caption !== undefined && !("auto" in o) && o.caption !== s.caption) { s.caption = o.caption; saveShots(); }
+    C.shots[s.id] = c;
+  }
+  const known = (old.order || []).filter(id => C.shots[id]);
+  C.order = known.concat(L.shots.map(s => s.id).filter(id => !known.includes(id)));
+  if (!cur || !C.shots[cur]) cur = live()[0] || C.order[0] || null;
+}
+
+// ---- saving ---------------------------------------------------------------------------------------------------
+function later(key, fn, ms) { clearTimeout(saveT[key]); pending++; saveT[key] = setTimeout(async () => { try { await fn(); note("Saved", "ok", true); } catch (e) { note("Not saved: " + e.message, "bad"); } pending--; }, ms); }
+function saveChoices() {
+  later("c", () => {
+    const out = { list: L.id, order: C.order, shots: {} };
+    for (const id of C.order) { const c = ch(id), tr = trim(id); out.shots[id] = { auto: c.auto !== false, take_index: takeIdx(id), trim_in: tr.in, trim_out: tr.out, skip: !!c.skip, trims: c.trims }; }
+    return api("/api/choices", out);
+  }, 400);
+}
+function saveShots() {
+  later("s", async () => { const r = await api("/api/shots", L); if (!r.sent) throw new Error("the game folder was not found; the shot list is only saved here"); }, 700);
+}
+
+// ---- the shot list --------------------------------------------------------------------------------------------
+function render() {
+  $("title").textContent = L.title || "Capture desk";
+  const box = $("shots"); box.textContent = "";
+  C.order.forEach((id, n) => {
+    const sh = shotDef(id), c = ch(id), ok = usable(id), need = needsTake(id);
+    const el = document.createElement("div");
+    el.className = "shot" + (cur === id ? " on" : "") + (c.skip ? " skip" : "");
+    const top = document.createElement("div"); top.className = "top";
+    top.innerHTML = `<span class="n">${n + 1}</span><span class="ttl"></span>` + (need ? `<span class="chip todo">to shoot</span>` : "") +
+      `<span class="chip ${ok ? "" : "none"}">${ok ? fmt(dur(id)) : "no take"}</span>`;
+    top.querySelector(".ttl").textContent = sh.title || id;
+    top.onclick = () => select(id);
+    el.appendChild(top);
+    if (cur === id) el.appendChild(editor(id, n));
+    box.appendChild(el);
+  });
+  const ids = live(), sum = ids.reduce((a, id) => a + dur(id), 0);
+  const todo = L.shots.filter(s => needsTake(s.id)).length;
+  $("sub").textContent = `${ids.length} of ${L.shots.length} shots in the cut, ${fmt(sum)} long` + (todo ? `; ${todo} to shoot` : "");
+  const tl = $("tl"); tl.textContent = "";
+  for (const id of ids) {
+    const d = document.createElement("div");
+    d.style.flex = dur(id) + " 0 0"; d.className = cur === id ? "on" : ""; d.dataset.id = id;
+    d.innerHTML = "<i></i>"; d.append(shotDef(id).title || id);
+    d.onclick = () => { select(id); playShot(id, P.mode === "all" ? "all" : "one"); };
+    tl.appendChild(d);
+  }
+  $("final").hidden = !S.final;
+  const ls = $("lists"); ls.textContent = "";
+  const o = (val, text) => { const e = document.createElement("option"); e.value = val; e.textContent = text; ls.appendChild(e); };
+  o("", "Shot list: " + (L.title || L.id)); for (const x of S.lists) o("open:" + x.id, `Open: ${x.title} (${x.shots} shots)`);
+  o("new", "Start a new shot list (another video)..."); o("rename", "Rename this list...");
+  const h = [];
+  if (S.unscanned.length) h.push(`${S.unscanned.length} recording${S.unscanned.length > 1 ? "s" : ""} not fetched yet`);
+  if (S.game_takes !== null && S.game_takes > S.takes.length) h.push(`${S.game_takes - S.takes.length} new take${S.game_takes - S.takes.length > 1 ? "s" : ""} in the game's log`);
+  if (!S.game_ok) h.push("the game folder was not found: " + S.game);
+  $("hint").textContent = h.length ? h.join("; ") + (S.game_ok || S.unscanned.length ? ". Press Get new footage." : "") : "";
+}
+function field(label, value, on, opt) {
+  const l = document.createElement("label"); l.className = "f"; l.append(label);
+  const i = document.createElement(opt && opt.area ? "textarea" : "input");
+  if (opt && opt.area) { i.rows = opt.rows || 2; if (opt.prose) i.className = "prose"; } else i.type = (opt && opt.type) || "text";
+  i.value = value === undefined || value === null ? "" : value;
+  i.onchange = () => { if (on(i.value) === false) l.classList.add("badjson"); else l.classList.remove("badjson"); };
+  l.appendChild(i); return l;
+}
+function editor(id, n) {
+  const sh = shotDef(id), c = ch(id), tr = trim(id), box = document.createElement("div");
+  const r1 = document.createElement("div"); r1.className = "row";
+  const sel = document.createElement("select"); sel.setAttribute("aria-label", "Take");
+  const ts = takesOf(id), auto = autoTake(id);
+  const o0 = document.createElement("option"); o0.value = "auto";
+  o0.textContent = auto === null ? "no take yet" : `newest kept take (take ${S.takes[auto].take})`; sel.appendChild(o0);
+  for (const t of ts) {
+    const o = document.createElement("option"); o.value = t.index; o.disabled = !t.parts;
+    const len = t.parts ? t.parts.reduce((a, x) => a + x.t1 - x.t0, 0) : t.len || 0;
+    o.textContent = `take ${t.take}: ${t.verdict}, ${len.toFixed(1)} s` + (t.parts ? (t.parts.length > 1 ? ", runs over two recording files" : "") : ", not in the recordings");
+    sel.appendChild(o);
+  }
+  sel.value = c.auto !== false || c.take_index === null ? "auto" : String(c.take_index);
+  sel.onchange = () => { if (sel.value === "auto") { c.auto = true; c.take_index = null; } else { c.auto = false; c.take_index = +sel.value; } saveChoices(); render(); show(id, trim(id).in); };
+  const lab = document.createElement("label"); lab.append("Take ", sel); r1.appendChild(lab);
+  const num = (text, key) => { const l = document.createElement("label"); const i = document.createElement("input"); i.type = "number"; i.step = "0.1"; i.min = "0"; i.value = +tr[key].toFixed(3);
+    i.onchange = () => { setTrim(id, key, +i.value || 0); }; l.append(text + " ", i); return l; };
+  r1.append(num("Trim start", "in"), num("Trim end", "out"));
+  const r2 = document.createElement("div"); r2.className = "row";
+  const cap = document.createElement("input"); cap.type = "text"; cap.value = sh.caption || ""; cap.placeholder = "Caption (first 3 seconds)"; cap.setAttribute("aria-label", "Caption");
+  cap.onchange = () => { sh.caption = cap.value; saveShots(); };
+  const sk = document.createElement("label"); const skb = document.createElement("input"); skb.type = "checkbox"; skb.checked = !!c.skip;
+  skb.onchange = () => { c.skip = skb.checked; saveChoices(); render(); }; sk.append(skb, " leave out");
+  const mk = (text, title, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.title = title; b.onclick = fn; return b; };
+  r2.append(cap, sk, mk("↑", "Earlier in the video", () => move(n, -1)), mk("↓", "Later in the video", () => move(n, 1)));
+  const r3 = document.createElement("div"); r3.className = "row";
+  const need = needsTake(id), has = S.takes.some(t => t.shot === id && t.verdict === "keep");
+  if (!need) r3.appendChild(mk("Shoot again", "The guide will offer this shot again; the take you have stays in the cut until a newer one is kept", () => { sh.fresh_after = Math.max(S.takes.length, S.game_takes || 0); saveShots(); render(); }));
+  else if (has) r3.appendChild(mk("Don't shoot again", "The take you have is enough", () => { delete sh.fresh_after; saveShots(); render(); }));
+  r3.appendChild(mk("Shoot this next", "The guide opens on this shot the next time you arm it with Ctrl+End", async () => {
+    try { await api("/api/next", { shot: id }); note("The guide will open on this shot next time you arm it (Ctrl+End).", "ok"); } catch (e) { note("Not set: " + e.message, "bad"); } }));
+  r3.append(mk("Duplicate", "A new shot with the same setup", () => addShot(sh)), mk("Remove", "Takes it off the list; its takes stay in the log and recordings", () => removeShot(id)));
+  const det = document.createElement("details"); det.open = open; det.ontoggle = () => { open = det.open; };
+  const sm = document.createElement("summary"); sm.textContent = "What the guide shows and does for this shot"; det.appendChild(sm);
+  const txt = k => vv => { if (vv.trim()) sh[k] = vv; else delete sh[k]; saveShots(); if (k === "title") render(); };
+  const numf = k => vv => { if (vv === "") delete sh[k]; else sh[k] = +vv; saveShots(); };
+  det.append(
+    field("Title", sh.title, txt("title")),
+    field("Brief: what this shot is for (shown on the card)", sh.brief, txt("brief"), { area: true, prose: true, rows: 2 }),
+    field("You: what you do during the take (leave empty for a fully automatic shot)", sh.you, txt("you"), { area: true, prose: true, rows: 2 }),
+    field("Fixed length in seconds (empty: you end it with End)", sh.secs, numf("secs"), { type: "number" }),
+    field("Seconds to wait after the setup steps", sh.setup_secs, numf("setup_secs"), { type: "number" }));
+  det.append(stepList(sh, "setup", false, "Setup, before the countdown"), stepList(sh, "actions", true, "During the take (timed)"), stepList(sh, "cleanup", false, "Clean-up, after the take"));
+  const stage = document.createElement("div"); stage.className = "row";
+  stage.append(mk("Stage the setup in the game now", "Sends the setup steps to the running game (developer mode), so you can look at the scene before shooting", () => sendCmds(sh.setup || [], "Setup sent to the game")),
+               mk("Send the clean-up", "Sends the clean-up steps to the running game", () => sendCmds(sh.cleanup || RESET, "Clean-up sent to the game")));
+  det.appendChild(stage);
+  const idl = document.createElement("p"); idl.className = "sub"; idl.style.margin = "7px 0 0"; idl.textContent = "id: " + id; det.appendChild(idl);
+  box.append(r1, r2, r3, det); return box;
+}
+// ---- scenario steps: the DirectPawnControl developer commands, as forms ---------------------------------------------
+const ENEMIES = ["Goblin", "Goblin thrower", "Hobgoblin", "Wolf", "Harpy (flying)", "Saurian", "Skeleton fighter", "Ogre", "Cyclops", "Minotaur", "Chimera",
+  "Griffin (flying, large)", "Golem (large)", "Drake (very large)", "Grim Ogre", "Gore Chimera", "Gore Minotaur", "Goblin (strong)", "Chopper", "Asp (poison)", "Rattler", "Succubus (flying)"];
+const SLOT = [[0, "main pawn"], [1, "second pawn"], [2, "third pawn"]];
+const RESET = [{ cmd: "robot", who: "all", stop: true }, { cmd: "coop", on: false }, { cmd: "release" }, { cmd: "despawn" }, { cmd: "heal" }];
+const KINDS = { // key: [label, fields, fresh command]
+  spawn: ["Spawn enemies", [["enemy", "enemy", ""], ["count", "num", "count"], ["dist", "num", "metres away"], ["angle", "num", "degrees right"], ["still", "bool", "stands still"], ["tough", "bool", "cannot die"]],
+          { cmd: "spawn", enemy: 1, count: 1, dist: 9, angle: 0, still: false, tough: true }],
+  possess: ["Take over a pawn", [["idx", "slot", ""]], { cmd: "possess", idx: 0 }],
+  release: ["Back to the Arisen", [], { cmd: "release" }],
+  coop_on: ["Start co-op on", [["idx", "slot", ""]], { cmd: "coop", on: true, idx: 0 }],
+  coop_off: ["End co-op", [], { cmd: "coop", on: false }],
+  robot_fight: ["Robot player fights", [["secs", "num", "seconds (max 30)"]], { cmd: "robot", who: "pad", secs: 20, fight: true }],
+  robot_antics: ["Robot player fools around", [["secs", "num", "seconds (max 30)"]], { cmd: "robot", who: "pad", secs: 14, antics: true }],
+  robot_pad: ["Robot presses the controller", [["secs", "num", "seconds"], ["buttons", "list", "buttons, e.g. LRight, LTrigTop"], ["actions", "list", "or actions, e.g. AttackS, Jump"], ["stick", "vec", "stick x, y"]],
+              { cmd: "robot", who: "pad", secs: 1, stick: [0, 1] }],
+  robot_arisen: ["Robot moves the Arisen", [["secs", "num", "seconds"], ["actions", "list", "actions, e.g. AttackS"], ["stick", "vec", "stick x, y"]], { cmd: "robot", who: "arisen", secs: 3, stick: [0, 1] }],
+  robot_stop: ["Stop the robot", [], { cmd: "robot", who: "all", stop: true }],
+  quick: ["Order a pawn's skill", [["slot", "num", "skill 1-6"], ["idx", "slot", ""]], { cmd: "quick", slot: 1, idx: 0 }],
+  down: ["Knock a pawn down", [["idx", "slot", ""]], { cmd: "down", idx: 0 }],
+  heal: ["Heal and revive the party", [], { cmd: "heal" }],
+  despawn: ["Remove spawned enemies", [], { cmd: "despawn" }],
+  rearm: ["Arisen swaps weapon (Warfarer)", [], { cmd: "rearm" }],
+  solo: ["Arisen fights alone", [["on", "bool", "on"]], { cmd: "solo", on: true }],
+  set: ["Change a mod setting", [["key", "text", "setting"], ["value", "json", "value"], ["save", "bool", "keep after the shot"]], { cmd: "set", key: "selected_pawn_idx", value: 0, save: false }],
+  raw: ["Other (JSON)", [], { cmd: "mark", label: "note" }],
+};
+function kindOf(c) {
+  if (!c || typeof c !== "object") return "raw";
+  if (c.cmd === "coop") return c.on === false ? "coop_off" : "coop_on";
+  if (c.cmd === "robot") return c.stop ? "robot_stop" : c.fight ? "robot_fight" : c.antics ? "robot_antics" : c.who === "arisen" ? "robot_arisen" : c.who === "pad" ? "robot_pad" : "raw";
+  return KINDS[c.cmd] && c.cmd !== "raw" ? c.cmd : "raw";
+}
+function stepList(sh, key, timed, heading) {
+  const box = document.createElement("div"); box.className = "steps";
+  const h = document.createElement("h3"); h.textContent = heading; box.appendChild(h);
+  const list = () => Array.isArray(sh[key]) ? sh[key] : (sh[key] = []);
+  const redo = () => { saveShots(); box.replaceWith(stepList(sh, key, timed, heading)); };
+  const get = i => timed ? list()[i].cmd : list()[i];
+  const put = (i, c) => { if (timed) list()[i].cmd = c; else list()[i] = c; };
+  list().forEach((item, i) => {
+    if (timed && (!item || typeof item !== "object" || !item.cmd)) { list()[i] = item = { at: 0, cmd: item && typeof item === "object" ? item : { cmd: "mark" } }; }
+    const c = get(i), kind = kindOf(c), row = document.createElement("div"); row.className = "step";
+    if (timed) { const l = document.createElement("label"), a = document.createElement("input"); a.type = "number"; a.step = "0.1"; a.min = "0"; a.value = +item.at || 0;
+      a.onchange = () => { item.at = +a.value || 0; saveShots(); }; l.append("at ", a, " s"); row.appendChild(l); }
+    const sel = document.createElement("select"); sel.setAttribute("aria-label", "Step");
+    for (const k of Object.keys(KINDS)) { const o = document.createElement("option"); o.value = k; o.textContent = KINDS[k][0]; sel.appendChild(o); }
+    sel.value = kind; sel.onchange = () => { put(i, JSON.parse(JSON.stringify(KINDS[sel.value][2]))); redo(); };
+    row.appendChild(sel);
+    if (kind === "raw") {
+      const t = document.createElement("input"); t.type = "text"; t.className = "wide"; t.value = JSON.stringify(c); t.setAttribute("aria-label", "Command as JSON");
+      t.onchange = () => { try { const p = JSON.parse(t.value); if (!p || typeof p !== "object" || Array.isArray(p)) throw 0; put(i, p); t.classList.remove("badjson"); saveShots(); } catch (e) { t.classList.add("badjson"); } };
+      row.appendChild(t);
+    } else for (const [k, type, text] of KINDS[kind][1]) {
+      const l = document.createElement("label"); let inp;
+      if (type === "bool") { inp = document.createElement("input"); inp.type = "checkbox"; inp.checked = c[k] === true; inp.onchange = () => { c[k] = inp.checked; saveShots(); }; l.append(inp, text); }
+      else if (type === "enemy" || type === "slot") {
+        inp = document.createElement("select"); inp.setAttribute("aria-label", type === "enemy" ? "Enemy" : "Pawn");
+        const opts = type === "enemy" ? ENEMIES.map((n, j) => [j + 1, n]) : SLOT;
+        for (const [val, name] of opts) { const o = document.createElement("option"); o.value = val; o.textContent = name; inp.appendChild(o); }
+        inp.value = c[k] === undefined ? opts[0][0] : c[k]; inp.onchange = () => { c[k] = +inp.value; saveShots(); }; l.append(inp);
+      } else if (type === "num") { inp = document.createElement("input"); inp.type = "number"; inp.step = "any"; inp.value = c[k] === undefined ? "" : c[k];
+        inp.onchange = () => { if (inp.value === "") delete c[k]; else c[k] = +inp.value; saveShots(); }; l.append(inp, text); }
+      else { inp = document.createElement("input"); inp.type = "text"; inp.placeholder = text; inp.title = text;
+        inp.value = c[k] === undefined ? "" : type === "list" || type === "vec" ? [].concat(c[k]).join(", ") : type === "json" ? JSON.stringify(c[k]) : c[k];
+        inp.onchange = () => { const raw = inp.value.trim(); inp.classList.remove("badjson");
+          if (raw === "") delete c[k];
+          else if (type === "list") c[k] = raw.split(/[\s,]+/).filter(Boolean);
+          else if (type === "vec") { const n = raw.split(/[\s,]+/).map(Number); if (n.length !== 2 || n.some(isNaN)) { inp.classList.add("badjson"); return; } c[k] = n; }
+          else if (type === "json") { try { c[k] = JSON.parse(raw); } catch (e) { inp.classList.add("badjson"); return; } }
+          else c[k] = raw;
+          saveShots(); };
+        l.append(inp); }
+      row.appendChild(l);
+    }
+    const x = document.createElement("span"); x.className = "x";
+    const b = (text, title, fn) => { const e = document.createElement("button"); e.type = "button"; e.textContent = text; e.title = title; e.onclick = fn; return e; };
+    x.append(b("↑", "Earlier", () => { if (i) { const a = list(); [a[i - 1], a[i]] = [a[i], a[i - 1]]; redo(); } }),
+             b("↓", "Later", () => { const a = list(); if (i + 1 < a.length) { [a[i + 1], a[i]] = [a[i], a[i + 1]]; redo(); } }),
+             b("×", "Remove this step", () => { list().splice(i, 1); redo(); }));
+    row.appendChild(x); box.appendChild(row);
+  });
+  const adds = document.createElement("div"); adds.className = "adds";
+  const add = document.createElement("select"); add.setAttribute("aria-label", "Add a step");
+  add.innerHTML = "<option value=''>+ Add a step...</option>"; for (const k of Object.keys(KINDS)) { const o = document.createElement("option"); o.value = k; o.textContent = KINDS[k][0]; add.appendChild(o); }
+  add.onchange = () => { if (!add.value) return; const c = JSON.parse(JSON.stringify(KINDS[add.value][2])); const last = list()[list().length - 1];
+    list().push(timed ? { at: last ? (+last.at || 0) + 1 : 0.3, cmd: c } : c); redo(); };
+  adds.appendChild(add);
+  if (!timed) { const r = document.createElement("button"); r.type = "button"; r.textContent = key === "setup" ? "+ Clean slate first" : "+ Standard clean-up";
+    r.title = "Stop the robot, end co-op, back to the Arisen, remove spawned enemies, heal the party";
+    r.onclick = () => { const fresh = JSON.parse(JSON.stringify(RESET)); if (key === "setup") sh[key] = fresh.concat(list()); else sh[key] = list().concat(fresh); redo(); }; adds.appendChild(r); }
+  box.appendChild(adds); return box;
+}
+async function sendCmds(cmds, done) {
+  if (!cmds.length) { note("There are no steps to send.", "bad"); return; }
+  try { const r = await api("/api/stage", { cmds }); note(`${done} (${r.sent} steps, about ${Math.ceil(r.secs)} s). The game must be running with DirectPawnControl in developer mode.`, "ok"); }
+  catch (e) { note("Not sent: " + e.message, "bad"); }
+}
+async function draft(revise) {
+  const text = $("aitext").value.trim();
+  if (!text) { note("Describe the shot first.", "bad"); return; }
+  if (revise && !cur) return;
+  $("ainew").disabled = $("airev").disabled = true; note("Claude is drafting the shot (up to a minute or two)...");
+  try {
+    const r = await api("/api/draft", { text, shot: revise ? shotDef(cur) : null, notes: L.notes || "" });
+    const d = r.shot;
+    if (revise) { const sh = shotDef(cur); for (const k of ["title", "caption", "brief", "you", "setup", "setup_secs", "secs", "actions", "cleanup"]) { if (d[k] === undefined) delete sh[k]; else sh[k] = d[k]; } open = true; saveShots(); render(); }
+    else { addShot(null); const sh = shotDef(cur); for (const k of Object.keys(d)) if (k !== "id" && k !== "fresh_after") sh[k] = d[k]; saveShots(); render(); }
+    note("Drafted. Check the steps before you shoot it.", "ok");
+  } catch (e) { note("No draft: " + e.message, "bad"); }
+  $("ainew").disabled = $("airev").disabled = false;
+}
+$("ainew").onclick = () => draft(false); $("airev").onclick = () => draft(true);
+
+function select(id) { if (cur === id) return; cur = id; stopPlay(); render(); show(id, trim(id).in); }
+function move(n, d) { const m = n + d; if (m < 0 || m >= C.order.length) return; [C.order[n], C.order[m]] = [C.order[m], C.order[n]]; saveChoices(); render(); }
+function addShot(from) {
+  let k = Date.now(), id; do { id = "shot-" + (k++).toString(36); } while (shotDef(id)); // unique over every list: the take log is shared
+  const s = from ? JSON.parse(JSON.stringify(from)) : { title: "New shot", caption: "", brief: "", you: "", setup: JSON.parse(JSON.stringify(RESET)), setup_secs: 3, cleanup: JSON.parse(JSON.stringify(RESET)).slice(1) };
+  s.id = id; if (from) s.title = (from.title || from.id) + " (copy)"; delete s.fresh_after;
+  const at = from ? L.shots.indexOf(from) + 1 : L.shots.length; L.shots.splice(at, 0, s);
+  ch(id); const pos = from ? C.order.indexOf(from.id) + 1 : C.order.length; C.order.splice(pos, 0, id);
+  cur = id; open = true; saveShots(); saveChoices(); render(); show(id, 0);
+}
+function removeShot(id) {
+  if (L.shots.length < 2) { note("A shot list needs at least one shot.", "bad"); return; }
+  if (!confirm(`Take "${shotDef(id).title || id}" off the shot list?\n\nIts takes stay in the log and the recordings, and the list before this change is kept in the history folder.`)) return;
+  L.shots = L.shots.filter(s => s.id !== id); C.order = C.order.filter(x => x !== id);
+  cur = C.order[0]; saveShots(); saveChoices(); render(); show(cur, trim(cur).in);
+}
+
+// ---- player: positions are seconds from the start of the untrimmed take ------------------------------------------
+function locate(parts, pos) { let a = 0; for (let k = 0; k < parts.length; k++) { const len = parts[k].t1 - parts[k].t0; if (pos < a + len || k === parts.length - 1) return { k, t: parts[k].t0 + Math.min(Math.max(pos - a, 0), len), base: a }; a += len; } }
+const fps = () => { const t = cur && take(cur); return (t && t.fps) || 60; };
+function prep(el, src, t) { // have a video element ready on a frame without showing it
+  if (el.dataset.src !== src) { el.dataset.src = src; el.src = src; el.addEventListener("loadedmetadata", () => { el.currentTime = t; }, { once: true }); }
+  else if (Math.abs(el.currentTime - t) > 0.02) el.currentTime = t;
+}
+function seekVideo(k, t, play) {
+  const src = P.parts[k].src; P.k = k;
+  const start = () => { if (play) v.play().catch(() => note("The browser would not start the video. Press Play again.", "bad")); };
+  if (v.dataset.src !== src && w.dataset.src === src && w.readyState >= 2 && Math.abs(w.currentTime - t) < 0.05) {
+    v.pause(); [v, w] = [w, v]; v.hidden = false; w.hidden = true; start(); // the next file was waiting: no black frames at the join
+  } else if (v.dataset.src !== src) { v.dataset.src = src; v.src = src; v.addEventListener("loadedmetadata", () => { v.currentTime = t; start(); }, { once: true }); }
+  else { v.currentTime = t; start(); }
+  if (play && k + 1 < P.parts.length) prep(w, P.parts[k + 1].src, P.parts[k + 1].t0);
+}
+function show(id, pos) { // park on one frame
+  const t = id && take(id);
+  P.mode = null; v.pause();
+  if (!t) { P.id = id; P.parts = null; v.removeAttribute("src"); delete v.dataset.src; v.load(); ui(); return; }
+  P.id = id; P.parts = t.parts; P.pos = Math.min(Math.max(pos, 0), total(id));
+  const at = locate(P.parts, P.pos); seekVideo(at.k, at.t, false); ui();
+}
+function playFrom(id, pos, mode) {
+  const t = take(id); if (!t) { stopPlay(); return; }
+  P.id = id; P.parts = t.parts; P.pos = pos; P.mode = mode;
+  const at = locate(P.parts, pos); seekVideo(at.k, at.t, true); ui();
+}
+function playShot(id, mode) { if (!usable(id)) { stopPlay(); return; } if (cur !== id) { cur = id; render(); } playFrom(id, trim(id).in, mode); }
+function stopPlay() { P.mode = null; v.pause(); ui(); }
+function frame() {
+  requestAnimationFrame(frame);
+  if (!P.mode || !P.parts || v.seeking || v.readyState < 2) return;
+  const part = P.parts[P.k]; let base = 0; for (let i = 0; i < P.k; i++) base += P.parts[i].t1 - P.parts[i].t0;
+  P.pos = base + Math.max(0, v.currentTime - part.t0);
+  const end = P.mode === "free" ? total(P.id) : total(P.id) - trim(P.id).out;
+  if (P.pos >= end - 0.5 / fps()) {
+    if (P.mode === "all") { const ids = live(), k = ids.indexOf(P.id); if (k >= 0 && k + 1 < ids.length) { playShot(ids[k + 1], "all"); return; } }
+    P.mode = null; v.pause();
+  } else if (v.currentTime >= part.t1 - 0.5 / fps() && P.k + 1 < P.parts.length) seekVideo(P.k + 1, P.parts[P.k + 1].t0, true);
+  ui();
+}
+function ui() {
+  const has = !!(P.parts && P.id), tot = has ? total(P.id) : 0, tr = has ? trim(P.id) : { in: 0, out: 0 }, f = fps();
+  const sc = $("scrub"); sc.disabled = !has; sc.max = tot || 1; sc.step = 1 / f; if (document.activeElement !== sc || P.mode) sc.value = P.pos;
+  const a = tot ? tr.in / tot * 100 : 0, b = tot ? (tot - tr.out) / tot * 100 : 100;
+  $("trimbar").style.background = has ? `linear-gradient(90deg, #2a3340 ${a}%, #6fc48a ${a}%, #6fc48a ${b}%, #2a3340 ${b}%)` : "#2a3340";
+  $("pos").textContent = has ? `${P.pos.toFixed(3)} s   frame ${Math.round(P.pos * f)} / ${Math.round(tot * f)}   in the cut: ${fmt(tr.in)} to ${fmt(tot - tr.out)}` : "No take to show for this shot yet";
+  $("pp").textContent = P.mode ? "Pause" : "Play";
+  const into = P.pos - tr.in, cut = P.mode === "one" || P.mode === "all";
+  $("cap").textContent = has && cut && into < 3 ? shotDef(P.id).caption || "" : "";
+  $("info").textContent = has && cut ? `${shotDef(P.id).title || P.id}   ${fmt(into)} / ${fmt(dur(P.id))}` : "";
+  const bar = has && document.querySelector(`.tl div[data-id="${CSS.escape(P.id)}"] i`);
+  if (bar) bar.style.width = (cut ? Math.min(100, Math.max(0, into / Math.max(dur(P.id), 0.01) * 100)) : 0) + "%";
+  for (const id of ["b10", "b1", "pp", "f1", "f10", "setin", "setout", "cleartrim"]) $(id).disabled = !has;
+}
+function step(n) { if (!P.parts) return; const f = fps(); show(P.id, (Math.round(P.pos * f) + n) / f); }
+function setTrim(id, key, val) {
+  const tr = trim(id), tot = total(id); val = Math.max(0, val);
+  const other = key === "in" ? tr.out : tr.in;
+  if (val + other > tot - 0.1) { note("That would leave nothing of the take.", "bad"); render(); return; }
+  tr[key] = +val.toFixed(4); saveChoices(); render(); ui();
+}
+$("scrub").oninput = e => show(cur, +e.target.value);
+$("b10").onclick = () => step(-10); $("b1").onclick = () => step(-1); $("f1").onclick = () => step(1); $("f10").onclick = () => step(10);
+$("pp").onclick = () => { if (P.mode) stopPlay(); else if (P.parts) playFrom(P.id, P.pos >= total(P.id) - 0.05 ? 0 : P.pos, "free"); };
+$("setin").onclick = () => { if (P.parts) setTrim(P.id, "in", P.pos); };
+$("setout").onclick = () => { if (P.parts) setTrim(P.id, "out", total(P.id) - P.pos); };
+$("cleartrim").onclick = () => { if (!P.parts) return; const tr = trim(P.id); tr.in = tr.out = 0; saveChoices(); render(); ui(); };
+$("playall").onclick = () => { const ids = live(); if (ids.length) playShot(ids[0], "all"); };
+$("playone").onclick = () => { if (cur) playShot(cur, "one"); };
+$("stop").onclick = stopPlay;
+$("add").onclick = () => addShot(null);
+$("lists").onchange = async e => {
+  const val = e.target.value; e.target.value = "";
+  try {
+    if (val === "rename") { const t = prompt("Title of this shot list", L.title || ""); if (t && t.trim()) { L.title = t.trim(); saveShots(); render(); } return; }
+    if (!val) return;
+    if (pending) await new Promise(r => setTimeout(r, 1500)); // let the last edit reach the disk before the lists change places
+    if (val === "new") { const t = prompt("Title of the new video / shot list\n\nThe list you have now is kept: you can open it again from this menu."); if (!t || !t.trim()) return; await api("/api/list/new", { title: t.trim() }); }
+    else await api("/api/list/open", { id: val.slice(5) });
+    stopPlay(); C = null; cur = null; await reload(); note("Shot list changed. Arm the guide again in the game (Ctrl+End) to pick it up.", "ok");
+  } catch (err) { note("Not changed: " + err.message, "bad"); }
+};
+for (const el of [v, w]) el.addEventListener("error", () => { if (el === v && v.getAttribute("src")) note("This recording could not be opened. Press Get new footage so its browser copy is made.", "bad"); });
+document.addEventListener("keydown", e => {
+  const t = e.target, tag = t.tagName;
+  if (tag === "TEXTAREA" || tag === "SELECT" || (tag === "INPUT" && t.type !== "range" && t.type !== "checkbox") || e.ctrlKey || e.altKey || e.metaKey) return;
+  const k = e.key;
+  if (k === "ArrowLeft") step(e.shiftKey ? -10 : -1); else if (k === "ArrowRight") step(e.shiftKey ? 10 : 1);
+  else if (k === " ") $("pp").click(); else if (k === "i" || k === "I") $("setin").click(); else if (k === "o" || k === "O") $("setout").click();
+  else return;
+  e.preventDefault();
+});
+
+// ---- jobs -----------------------------------------------------------------------------------------------------
+async function reload() { adopt(await api("/api/state")); render(); if (!P.mode) show(cur, cur ? trim(cur).in : 0); }
+async function watch() {
+  busy = true; $("fetch").disabled = $("render").disabled = true;
+  for (;;) {
+    const j = await api("/api/status").catch(() => null);
+    if (j) { const box = $("job"); box.textContent = j.lines.join("\n"); box.className = "job" + (j.ok === false ? " bad" : ""); box.scrollTop = box.scrollHeight; if (!j.running) break; }
+    await new Promise(r => setTimeout(r, 700));
+  }
+  busy = false; $("fetch").disabled = $("render").disabled = false;
+  await reload();
+}
+async function run(path) {
+  if (busy) return;
+  if (pending) await new Promise(r => setTimeout(r, 1200)); // let the last edit reach the disk first
+  try { await api(path, {}); watch(); } catch (e) { note(e.message, "bad"); }
+}
+$("fetch").onclick = () => run("/api/process");
+$("render").onclick = () => run("/api/render");
+setInterval(async () => { // only the "there is new footage" hint; the edit on screen is left alone
+  if (busy || !S) return;
+  try { const n = await api("/api/state"); S.unscanned = n.unscanned; S.game_takes = n.game_takes; S.game_ok = n.game_ok; S.final = n.final; render0(); } catch (e) {}
+}, 15000);
+function render0() { const y = document.querySelector("aside").scrollTop; if (!document.activeElement || !document.activeElement.closest(".shot")) { render(); document.querySelector("aside").scrollTop = y; } }
+
+(async () => {
+  try {
+    adopt(await api("/api/state")); render(); show(cur, cur ? trim(cur).in : 0); requestAnimationFrame(frame);
+    const j = await api("/api/status"); if (j.running) watch();
+  } catch (e) { note("The desk is not answering: " + e.message, "bad"); }
+})();
+</script></body></html>

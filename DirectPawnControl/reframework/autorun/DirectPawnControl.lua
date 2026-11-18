@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.163"
+local VERSION = "0.9.165"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -4749,6 +4749,54 @@ local function poll_pad()
             pad_buttons = pad_buttons | (rp.btn or 0)
             if rp.lx then pad_stick_x, pad_stick_y = rp.lx, rp.ly end
             if rp.rx then pad_stick_rx, pad_stick_ry = rp.rx, rp.ry end
+            -- v0.9.164 (developer): {"cmd":"robot","who":"pad","secs":25,"fight":true}. A fixed stick direction sent
+            -- player 2's pawn running off in co-op shots (reported). In fight mode the robot looks for the nearest
+            -- enemy to the played pawn, steers at it (camera-relative, like a real stick) and, within 3 m, taps the
+            -- light attack with a heavy one every sixth beat.
+            -- v0.9.165 (developer): {"cmd":"robot","who":"pad","secs":20,"antics":true}. Requested for the co-op
+            -- shots: a second player who fights looks just like a pawn on its own AI, so the robot can also do what
+            -- only a person would: run rings round the Arisen (3 m out) and jump every 0.9 s.
+            if rp.antics and state.active and state.pawn_chara and state.arisen_chara then
+                pcall(function()
+                    local now = os.clock()
+                    local px, _, pz = brain_pos(state.pawn_chara)
+                    local ax, _, az = brain_pos(state.arisen_chara)
+                    if not (px and ax) then return end
+                    local rx, rz = px - ax, pz - az
+                    local d = math.sqrt(rx * rx + rz * rz)
+                    if d < 0.05 then rx, rz, d = 1.0, 0.0, 1.0 end
+                    rx, rz = rx / d, rz / d
+                    local pull = math.max(-1.0, math.min(1.0, (3.0 - d) * 0.8)) -- out when too close, in when too far
+                    local dx, dz = -rz + rx * pull, rx + rz * pull
+                    pad_stick_x, pad_stick_y = brain_stick_for(math.atan(dx, dz))
+                    local m = R.bind_mask("Jump")
+                    if m and ((now * 1000) % 900) < 160 then pad_buttons = pad_buttons | m end
+                end)
+            end
+            if rp.fight and state.active and state.pawn_chara then
+                pcall(function()
+                    local now = os.clock()
+                    if now >= (rp.next_t or 0) then
+                        rp.next_t = now + 0.4
+                        local okp, t = pcall(quick_pick_enemy, state.pawn_chara)
+                        rp.tgt = okp and t or nil
+                    end
+                    local px, _, pz = brain_pos(state.pawn_chara)
+                    local tx, tz
+                    if rp.tgt then tx, _, tz = brain_pos(rp.tgt) end
+                    if not (px and tx) then pad_stick_x, pad_stick_y = 0.0, 0.0; return end
+                    local dx, dz = tx - px, tz - pz
+                    local d = math.sqrt(dx * dx + dz * dz)
+                    local sx, sy = brain_stick_for(math.atan(dx, dz))
+                    local k = (d > 2.2) and 1.0 or 0.3 -- close in, then only keep facing it
+                    pad_stick_x, pad_stick_y = sx * k, sy * k
+                    if d <= 3.0 then
+                        local heavy = (math.floor(now / 0.6) % 6) == 5
+                        local m = R.bind_mask(heavy and "AttackL" or "AttackS")
+                        if m and ((now * 1000) % 600) < 180 then pad_buttons = pad_buttons | m end
+                    end
+                end)
+            end
         end
     end
 end
@@ -8261,7 +8309,7 @@ local function poll_cmd_file()
                 end
             end
             local lx, ly = vec(d.stick); local rx, ry = vec(d.rstick)
-            robot.pad = { btn = mask, lx = lx, ly = ly, rx = rx, ry = ry, until_t = os.clock() + secs }
+            robot.pad = { btn = mask, lx = lx, ly = ly, rx = rx, ry = ry, until_t = os.clock() + secs, fight = d.fight == true, antics = d.antics == true }
             robot.uses = robot.uses + 1
         elseif d.who == "arisen" then
             local want = 0

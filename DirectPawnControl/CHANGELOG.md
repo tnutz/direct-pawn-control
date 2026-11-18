@@ -13,6 +13,14 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 - Archer: move and skill 1 (Threefold Arrow, skill state 13) pass; the "attacks" check failed in both runs, with layer 0 staying in `Strafe`. Probably the test's blind spot (bow shots may run on the upper-body layer), not confirmed. `party-matrix-4` also watches layer 1.
 - Sorcerer not covered yet.
 
+### v0.9.165 (2026-11-18): developer only: robot "antics" for co-op shots (not tested in game yet)
+- The tester: co-op is hard to show on video, a second player fighting is almost indistinguishable from a pawn playing by itself; something funny or erratic is needed.
+- `{"cmd":"robot","who":"pad","secs":20,"antics":true}`: the robot runs rings round the Arisen at 3 m and jumps every 0.9 s. New shot `10b-coop-antics` in the showcase shot list.
+
+### v0.9.164 (2026-11-18): developer only: the robot player can fight (not tested in game yet)
+- First capture session with CaptureGuide 1.0: 18 takes, 10 of 12 shots kept. The tester: the robot as player 2 in co-op is useless, it just runs off. The shot list gave it fixed stick directions.
+- `{"cmd":"robot","who":"pad","secs":25,"fight":true}`: the robot steers the played pawn at the nearest enemy (camera-relative stick from `brain_stick_for`), and within 3 m taps the light attack, with a heavy attack every sixth beat. Nothing changes for players; the robot only exists in developer mode.
+
 #### Final for release: 0.9.163 (2026-11-18)
 - **The tester:** the Arisen was landed on while a pawn was played and no flash showed (0.9.161's panel hide confirmed). "Let's call this final. We can always issue updates later."
 - Not confirmed in play at this point: 0.9.162's take-over fix for a pawn set on climbing, and 0.9.163's arrows for pawns fighting on their own.
