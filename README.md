@@ -2,6 +2,8 @@
 
 Source for three REFramework mods for Dragon's Dogma 2, with the research notes behind them.
 
+**Download and mod page:** [Direct Pawn Control - Play as Any Pawn. Includes Couch Co-op](https://www.nexusmods.com/dragonsdogma2/mods/2690) on Nexus Mods. Bug reports and questions are welcome there.
+
 | Folder | What it is |
 |---|---|
 | `DirectPawnControl/` | Play as any pawn in your party with the game's own controls, camera and HUD while the Arisen fights on by himself; couch co-op on one PC with player 2 on a controller. |
