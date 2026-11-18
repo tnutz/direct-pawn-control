@@ -2,3 +2,4 @@ dist/
 *.zip
 *.bak*
 desktop.ini
+__pycache__/
