@@ -1,0 +1,64 @@
+{
+ "id": "coop-pad-1",
+ "title": "Co-op v0.9.3: The main pawn's controller layout",
+ "intro": "Co-op starts by itself. Only use the controller. Steps are longer so animations can finish.",
+ "steps": [
+  {
+   "text": "Hands off - starting co-op",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Controller: HOLD L2 (the main pawn blocks)",
+   "secs": 6
+  },
+  {
+   "text": "Controller: tap R1 a few times (light attack)",
+   "secs": 6
+  },
+  {
+   "text": "Controller: tap R2 a few times (heavy attack)",
+   "secs": 6
+  },
+  {
+   "text": "Hold L1, tap Square (skill 1)",
+   "secs": 7
+  },
+  {
+   "text": "Hold L1, tap Triangle (skill 2)",
+   "secs": 7
+  },
+  {
+   "text": "Hold L1, tap Circle (skill 3)",
+   "secs": 7
+  },
+  {
+   "text": "Hold L1, tap Cross (skill 4)",
+   "secs": 7
+  },
+  {
+   "text": "Tap Square alone, then Triangle alone",
+   "secs": 7
+  },
+  {
+   "text": "Run with the left stick and click L3",
+   "secs": 6
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-pad-1.json",
+  "probes": {
+   "btn": "return string.format('0x%X', H.pad_buttons())",
+   "pacts": "\nif not ACTS then\n  ACTS = {}\n  local td = sdk.find_type_definition(\"app.CharacterInput.Action\")\n  local gm = sdk.find_type_definition(\"app.CharacterInput\"):get_method(\"getInputFlag\")\n  for _, f in ipairs(td:get_fields()) do\n    if f:is_static() and f:get_name() ~= \"value__\" then\n      local ok, id = pcall(f.get_data, f, nil)\n      if ok and type(id) == \"number\" and id >= 0 and id < 63 then\n        local flag = 1 << id\n        local ok2, fv = pcall(gm.call, gm, nil, id)\n        if ok2 and type(fv) == \"number\" and fv > 0 then flag = fv end\n        ACTS[#ACTS + 1] = { f:get_name(), flag }\n      end\n    end\n  end\nend\nlocal on = H.pawn(0):call(\"get_Input\"):get_field(\"ButtonOnFlags\") or 0\nlocal t = {}\nfor _, a in ipairs(ACTS) do if (on & a[2]) == a[2] and a[2] ~= 0 then t[#t + 1] = a[1] end end\nreturn table.concat(t, \"+\")\n",
+   "pnode": "return H.node(H.pawn(0))",
+   "anode": "return H.node(H.arisen())",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active"
+  }
+ }
+}

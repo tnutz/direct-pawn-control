@@ -1,0 +1,1474 @@
+{
+ "id": "coop-soak-1",
+ "title": "Co-op soak: each pawn in turn, the robot presses every action (no hands, about 4 minutes)",
+ "requires": {
+  "DirectPawnControl": "0.9.125",
+  "CameraDistance": "2.9.6",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 4 minutes, nothing to press after End. Open ground, no enemies near, full party, a controller connected. Hands off until PASS / FAIL shows. This is the test for last night's crash: co-op ran 17 s before the game went down. If the game crashes during this test, that is the result; tell Claude at which step.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "HANDS OFF. Getting ready.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Checks before anything is pressed",
+   "expect": [
+    {
+     "probe": "binds",
+     "agg": "last",
+     "op": "~=",
+     "value": "",
+     "label": "controller layout was read from the game"
+    },
+    {
+     "probe": "kb",
+     "agg": "any",
+     "label": "keyboard layout was read from the game"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "DirectPawnControl: no errors"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "CameraDistance: no errors"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Co-op: player 2 plays party member 1",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "co-op started on party member 1"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 walks",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses AttackS",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after AttackS"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses AttackL",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after AttackL"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Jump",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Jump"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Dash",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Dash"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Dash"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Interact",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Interact"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Interact"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Grab",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Grab"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Grab"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses JobSpecialAction",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after JobSpecialAction"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Sheathe",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Sheathe"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Sheathe"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Draw",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Draw"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Draw"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses SwitchLockOn",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "SwitchLockOn"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after SwitchLockOn"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill1",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Skill1"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill2",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill2"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Skill2"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill3",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill3"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Skill3"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill4",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill4"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 1: co-op still running after Skill4"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Co-op: player 2 plays party member 2",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "co-op started on party member 2"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 walks",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses AttackS",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after AttackS"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses AttackL",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after AttackL"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Jump",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Jump"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Dash",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Dash"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Dash"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Interact",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Interact"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Interact"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Grab",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Grab"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Grab"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses JobSpecialAction",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after JobSpecialAction"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Sheathe",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Sheathe"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Sheathe"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Draw",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Draw"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Draw"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses SwitchLockOn",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "SwitchLockOn"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after SwitchLockOn"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill1",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Skill1"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill2",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill2"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Skill2"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill3",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill3"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Skill3"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill4",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill4"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 2: co-op still running after Skill4"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Co-op: player 2 plays party member 3",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "co-op started on party member 3"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 walks",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses AttackS",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after AttackS"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses AttackL",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after AttackL"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Jump",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Jump"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Dash",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Dash"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Dash"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Interact",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Interact"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Interact"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Grab",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Grab"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Grab"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses JobSpecialAction",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after JobSpecialAction"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Sheathe",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Sheathe"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Sheathe"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Draw",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Draw"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Draw"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses SwitchLockOn",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "SwitchLockOn"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after SwitchLockOn"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill1",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Skill1"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill2",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill2"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Skill2"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill3",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill3"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Skill3"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: player 2 presses Skill4",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill4"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "member 3: co-op still running after Skill4"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Final checks",
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.9,
+     "label": "co-op stopped"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "DirectPawnControl: no errors"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "CameraDistance: no errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-soak-1.json",
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "dpc": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.info",
+   "sel": "local D = _G.DPC_dbg; return D and D.R.sel_label",
+   "holds": "local D = _G.DPC_dbg; return D and (D.R.holds or 0) or 0",
+   "poss": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "lock_ok": "local D = _G.DPC_dbg; if not (D and D.state.active and D.state.arisen_lockon_ctrl and D.state.pawn_chara) then return nil end\nlocal c = D.state.arisen_lockon_ctrl:get_field('Chara'); return c ~= nil and c:get_address() == D.state.pawn_chara:get_address()",
+   "lockfix": "local D = _G.DPC_dbg; return D and (D.R.lock_fixes or 0) or 0",
+   "ring": "local gm = sdk.get_managed_singleton('app.GuiManager'); local u = gm and gm:get_field('MagicBowReticle'); if not u then return false end\nreturn u:call('get_GameObject'):call('get_DrawSelf') == true",
+   "shots": "local b = H.dpc_brain(); return b and ((b.presses or 0) + (b.skill_uses or 0)) or 0",
+   "skills": "local b = H.dpc_brain(); return b and b.skill_uses or 0",
+   "bmode": "local b = H.dpc_brain(); return b and b.mode",
+   "world": "local D = _G.DPC_dbg; return D and D.R.world",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "v0": "return H.speed(H.pawn(0), 'pawn0')",
+   "va": "return H.speed()",
+   "act0": "local a, b = H.node(H.pawn(0)), H.node(H.pawn(0), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "binds": "local D = _G.DPC_dbg; return D and D.R.bind and D.R.bind.sig",
+   "kb": "local D = _G.DPC_dbg; return D and D.R.kbind ~= nil",
+   "map": "local ok, d = pcall(json.load_file, 'DPC_arisen_brain.json'); return ok and d and d.coop and d.coop.map",
+   "p2f": "local ok, d = pcall(json.load_file, 'DPC_arisen_brain.json'); return ok and d and d.coop and d.coop.p2_flags",
+   "act1": "local a, b = H.node(H.pawn(1)), H.node(H.pawn(1), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "act2": "local a, b = H.node(H.pawn(2)), H.node(H.pawn(2), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "qres": "local ok, d = pcall(json.load_file, 'DPC_quick.json'); return ok and d and (tostring(d.pawn) .. ' slot ' .. tostring(d.slot) .. ' ' .. tostring(d.name) .. ': ' .. tostring(d.result) .. ' [' .. tostring(d.source) .. ']')",
+   "qn": "local ok, d = pcall(json.load_file, 'DPC_quick.json'); return ok and d and d.n or 0",
+   "qok": "local ok, d = pcall(json.load_file, 'DPC_quick.json'); return ok and d and (d.result == 'ordered' or d.result == 'slot empty' or d.result == 'no enemy')",
+   "qtbl": "local ok, d = pcall(json.load_file, 'DPC_skill_table.json'); return ok and d and d.rows or 0",
+   "aimsk": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.aim and d.aim.aim_skills or 0",
+   "dead2": "local p = H.pawn(2); return p ~= nil and p:call('get_IsDead') == true",
+   "job1": "local D = _G.DPC_dbg; return D and D.state.pawn_job"
+  },
+  "show": [
+   "dpc",
+   "map",
+   "p2f"
+  ]
+ }
+}

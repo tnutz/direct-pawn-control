@@ -1,0 +1,78 @@
+{
+ "id": "aim-zoom-exp-1",
+ "title": "Bow aim experiment: four ways to widen (L-O)",
+ "intro": "In the Camera Distance menu, UNTICK 'Limit the bow-aim zoom' first so it doesn't interfere. Stand with a clear view. You'll hold the bow aim for about 25 s. Remember which letters changed the view.",
+ "steps": [
+  {
+   "text": "Co-op OFF. Now HOLD the bow aim (right mouse) and keep holding it until the end. Press End while aiming",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "Keep aiming (baseline)",
+   "secs": 3,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"\"\n"
+  },
+  {
+   "text": "L - keep aiming",
+   "secs": 4,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"L\"\n"
+  },
+  {
+   "text": "(reset) keep aiming",
+   "secs": 2,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"\"\n"
+  },
+  {
+   "text": "M - keep aiming",
+   "secs": 4,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"M\"\n"
+  },
+  {
+   "text": "(reset) keep aiming",
+   "secs": 2,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"\"\n"
+  },
+  {
+   "text": "N - keep aiming",
+   "secs": 4,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"N\"\n"
+  },
+  {
+   "text": "(reset) keep aiming",
+   "secs": 2,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"\"\n"
+  },
+  {
+   "text": "O - keep aiming",
+   "secs": 4,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"O\"\nsdk.get_managed_singleton('app.CameraManager'):call('set_DistanceOffset', 4.0)"
+  },
+  {
+   "text": "Done - release the aim",
+   "secs": 2,
+   "each_frame": "\nif not AIMX then\n  AIMX = { mode = \"\", n = {} }\n  local root = sdk.find_type_definition(\"app.PlayerCameraControllerRoot\")\n  local function hook(name, post)\n    local m = root:get_method(name)\n    if not m then AIMX[\"missing_\" .. name] = true return end\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          local tn = o:get_type_definition():get_name()\n          AIMX.n[name .. \":\" .. tn] = (AIMX.n[name .. \":\" .. tn] or 0) + 1\n          if tn == \"AimCameraController\" then post(o) end\n        end)\n        return ret\n      end)\n  end\n  hook(\"updatePog\", function(o)\n    if AIMX.mode == \"L\" then o:set_field(\"_Fov\", 90.0) end\n  end)\n  hook(\"updatePosition\", function(o)\n    if AIMX.mode == \"M\" then o:set_field(\"_Fov\", 90.0) end\n    if AIMX.mode == \"N\" then\n      local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n      local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n      local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n      if l > 0.01 then p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p) end\n    end\n  end)\nend\nAIMX.mode = \"\"\nsdk.get_managed_singleton('app.CameraManager'):call('set_DistanceOffset', 0.0)"
+  }
+ ],
+ "record": {
+  "hz": 8,
+  "at": "frame",
+  "out": "test_guide/result_aim-zoom-exp-1.json",
+  "probes": {
+   "fov": "return sdk.get_primary_camera():call('get_FOV')",
+   "ctrl": "local mc=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController',0); local c=mc:call('get_CurrentCameraController'); return c and (c:get_type_definition():get_name()..' '..tostring(c:call('get_BaseDistance'))) or 'nil'",
+   "camd": "local c=sdk.get_primary_camera():call('get_GameObject'):call('get_Transform'):call('get_Position'); local a=H.arisen():call('get_Transform'):call('get_Position'); local dx,dy,dz=c.x-a.x,c.y-a.y,c.z-a.z; return math.floor(math.sqrt(dx*dx+dy*dy+dz*dz)*10+0.5)/10",
+   "ascr": "local p=H.arisen():call('get_Transform'):call('get_Position'); local s=draw.world_to_screen(Vector3f.new(p.x,p.y+1.0,p.z)); return s and string.format('%.0f,%.0f',s.x,s.y) or 'off'",
+   "cfov": "local mc=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController',0); local c=mc:call('get_CurrentCameraController'); return c and c:get_field('_Fov')",
+   "calls": "local t={} for k,v in pairs(AIMX and AIMX.n or {}) do t[#t+1]=k..'='..v end table.sort(t) return table.concat(t,' ')"
+  },
+  "show": [
+   "fov"
+  ]
+ }
+}

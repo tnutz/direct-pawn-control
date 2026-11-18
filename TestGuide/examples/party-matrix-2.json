@@ -1,0 +1,505 @@
+{
+ "id": "party-matrix-2",
+ "title": "Every pawn in the party: move, attack, vocation action, skill (robot)",
+ "requires": {
+  "DirectPawnControl": "0.9.28",
+  "TestGuide": "2.1"
+ },
+ "intro": "Open ground, no enemies. The robot takes each of your pawns in turn. Run it again after swapping pawns at a riftstone to cover other vocations (Thief, Mage, Sorcerer, Warrior, Archer, Fighter). The result file records each pawn's vocation.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "HANDS OFF for the whole test (about 90 s). Getting ready.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Pawn 1: co-op on",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "pawn 1: control started (fails if there is no pawn 1)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Pawn 1: robot runs him forward",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v0",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 1: moves"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Pawn 1: robot taps R1 (attack)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "buttons": [
+      "RTrigTop"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "buttons": [
+      "RTrigTop"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "act0",
+     "agg": "any",
+     "label": "pawn 1: attacks"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Pawn 1: robot holds L2 (vocation action)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "buttons": [
+      "LTrigBottom"
+     ]
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Pawn 1: robot presses L1 + Square (skill 1)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.5,
+     "buttons": [
+      "LTrigTop"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "buttons": [
+      "LTrigTop",
+      "RLeft"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "buttons": [
+      "LTrigTop"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk0",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 1: skill 1 (fails if slot 1 is empty)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Pawn 1: co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 1: no script errors"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Pawn 2: co-op on",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "pawn 2: control started (fails if there is no pawn 2)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Pawn 2: robot runs him forward",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v1",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 2: moves"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Pawn 2: robot taps R1 (attack)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "buttons": [
+      "RTrigTop"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "buttons": [
+      "RTrigTop"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "act1",
+     "agg": "any",
+     "label": "pawn 2: attacks"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Pawn 2: robot holds L2 (vocation action)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "buttons": [
+      "LTrigBottom"
+     ]
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Pawn 2: robot presses L1 + Square (skill 1)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.5,
+     "buttons": [
+      "LTrigTop"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "buttons": [
+      "LTrigTop",
+      "RLeft"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "buttons": [
+      "LTrigTop"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk1",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 2: skill 1 (fails if slot 1 is empty)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Pawn 2: co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 2: no script errors"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Pawn 3: co-op on",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "pawn 3: control started (fails if there is no pawn 3)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Pawn 3: robot runs him forward",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v2",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 3: moves"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Pawn 3: robot taps R1 (attack)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "buttons": [
+      "RTrigTop"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "buttons": [
+      "RTrigTop"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "act2",
+     "agg": "any",
+     "label": "pawn 3: attacks"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Pawn 3: robot holds L2 (vocation action)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "buttons": [
+      "LTrigBottom"
+     ]
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Pawn 3: robot presses L1 + Square (skill 1)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.5,
+     "buttons": [
+      "LTrigTop"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "buttons": [
+      "LTrigTop",
+      "RLeft"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "buttons": [
+      "LTrigTop"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk2",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 3: skill 1 (fails if slot 1 is empty)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Pawn 3: co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 3: no script errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_party-matrix-2.json",
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); return ok and d and d.errors",
+   "dpc": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); return ok and d and d.info",
+   "coop": "local ok, d = pcall(json.load_file, \"DPC_coop.json\"); return ok and d and d.active == true",
+   "job0": "local J = {\"Fighter\",\"Archer\",\"Mage\",\"Thief\",\"Warrior\",\"Sorcerer\"}\nlocal pw = H.pawn(0); if not pw then return \"none\" end\nlocal j = pw:call(\"get_Human\"):call(\"get_JobContext\"):get_field(\"CurrentJob\"); return J[j] or tostring(j)",
+   "v0": "return H.speed(H.pawn(0), 'pawn0')",
+   "act0": "local n = H.node(H.pawn(0)); return n ~= nil and not tostring(n):find('Locomotion', 1, true)",
+   "sk0": "local pw = H.pawn(0); local h = pw and pw:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "node0": "return H.node(H.pawn(0))",
+   "job1": "local J = {\"Fighter\",\"Archer\",\"Mage\",\"Thief\",\"Warrior\",\"Sorcerer\"}\nlocal pw = H.pawn(1); if not pw then return \"none\" end\nlocal j = pw:call(\"get_Human\"):call(\"get_JobContext\"):get_field(\"CurrentJob\"); return J[j] or tostring(j)",
+   "v1": "return H.speed(H.pawn(1), 'pawn1')",
+   "act1": "local n = H.node(H.pawn(1)); return n ~= nil and not tostring(n):find('Locomotion', 1, true)",
+   "sk1": "local pw = H.pawn(1); local h = pw and pw:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "node1": "return H.node(H.pawn(1))",
+   "job2": "local J = {\"Fighter\",\"Archer\",\"Mage\",\"Thief\",\"Warrior\",\"Sorcerer\"}\nlocal pw = H.pawn(2); if not pw then return \"none\" end\nlocal j = pw:call(\"get_Human\"):call(\"get_JobContext\"):get_field(\"CurrentJob\"); return J[j] or tostring(j)",
+   "v2": "return H.speed(H.pawn(2), 'pawn2')",
+   "act2": "local n = H.node(H.pawn(2)); return n ~= nil and not tostring(n):find('Locomotion', 1, true)",
+   "sk2": "local pw = H.pawn(2); local h = pw and pw:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "node2": "return H.node(H.pawn(2))"
+  },
+  "show": [
+   "dpc",
+   "job0",
+   "job1",
+   "job2"
+  ]
+ }
+}

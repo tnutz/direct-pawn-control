@@ -1,0 +1,113 @@
+{
+ "id": "numpad-quick-1",
+ "title": "Numpad quick skills (not possessed): what goes wrong?",
+ "requires": {
+  "DirectPawnControl": "0.9.12",
+  "TestGuide": "2.0"
+ },
+ "intro": "Diagnostic. Numpad 1-4 are PawnCommander's quick skill keys for your pawns while you play the Arisen. This records what the game sees when you press them and what the main pawn does.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Co-op and possession off.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Open ground. CLOSE the REFramework menu (Insert) after pressing End. Press End"
+  },
+  {
+   "secs": 4,
+   "text": "Dummy appears 8 m ahead",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 8.0,
+     "angle": 0,
+     "still": true
+    }
+   ]
+  },
+  {
+   "secs": 16,
+   "text": "Menu CLOSED. Press Numpad 1, wait 3 s, Numpad 2, wait, Numpad 3, wait, Numpad 4.",
+   "expect": [
+    {
+     "probe": "ui_open",
+     "agg": "any",
+     "op": "==",
+     "value": true,
+     "label": "menu was open (blocks PawnCommander keys)"
+    },
+    {
+     "probe": "num",
+     "agg": "any",
+     "label": "numpad keys seen (NumLock on)"
+    },
+    {
+     "probe": "nav",
+     "agg": "any",
+     "label": "numpad sent arrow/End keys instead (NumLock off)"
+    },
+    {
+     "probe": "pskill",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "main pawn started a skill"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Now OPEN the REFramework menu (Insert) and press Numpad 1 once. Then close it and press End"
+  },
+  {
+   "secs": 3,
+   "text": "Done, dummy removed",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_numpad-quick-1.json",
+  "probes": {
+   "ui_open": "local ok, v = pcall(reframework.is_drawing_ui, reframework); return ok and v or nil",
+   "num": "local s = \"\"\nfor n = 1, 6 do if reframework:is_key_down(0x60 + n) then s = s .. n end end\nreturn s ~= \"\" and s or nil",
+   "nav": "local m = { [0x23] = \"End/1\", [0x28] = \"Down/2\", [0x22] = \"PgDn/3\", [0x25] = \"Left/4\", [0x0C] = \"Clear/5\", [0x27] = \"Right/6\" }\nlocal s = \"\"\nfor vk, nm in pairs(m) do if reframework:is_key_down(vk) then s = s .. nm .. \" \" end end\nreturn s ~= \"\" and s or nil",
+   "row": "local s = \"\"\nfor n = 1, 6 do if reframework:is_key_down(0x30 + n) then s = s .. n end end\nreturn s ~= \"\" and s or nil",
+   "pskill": "local pw = H.pawn(0); local h = pw and pw:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "pnode": "return H.node(H.pawn(0))",
+   "pdrawn": "local pw = H.pawn(0); return pw and pw:call('get_IsDrawedWeapon')",
+   "pc_cfg": "local ok, d = pcall(json.load_file, \"pawn_commander_config.json\"); if not (ok and d) then return \"no config\" end\nreturn tostring(d.hotkeys_enabled) .. \" \" .. tostring(d.keys and d.keys.skill_1)"
+  },
+  "show": [
+   "num",
+   "nav",
+   "ui_open",
+   "pskill",
+   "pc_cfg"
+  ]
+ }
+}

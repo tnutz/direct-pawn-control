@@ -1,0 +1,39 @@
+{
+ "id": "pad-flags-2",
+ "title": "Square / Triangle / L3 actions",
+ "intro": "Co-op switches off for this; the controller drives the Arisen. Reset Scripts first if you haven't.",
+ "steps": [
+  {
+   "text": "Hands off - co-op turning OFF (controller drives the Arisen)",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "Tap Square a few times (grab)",
+   "secs": 6
+  },
+  {
+   "text": "Run with the stick, tap Triangle",
+   "secs": 6
+  },
+  {
+   "text": "Run with the stick, click L3",
+   "secs": 6
+  }
+ ],
+ "record": {
+  "hz": 15,
+  "out": "test_guide/result_pad-flags-2.json",
+  "probes": {
+   "acts": "\nif not ACTS then\n  ACTS = {}\n  local td = sdk.find_type_definition(\"app.CharacterInput.Action\")\n  local gm = sdk.find_type_definition(\"app.CharacterInput\"):get_method(\"getInputFlag\")\n  for _, f in ipairs(td:get_fields()) do\n    if f:is_static() and f:get_name() ~= \"value__\" then\n      local ok, id = pcall(f.get_data, f, nil)\n      if ok and type(id) == \"number\" and id >= 0 and id < 63 then\n        local flag = 1 << id\n        local ok2, fv = pcall(gm.call, gm, nil, id)\n        if ok2 and type(fv) == \"number\" and fv > 0 then flag = fv end\n        ACTS[#ACTS + 1] = { f:get_name(), flag }\n      end\n    end\n  end\nend\nlocal on = H.ar_input():get_field(\"ButtonOnFlags\") or 0\nlocal t = {}\nfor _, a in ipairs(ACTS) do if (on & a[2]) == a[2] and a[2] ~= 0 then t[#t + 1] = a[1] end end\nreturn table.concat(t, \"+\")\n",
+   "btn": "return string.format('0x%X', H.pad_buttons())",
+   "on": "return string.format('0x%X', H.ar_input():get_field('ButtonOnFlags') or 0)",
+   "node": "return H.node(H.arisen())"
+  }
+ }
+}

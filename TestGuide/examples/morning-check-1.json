@@ -1,0 +1,514 @@
+{
+ "id": "morning-check-1",
+ "title": "Morning check: quick skills from the game's table, aimed skill on the aim button, the pawn downer (no hands, about 3 minutes)",
+ "requires": {
+  "DirectPawnControl": "0.9.125",
+  "CameraDistance": "2.9.6",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 3 minutes, nothing to press after End. Open ground, no enemies near, full party (Fighter, Archer, Thief as last night), a controller connected. Hands off until PASS / FAIL shows. One goblin that stands still is spawned as a target; one pawn is put down and brought back.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "HANDS OFF. Getting ready.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "A goblin that stands still, 10 m ahead",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 10.0,
+     "angle": 0,
+     "still": true
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 1, slot 1",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 1,
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 1 slot 1: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 1, slot 2",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 2,
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 1 slot 2: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 1, slot 3",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 3,
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 1 slot 3: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 1, slot 4",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 4,
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 1 slot 4: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 2, slot 1",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 1,
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 2 slot 1: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 2, slot 2",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 2,
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 2 slot 2: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 2, slot 3",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 3,
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 2 slot 3: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 2, slot 4",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 4,
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 2 slot 4: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 3, slot 1",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 1,
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 3 slot 1: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 3, slot 2",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 2,
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 3 slot 2: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 3, slot 3",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 3,
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 3 slot 3: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Quick skill: party member 3, slot 4",
+   "cmds": [
+    {
+     "cmd": "quick",
+     "slot": 4,
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "qok",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "member 3 slot 4: order accepted (or the slot is empty / the target is gone)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "The game's skill table was read",
+   "expect": [
+    {
+     "probe": "qtbl",
+     "agg": "last",
+     "op": ">",
+     "value": 100,
+     "label": "skill table read from the game (more than 100 action packs)"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "DirectPawnControl: no errors"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "CameraDistance: no errors"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Take control of party member 2 (the Archer)",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "poss",
+     "agg": "any",
+     "label": "possession started"
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Robot: aim button held, then skill 1's button (no skill shift)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.5,
+     "actions": [
+      "AimHold"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "AimHold",
+      "Skill1"
+     ],
+     "noshift": true
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.5,
+     "actions": [
+      "AimHold"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "aimsk",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "aimed skill fired on the game's aim button (Archer pawn only; fails if member 2 is not a bow pawn)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Back to the Arisen",
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Take control of party member 1",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "poss",
+     "agg": "any",
+     "label": "possession started"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Party member 3 is put down (developer tool)",
+   "cmds": [
+    {
+     "cmd": "down",
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "dead2",
+     "agg": "any",
+     "label": "the downer puts a pawn down"
+    }
+   ]
+  },
+  {
+   "secs": 25,
+   "text": "The Arisen (Magick Archer) should fire a Remedy Arrow at her, or a pawn picks her up",
+   "expect": [
+    {
+     "probe": "dead2",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "the downed pawn is back up within 25 s (information: fails if nobody helped)"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Clean up: everyone healed, enemies removed",
+   "cmds": [
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "dead2",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "nobody is left down"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "DirectPawnControl: no errors"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "CameraDistance: no errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_morning-check-1.json",
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "dpc": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.info",
+   "sel": "local D = _G.DPC_dbg; return D and D.R.sel_label",
+   "holds": "local D = _G.DPC_dbg; return D and (D.R.holds or 0) or 0",
+   "poss": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "lock_ok": "local D = _G.DPC_dbg; if not (D and D.state.active and D.state.arisen_lockon_ctrl and D.state.pawn_chara) then return nil end\nlocal c = D.state.arisen_lockon_ctrl:get_field('Chara'); return c ~= nil and c:get_address() == D.state.pawn_chara:get_address()",
+   "lockfix": "local D = _G.DPC_dbg; return D and (D.R.lock_fixes or 0) or 0",
+   "ring": "local gm = sdk.get_managed_singleton('app.GuiManager'); local u = gm and gm:get_field('MagicBowReticle'); if not u then return false end\nreturn u:call('get_GameObject'):call('get_DrawSelf') == true",
+   "shots": "local b = H.dpc_brain(); return b and ((b.presses or 0) + (b.skill_uses or 0)) or 0",
+   "skills": "local b = H.dpc_brain(); return b and b.skill_uses or 0",
+   "bmode": "local b = H.dpc_brain(); return b and b.mode",
+   "world": "local D = _G.DPC_dbg; return D and D.R.world",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "v0": "return H.speed(H.pawn(0), 'pawn0')",
+   "va": "return H.speed()",
+   "act0": "local a, b = H.node(H.pawn(0)), H.node(H.pawn(0), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "binds": "local D = _G.DPC_dbg; return D and D.R.bind and D.R.bind.sig",
+   "kb": "local D = _G.DPC_dbg; return D and D.R.kbind ~= nil",
+   "map": "local ok, d = pcall(json.load_file, 'DPC_arisen_brain.json'); return ok and d and d.coop and d.coop.map",
+   "p2f": "local ok, d = pcall(json.load_file, 'DPC_arisen_brain.json'); return ok and d and d.coop and d.coop.p2_flags",
+   "act1": "local a, b = H.node(H.pawn(1)), H.node(H.pawn(1), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "act2": "local a, b = H.node(H.pawn(2)), H.node(H.pawn(2), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "qres": "local ok, d = pcall(json.load_file, 'DPC_quick.json'); return ok and d and (tostring(d.pawn) .. ' slot ' .. tostring(d.slot) .. ' ' .. tostring(d.name) .. ': ' .. tostring(d.result) .. ' [' .. tostring(d.source) .. ']')",
+   "qn": "local ok, d = pcall(json.load_file, 'DPC_quick.json'); return ok and d and d.n or 0",
+   "qok": "local ok, d = pcall(json.load_file, 'DPC_quick.json'); return ok and d and (d.result == 'ordered' or d.result == 'slot empty' or d.result == 'no enemy')",
+   "qtbl": "local ok, d = pcall(json.load_file, 'DPC_skill_table.json'); return ok and d and d.rows or 0",
+   "aimsk": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.aim and d.aim.aim_skills or 0",
+   "dead2": "local p = H.pawn(2); return p ~= nil and p:call('get_IsDead') == true",
+   "job1": "local D = _G.DPC_dbg; return D and D.state.pawn_job"
+  },
+  "show": [
+   "dpc",
+   "qres",
+   "aimsk"
+  ]
+ }
+}

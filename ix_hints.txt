@@ -1,0 +1,33 @@
+# Variable-name -> game type hints for `dd2-modkit index check`.
+# A hint lets the checker verify obj:call("name") against the real type instead of only
+# asking "does any type in the game have this name". List several types when a name is reused.
+sel = app.HumanActionSelector
+pawn_chara = app.Character
+arisen_chara = app.Character
+chara = app.Character
+ch = app.Character
+ar = app.Character
+arisen = app.Character
+pawn_human = app.Human
+arisen_human = app.Human
+human = app.Human
+hu = app.Human
+hit = app.HitController
+pm = app.PawnManager
+cm = app.CharacterManager, app.CameraManager
+tr = via.Transform
+xf = via.Transform
+go = via.GameObject
+lk = app.LockOnController
+arisen_lockon_ctrl = app.LockOnController
+loc = app.LockOnController
+sm = app.StaminaManager
+pl = app.Player, app.HumanLanternController
+lc = app.HumanLanternController
+al = app.HumanLanternController
+pip = app.PlayerInputProcessor
+inp = app.CharacterInput
+pawn_input = app.CharacterInput
+em = app.EnemyManager
+dm = app.DecisionEvaluationModule, app.AIDecisionMaker
+aidm = app.AIDecisionMaker

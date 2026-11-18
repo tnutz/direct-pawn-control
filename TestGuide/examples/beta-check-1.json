@@ -1,0 +1,293 @@
+{
+ "id": "beta-check-1",
+ "title": "Beta check: quick skills, warp, overlays, wildlife, leash, co-op",
+ "requires": {
+  "DirectPawnControl": "0.9.27",
+  "CameraDistance": "2.9.4",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 5 minutes, seven parts, you set the pace with End. a Fighter main pawn with six skills; player 2's controller connected; start on open ground with no enemies. Things to judge by eye are marked 'Remember'.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Co-op and possession off.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/7 QUICK SKILLS. Open ground, camera facing clear space. Press End (a dummy appears 8 m ahead)"
+  },
+  {
+   "secs": 14,
+   "text": "Dummy ahead. Not possessing: press Numpad 1, then 3, then 5 (3 s apart).",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 8.0,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "quick",
+     "op": "contains",
+     "value": "src=game",
+     "agg": "any",
+     "label": "quick skill used the game's own data"
+    },
+    {
+     "probe": "p_sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn used a skill from the numpad"
+    }
+   ]
+  },
+  {
+   "secs": 2,
+   "text": "Dummy removed",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "2/7 WARP. As the Arisen, run 20 m away from your pawns. Then press End"
+  },
+  {
+   "secs": 6,
+   "text": "Press Numpad 7 now (pawns should appear next to you). Then Numpad . (heal).",
+   "expect": [
+    {
+     "probe": "apart",
+     "agg": "min",
+     "op": "<",
+     "value": 5.0,
+     "label": "Numpad 7 brought the main pawn to you"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Possessing the main pawn",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "3/7 OVERLAY. Is the green DPC banner inside the MIDDLE 16:9 of the screen (not at the far left edge)? Remember yes/no. Press End"
+  },
+  {
+   "wait": true,
+   "text": "4/7 WILDLIFE. Walk the pawn near wildlife (deer, birds, a boar) with no enemies around for ~20 s. Does the Arisen shoot at it? Remember. Press End",
+   "expect": [
+    {
+     "probe": "brain",
+     "op": "contains",
+     "value": "engage",
+     "agg": "frac",
+     "min_frac": 0.0,
+     "label": "(info) share of time the Arisen was shooting"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "5/7 LEASH. Auto-warp of the Arisen is OFF for this step.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_warp_dist",
+     "value": 0,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Press WAIT (so the Arisen stays), then run the pawn straight away from him until 'apart' passes 90 m. Keep going 5 s. Does the game pull the pawn back? Press End",
+   "expect": [
+    {
+     "probe": "apart",
+     "agg": "max",
+     "op": ">",
+     "value": 80.0,
+     "label": "pawn got more than 80 m from the Arisen"
+    },
+    {
+     "probe": "pjump",
+     "agg": "max",
+     "op": "<",
+     "value": 10.0,
+     "label": "pawn was never teleported (no leash)"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no script errors far from the Arisen"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Auto-warp back on (35 m): the Arisen comes to you. Press FOLLOW afterwards.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_warp_dist",
+     "value": 35.0,
+     "save": false
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "6/7 CO-OP on the main pawn (player 2's controller)",
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "secs": 8,
+   "text": "Player 2: press a few buttons. Are the on-screen prompts still KEYBOARD/MOUSE? Remember.",
+   "expect": [
+    {
+     "probe": "hid",
+     "agg": "frac",
+     "op": "==",
+     "value": 1,
+     "min_frac": 0.95,
+     "label": "HUD stayed on keyboard/mouse in co-op"
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Player 2: L1 + R1 (skill 3)",
+   "expect": [
+    {
+     "probe": "p_sk",
+     "agg": "any",
+     "op": "==",
+     "value": 3,
+     "label": "co-op L1+R1 = slot 3 (Shield Pummel on the main pawn)"
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Player 2: L1 + R2 (skill 4)",
+   "expect": [
+    {
+     "probe": "p_sk",
+     "agg": "any",
+     "op": "==",
+     "value": 5,
+     "label": "co-op L1+R2 = slot 4 (Launchboard on the main pawn)"
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Player 2: L1 + TRIANGLE+CIRCLE together (skill 5)",
+   "expect": [
+    {
+     "probe": "p_sk",
+     "agg": "any",
+     "op": "==",
+     "value": 4,
+     "label": "co-op chord = slot 5 (Full Moon Slash)"
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Player 2: L1 + SQUARE+CROSS together (skill 6)",
+   "expect": [
+    {
+     "probe": "p_sk",
+     "agg": "any",
+     "op": "==",
+     "value": 12,
+     "label": "co-op chord = slot 6 (Riotous Fury)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "7/7 Done: co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no script errors in the whole test"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_beta-check-1.json",
+  "probes": {
+   "apart": "local a, p = H.arisen(), H.pawn(0); if not (a and p) then return nil end\nlocal x, y = a:call('get_Transform'):call('get_Position'), p:call('get_Transform'):call('get_Position')\nreturn math.sqrt((x.x - y.x) ^ 2 + (x.z - y.z) ^ 2)",
+   "p_sk": "local pw = H.pawn(0); local h = pw and pw:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "p_node": "return H.node(H.pawn(0))",
+   "a_node": "return H.node(H.arisen())",
+   "ppos": "local p = H.pawn(0); if not p then return nil end; local v = p:call('get_Transform'):call('get_Position'); return string.format('%.0f,%.0f,%.0f', v.x, v.y, v.z)",
+   "pjump": "local p = H.pawn(0); if not p then return nil end; local v = p:call('get_Transform'):call('get_Position')\nlocal d = PJ and math.sqrt((v.x - PJ.x) ^ 2 + (v.z - PJ.z) ^ 2) or 0; PJ = { x = v.x, z = v.z }; return d",
+   "quick": "local ok, d = pcall(json.load_file, \"DPC_quick.json\"); return ok and d and (tostring(d.n) .. \" \" .. tostring(d.name) .. \" \" .. tostring(d.result) .. \" src=\" .. tostring(d.source))",
+   "hid": "local m = sdk.get_managed_singleton(\"app.UserInputManager\"); return m and m:call(\"get_HIDInputMode\")",
+   "brain": "local d = H.dpc_brain(); return d and tostring(d.mode)",
+   "dpc": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); return ok and d and d.info",
+   "errs": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); return ok and d and d.errors",
+   "coop": "local ok, d = pcall(json.load_file, \"DPC_coop.json\"); return ok and d and d.active == true"
+  },
+  "show": [
+   "dpc",
+   "apart",
+   "quick",
+   "p_sk"
+  ]
+ }
+}

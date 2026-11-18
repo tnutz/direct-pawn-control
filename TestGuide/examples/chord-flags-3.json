@@ -1,0 +1,105 @@
+{
+ "id": "chord-flags-3",
+ "title": "Chorded skills (5 / 6): Arisen vs possessed pawn",
+ "requires": {
+  "DirectPawnControl": "0.9.21",
+  "TestGuide": "2.0"
+ },
+ "intro": "Controller in hand. Open ground. First you play the Arisen normally, then the possessed main pawn, pressing the same chords. This records exactly what the game's input reports each frame.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Co-op and possession off.",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Possessing the main pawn (normal possession)",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "secs": 12,
+   "text": "AS THE PAWN: hold L1, press SQUARE+CROSS together. Release all. 3 times.",
+   "expect": [
+    {
+     "probe": "p_sk",
+     "agg": "any",
+     "op": "==",
+     "value": 12,
+     "label": "pawn did the Square+Cross chord skill (Braves Raid, slot 6)"
+    },
+    {
+     "probe": "p_sk",
+     "agg": "frac",
+     "op": "~=",
+     "value": 1,
+     "min_frac": 1.0,
+     "label": "and not Blink Strike (slot 1)"
+    }
+   ]
+  },
+  {
+   "secs": 12,
+   "text": "AS THE PAWN: hold L1, press TRIANGLE+CIRCLE together. Release all. 3 times.",
+   "expect": [
+    {
+     "probe": "p_sk",
+     "agg": "any",
+     "op": "==",
+     "value": 4,
+     "label": "pawn did the Triangle+Circle chord skill (Full Moon Slash, slot 5)"
+    },
+    {
+     "probe": "p_sk",
+     "agg": "frac",
+     "op": "~=",
+     "value": 9,
+     "min_frac": 1.0,
+     "label": "and not Full Moon Guard (slot 2)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Done: releasing",
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 60,
+  "out": "test_guide/result_chord-flags-3.json",
+  "probes": {
+   "btn": "return string.format('0x%X', H.pad_buttons())",
+   "a_on": "\nif not ACTS then\n  ACTS = {}\n  local td = sdk.find_type_definition(\"app.CharacterInput.Action\")\n  local gm = sdk.find_type_definition(\"app.CharacterInput\"):get_method(\"getInputFlag\")\n  for _, f in ipairs(td:get_fields()) do\n    if f:is_static() and f:get_name() ~= \"value__\" then\n      local ok, id = pcall(f.get_data, f, nil)\n      if ok and type(id) == \"number\" and id >= 0 and id < 63 then\n        local flag = 1 << id\n        local ok2, fv = pcall(gm.call, gm, nil, id)\n        if ok2 and type(fv) == \"number\" and fv > 0 then flag = fv end\n        ACTS[#ACTS + 1] = { f:get_name(), flag }\n      end\n    end\n  end\nend\nlocal inp = H.ar_input(); if not inp then return nil end\nlocal on = inp:get_field(\"ButtonOnFlags\") or 0\nlocal t = {}\nfor _, a in ipairs(ACTS) do if (on & a[2]) == a[2] and a[2] ~= 0 then t[#t + 1] = a[1] end end\nreturn table.concat(t, \"+\")\n",
+   "a_trg": "\nif not ACTS then\n  ACTS = {}\n  local td = sdk.find_type_definition(\"app.CharacterInput.Action\")\n  local gm = sdk.find_type_definition(\"app.CharacterInput\"):get_method(\"getInputFlag\")\n  for _, f in ipairs(td:get_fields()) do\n    if f:is_static() and f:get_name() ~= \"value__\" then\n      local ok, id = pcall(f.get_data, f, nil)\n      if ok and type(id) == \"number\" and id >= 0 and id < 63 then\n        local flag = 1 << id\n        local ok2, fv = pcall(gm.call, gm, nil, id)\n        if ok2 and type(fv) == \"number\" and fv > 0 then flag = fv end\n        ACTS[#ACTS + 1] = { f:get_name(), flag }\n      end\n    end\n  end\nend\nlocal inp = H.ar_input(); if not inp then return nil end\nlocal on = inp:get_field(\"ButtonTriggerFlags\") or 0\nlocal t = {}\nfor _, a in ipairs(ACTS) do if (on & a[2]) == a[2] and a[2] ~= 0 then t[#t + 1] = a[1] end end\nreturn table.concat(t, \"+\")\n",
+   "p_on": "\nif not ACTS then\n  ACTS = {}\n  local td = sdk.find_type_definition(\"app.CharacterInput.Action\")\n  local gm = sdk.find_type_definition(\"app.CharacterInput\"):get_method(\"getInputFlag\")\n  for _, f in ipairs(td:get_fields()) do\n    if f:is_static() and f:get_name() ~= \"value__\" then\n      local ok, id = pcall(f.get_data, f, nil)\n      if ok and type(id) == \"number\" and id >= 0 and id < 63 then\n        local flag = 1 << id\n        local ok2, fv = pcall(gm.call, gm, nil, id)\n        if ok2 and type(fv) == \"number\" and fv > 0 then flag = fv end\n        ACTS[#ACTS + 1] = { f:get_name(), flag }\n      end\n    end\n  end\nend\nlocal inp = (H.pawn(0) and H.pawn(0):call(\"get_Input\")); if not inp then return nil end\nlocal on = inp:get_field(\"ButtonOnFlags\") or 0\nlocal t = {}\nfor _, a in ipairs(ACTS) do if (on & a[2]) == a[2] and a[2] ~= 0 then t[#t + 1] = a[1] end end\nreturn table.concat(t, \"+\")\n",
+   "p_trg": "\nif not ACTS then\n  ACTS = {}\n  local td = sdk.find_type_definition(\"app.CharacterInput.Action\")\n  local gm = sdk.find_type_definition(\"app.CharacterInput\"):get_method(\"getInputFlag\")\n  for _, f in ipairs(td:get_fields()) do\n    if f:is_static() and f:get_name() ~= \"value__\" then\n      local ok, id = pcall(f.get_data, f, nil)\n      if ok and type(id) == \"number\" and id >= 0 and id < 63 then\n        local flag = 1 << id\n        local ok2, fv = pcall(gm.call, gm, nil, id)\n        if ok2 and type(fv) == \"number\" and fv > 0 then flag = fv end\n        ACTS[#ACTS + 1] = { f:get_name(), flag }\n      end\n    end\n  end\nend\nlocal inp = (H.pawn(0) and H.pawn(0):call(\"get_Input\")); if not inp then return nil end\nlocal on = inp:get_field(\"ButtonTriggerFlags\") or 0\nlocal t = {}\nfor _, a in ipairs(ACTS) do if (on & a[2]) == a[2] and a[2] ~= 0 then t[#t + 1] = a[1] end end\nreturn table.concat(t, \"+\")\n",
+   "a_sk": "local a = H.arisen(); local h = a and a:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "p_sk": "local pw = H.pawn(0); local h = pw and pw:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "a_node": "return H.node(H.arisen())",
+   "p_node": "return H.node(H.pawn(0))"
+  },
+  "show": [
+   "btn",
+   "p_on",
+   "p_sk"
+  ]
+ }
+}

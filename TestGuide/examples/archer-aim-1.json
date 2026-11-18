@@ -1,0 +1,175 @@
+{
+ "id": "archer-aim-1",
+ "title": "Archer pawn: aim camera and reticle",
+ "requires": {
+  "DirectPawnControl": "0.9.28",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 1 minute, three parts, you start each with End. Arisen must be an Archer; an Archer pawn in the party. Part 3 is an experiment on the camera.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Releasing possession; installing measuring hooks",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "each_frame": "\nif not _G.AIMX then\n  local A = { log = {}, draw = 0, upd = 0, drw = 0 }\n  _G.AIMX = A\n  local function note(s) A.last = s; if #A.log < 80 then A.log[#A.log + 1] = string.format(\"%.2f %s\", os.clock(), s) end end\n  local function obj(a) local ok, o = pcall(sdk.to_managed_object, a); if ok and o then pcall(o.add_ref, o); return o end return nil end\n  local function hook(tn, mn, pre)\n    local td = sdk.find_type_definition(tn); local m = td and td:get_method(mn)\n    if not m then note(\"NO METHOD \" .. tn .. \".\" .. mn); return end\n    sdk.hook(m, function(args) pcall(pre, args) end, function(r) return r end)\n  end\n  hook(\"app.MainCameraController\", \"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam, app.PostEffectSetting, app.CameraDefine.ToPlayerCameraOption)\", function(args)\n    local ct = sdk.to_int64(args[3]) & 0xFFFFFFFF\n    local e = { ct = ct, opt = sdk.to_int64(args[6]) & 0xFFFFFFFF, interp = obj(args[4]), pfx = obj(args[5]) }\n    note(string.format(\"mcc.switchCamera type %d opt %d interp %s pfx %s\", ct, e.opt, tostring(e.interp ~= nil), tostring(e.pfx ~= nil)))\n    if ct == 7 then A.enter = e; A.want_exit = true elseif A.want_exit then A.exit = e; A.want_exit = false end\n  end)\n  hook(\"app.CameraManager\", \"switchDefaultCamera(app.CameraSwitchInterpParam)\", function(args)\n    A.def = { interp = obj(args[3]) }; note(\"cm.switchDefaultCamera interp \" .. tostring(A.def.interp ~= nil))\n  end)\n  hook(\"app.CameraManager\", \"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam)\", function(args)\n    note(\"cm.switchCamera type \" .. tostring(sdk.to_int64(args[3]) & 0xFFFFFFFF))\n  end)\n  hook(\"app.GuiManager\", \"drawAim(via.Point, System.Single, System.Boolean)\", function(args)\n    A.draw = A.draw + 1\n    A.draw_i = sdk.to_int64(args[3])\n    local ok, f = pcall(sdk.to_float, args[4]); A.draw_f = ok and f or nil\n    A.draw_b = (sdk.to_int64(args[5]) & 1) == 1\n  end)\n  hook(\"app.Player\", \"drawReticle\", function() A.drw = A.drw + 1 end)\n  hook(\"app.Player\", \"updateReticle\", function() A.upd = A.upd + 1 end)\n  note(\"hooks installed\")\nelse\n  local A = _G.AIMX\n  A.c_t0, A.c_done, A.c_res, A.x_done, A.x_res, A.d_res, A.pt, A.snap = nil, nil, nil, nil, nil, nil, nil, nil\n  A.d_fail, A.s_t0 = nil, nil\nend\n"
+  },
+  {
+   "wait": true,
+   "text": "1/3 BASELINE. As the ARISEN (Archer, bow out), no enemies needed. Press End, then HOLD AIM (right mouse) for the whole 6 s"
+  },
+  {
+   "secs": 6,
+   "text": "ARISEN: HOLD AIM now... keep holding",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "any",
+     "label": "Arisen: aim camera engaged (baseline)"
+    },
+    {
+     "probe": "nlog",
+     "agg": "max",
+     "op": ">",
+     "value": 1,
+     "label": "Arisen: a camera switch call was captured"
+    },
+    {
+     "probe": "draw",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "Arisen: reticle goes through GuiManager.drawAim"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Release aim",
+   "each_frame": "\nlocal A = _G.AIMX; if not A then return end\nA.s_t0 = A.s_t0 or os.clock()\nif not A.snap and os.clock() - A.s_t0 > 2.0 then\n  A.snap = true\n  A.enter0, A.exit0, A.def0 = A.enter, A.exit, A.def\n  A.draw0 = { i = A.draw_i, f = A.draw_f, b = A.draw_b, n = A.draw }\nend\n"
+  },
+  {
+   "wait": true,
+   "text": "2/3 PAWN, nothing changed. Possess the ARCHER pawn (F6, F7 to cycle). Press End, then HOLD AIM for the whole 6 s"
+  },
+  {
+   "secs": 6,
+   "text": "PAWN: HOLD AIM now... keep holding (just measuring)",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "any",
+     "label": "(info) pawn: game switched to the aim camera by itself"
+    },
+    {
+     "probe": "t_up",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "any",
+     "label": "(info) pawn: upper body in an aim node"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Release aim"
+  },
+  {
+   "wait": true,
+   "text": "3/3 EXPERIMENT (may misbehave; save first if you like). Still possessing the Archer: press End, then HOLD AIM for 10 s. After 1 s the test switches to the aim camera; after 4 s it draws the reticle. WATCH: zoom? reticle? do arrows hit where it points?"
+  },
+  {
+   "secs": 10,
+   "text": "PAWN: HOLD AIM and shoot a few arrows... (1 s: aim camera, 4 s: reticle)",
+   "each_frame": "\nlocal A = _G.AIMX; if not A then return end\nA.c_t0 = A.c_t0 or os.clock()\nlocal dt = os.clock() - A.c_t0\nlocal cm = sdk.get_managed_singleton(\"app.CameraManager\"); if not cm then return end\nlocal mcc = cm:call(\"getMainCameraController\", 0); if not mcc then return end\nif not A.c_done and dt > 1.0 then\n  A.c_done = true\n  local e = A.enter0\n  if e then\n    local ok, err = pcall(mcc.call, mcc, \"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam, app.PostEffectSetting, app.CameraDefine.ToPlayerCameraOption)\", 7, e.interp, e.pfx, e.opt)\n    A.c_res = \"replayed the Arisen's aim switch ok=\" .. tostring(ok) .. (ok and \"\" or (\" \" .. tostring(err)))\n  else\n    A.c_res = \"nothing to replay: no aim switch was captured from the Arisen\"\n  end\nend\nif dt > 4.0 and A.draw0 and A.draw0.i and not A.d_fail then\n  local ok, err = pcall(function()\n    if not A.pt then\n      local x, y = A.draw0.i & 0xFFFFFFFF, (A.draw0.i >> 32) & 0xFFFFFFFF\n      if not (x > 0 and x < 20000 and y > 0 and y < 20000) then error(\"captured point not usable: \" .. tostring(A.draw0.i)) end\n      local pt = ValueType.new(sdk.find_type_definition(\"via.Point\"))\n      pcall(function() pt:set_field(\"x\", x); pt:set_field(\"y\", y) end)\n      local okr, rx = pcall(pt.get_field, pt, \"x\")\n      if not (okr and rx == x) then pt:write_dword(0, x); pt:write_dword(4, y) end\n      A.pt = pt; A.pt_xy = x .. \",\" .. y\n    end\n    local f = A.draw0.f\n    if not (type(f) == \"number\" and f > 0.01 and f < 20) then f = 1.0 end\n    local gm = sdk.get_managed_singleton(\"app.GuiManager\")\n    gm:call(\"drawAim(via.Point, System.Single, System.Boolean)\", A.pt, f, A.draw0.b == true)\n    A.d_res = \"drawing reticle at \" .. tostring(A.pt_xy) .. \" scale \" .. tostring(f)\n  end)\n  if not ok then A.d_fail = true; A.d_res = \"reticle failed: \" .. tostring(err) end\nelseif dt > 4.0 and not A.d_res then\n  A.d_res = \"no reticle draw was captured from the Arisen\"\nend\n",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "any",
+     "label": "experiment: aim camera engaged for the pawn"
+    },
+    {
+     "probe": "d_res",
+     "op": "contains",
+     "value": "drawing",
+     "agg": "any",
+     "label": "experiment: reticle draw call accepted"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC script errors"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Release aim. Camera going back to normal",
+   "each_frame": "\nlocal A = _G.AIMX; if not A then return end\nif not A.x_done then\n  A.x_done = true\n  local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0)\n  if not mcc then return end\n  local cur = mcc:get_field(\"_CurrentCameraController\")\n  local name = cur and cur:get_type_definition():get_name() or \"?\"\n  if not name:find(\"Aim\", 1, true) then A.x_res = \"camera already back (\" .. name .. \")\"; return end\n  local e = A.exit0\n  local ok, err\n  if e then ok, err = pcall(mcc.call, mcc, \"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam, app.PostEffectSetting, app.CameraDefine.ToPlayerCameraOption)\", e.ct, e.interp, e.pfx, e.opt); A.x_res = \"replayed the Arisen's exit switch ok=\" .. tostring(ok)\n  else ok, err = pcall(cm.call, cm, \"switchDefaultCamera(app.CameraSwitchInterpParam)\", (A.def0 and A.def0.interp) or (A.enter0 and A.enter0.interp)); A.x_res = \"switchDefaultCamera ok=\" .. tostring(ok) end\n  if not ok then A.x_res = A.x_res .. \" \" .. tostring(err) end\nend\n",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "frac",
+     "min_frac": 0.0,
+     "label": "(info) share of this step still on the aim camera"
+    }
+   ]
+  },
+  {
+   "secs": 2,
+   "text": "Done. If the camera is stuck zoomed: F6 to release, aim once as the Arisen"
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_archer-aim-1.json",
+  "probes": {
+   "ctl": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal c = mcc:get_field(\"_CurrentCameraController\"); return c and c:get_type_definition():get_name()",
+   "nxt": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nreturn mcc:get_field(\"<NextControlType>k__BackingField\")",
+   "tgt": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal t = mcc:call(\"get_TargetObject\"); return t and tostring(t:call(\"get_Name\"))",
+   "t_node": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nreturn H.node(mcc:call(\"get_TargetCharacter\"))",
+   "t_up": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nreturn H.node(mcc:call(\"get_TargetCharacter\"), 1)",
+   "a_node": "return H.node(H.arisen())",
+   "a_up": "return H.node(H.arisen(), 1)",
+   "sw": "return _G.AIMX and _G.AIMX.last",
+   "nlog": "return _G.AIMX and #_G.AIMX.log",
+   "log": "local A = _G.AIMX; if not A then return nil end; local n = #A.log; return table.concat(A.log, \" | \", math.max(1, n - 5), n)",
+   "draw": "return _G.AIMX and _G.AIMX.draw",
+   "draw_i": "return _G.AIMX and tostring(_G.AIMX.draw_i)",
+   "draw_f": "return _G.AIMX and _G.AIMX.draw_f",
+   "draw_b": "return _G.AIMX and _G.AIMX.draw_b",
+   "drw": "return _G.AIMX and _G.AIMX.drw",
+   "upd": "return _G.AIMX and _G.AIMX.upd",
+   "ret": "local a = H.arisen(); if not a then return nil end\nlocal p = a:get_GameObject():call(\"getComponent(System.Type)\", sdk.typeof(\"app.Player\")); if not p then return nil end\nreturn tostring(p:get_field(\"ReticleRoutine\")) .. \" t=\" .. tostring(p:get_field(\"TimerReticle\"))",
+   "c_res": "return _G.AIMX and _G.AIMX.c_res",
+   "d_res": "return _G.AIMX and _G.AIMX.d_res",
+   "x_res": "return _G.AIMX and _G.AIMX.x_res",
+   "errs": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); return ok and d and d.errors"
+  },
+  "show": [
+   "ctl",
+   "sw",
+   "draw",
+   "c_res",
+   "d_res",
+   "x_res"
+  ]
+ }
+}

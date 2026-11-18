@@ -1,0 +1,42 @@
+{
+ "id": "cam-presets-1",
+ "title": "Camera presets: nametag flicker",
+ "requires": {
+  "CameraDistance": "2.9.0",
+  "TestGuide": "2.0"
+ },
+ "intro": "Stand near your pawns so their nametags show. You'll pick each built-in preset in the CameraDistance menu (Quick Presets) and judge the nametags by eye. Note any preset that still flickers and tell me.",
+ "steps": [
+  {
+   "wait": true,
+   "text": "Open the menu (Insert), pick OVER-THE-SHOULDER, close the menu, walk around near the pawns. Flicker? Then press End"
+  },
+  {
+   "wait": true,
+   "text": "Pick CLASSIC RPG, close the menu, walk around. Flicker? Press End"
+  },
+  {
+   "wait": true,
+   "text": "Pick MONSTER HUNTER / WIDE, close the menu, walk and fight if you can. Flicker? Press End"
+  },
+  {
+   "wait": true,
+   "text": "Pick PANORAMIC, close the menu, walk. Flicker? Press End"
+  },
+  {
+   "wait": true,
+   "text": "Pick RTS (the tilted view may still flicker; the tilt isn't moved yet). Press End"
+  },
+  {
+   "wait": true,
+   "text": "Pick your usual preset again (Vanilla with distance 4.5) and press End"
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_cam-presets-1.json",
+  "probes": {
+   "pnode": "return H.node(H.pawn(0))"
+  }
+ }
+}

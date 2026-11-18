@@ -1,0 +1,26 @@
+{
+  "id": "coop-walk-2",
+  "title": "Co-op: Arisen run speed + player 2's stick",
+  "intro": "Be in co-op (Ctrl+F6) with the Arisen in open ground.",
+  "steps": [
+    { "text": "Hold W (Arisen runs)", "secs": 5, "cmds": [ { "cmd": "set", "key": "coop_arisen_kb_stick", "value": true } ] },
+    { "text": "Keep holding W", "secs": 5, "cmds": [ { "cmd": "set", "key": "coop_arisen_kb_stick", "value": false } ] },
+    { "text": "Let go of W - push the controller's LEFT stick", "secs": 5 }
+  ],
+  "record": {
+    "hz": 10,
+    "out": "test_guide/result_coop-walk-2.json",
+    "probes": {
+      "v": "return H.speed()",
+      "pv": "return H.speed(H.pawn(0), 'pawn')",
+      "W": "return H.key(0x57)",
+      "mag": "return H.ar_input():call('get_AxisMagnitudeL')",
+      "analog": "return H.ar_input():call('get_AnalogL')",
+      "ang": "return H.ar_input():call('get_AngleRadL')",
+      "axis": "return H.v2(H.ar_input():get_field('<AxisL>k__BackingField'))",
+      "kb": "return H.v2(H.ar_input():get_field('KeyboardMouseAxisL'))",
+      "pad": "return H.v2(H.pad():call('get_AxisL'))",
+      "node": "return H.node(H.arisen())"
+    }
+  }
+}

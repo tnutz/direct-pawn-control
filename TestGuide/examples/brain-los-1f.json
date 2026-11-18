@@ -1,0 +1,165 @@
+{
+ "id": "brain-los-1f",
+ "title": "Arisen brain: line of sight",
+ "intro": "Play as an ARCHER Arisen, not possessing anyone, somewhere with a wall, big rock or building nearby. The overlay shows the game's wall flags live. The dummy cannot die now, so pawns may hit it freely.",
+ "steps": [
+  {
+   "text": "Co-op and possession off.",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Stand on OPEN ground facing 15 m of clear space (cover should be off to the SIDE, not ahead). The dummy appears straight ahead of the Arisen. Press End"
+  },
+  {
+   "secs": 4,
+   "text": "Dummy appears 14 m ahead",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 14.0,
+     "angle": 0,
+     "still": true
+    }
+   ]
+  },
+  {
+   "text": "You play the Arisen (not possessing). Stand where you can clearly SEE the dummy. Press End",
+   "wait": true
+  },
+  {
+   "text": "Hold still - dummy VISIBLE",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "los",
+     "op": "contains",
+     "value": "pl=false",
+     "agg": "frac",
+     "min_frac": 0.9,
+     "label": "visible: game says no wall from the player"
+    }
+   ]
+  },
+  {
+   "text": "Walk behind a wall or rock so the dummy is fully HIDDEN, but stay within 20 m of it (watch edist on the overlay; beyond 30 m he ignores it). Press End",
+   "wait": true
+  },
+  {
+   "text": "Hold still - dummy HIDDEN",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "los",
+     "op": "contains",
+     "value": "pl=true",
+     "agg": "frac",
+     "min_frac": 0.9,
+     "label": "hidden: game says wall from the player"
+    }
+   ]
+  },
+  {
+   "text": "Turn the camera so you look AT the hiding spot from the side (camera can see the dummy, the Arisen can't), if you can. Press End",
+   "wait": true
+  },
+  {
+   "text": "Hold still",
+   "secs": 3
+  },
+  {
+   "text": "Stay hidden. Next the Arisen fights on his own WITH the new line-of-sight rule. Hands off after you press End",
+   "wait": true
+  },
+  {
+   "text": "Hands off - watch: does he stop shooting the wall and walk round to get a clear shot?",
+   "secs": 25,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_brain_los",
+     "value": true
+    },
+    {
+     "cmd": "solo",
+     "on": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "brain",
+     "op": "contains",
+     "value": "blocked=true",
+     "agg": "any",
+     "label": "brain registered the blocked line"
+    },
+    {
+     "probe": "ehp",
+     "agg": "min",
+     "op": "<",
+     "value": 999,
+     "label": "the dummy took damage (pawns count too)"
+    },
+    {
+     "probe": "brain",
+     "op": "contains",
+     "value": "engage",
+     "agg": "any",
+     "label": "he got into a firing stance (engage)"
+    }
+   ]
+  },
+  {
+   "text": "Done - brain off, dummy removed",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "solo",
+     "on": false
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_brain-los-1f.json",
+  "probes": {
+   "los": "\nlocal function nearest()\n  local a = H.arisen(); if not a then return nil end\n  local ap = a:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - ap.x) ^ 2 + (p.z - ap.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\n\nlocal e = nearest(); if not e then return \"no enemy\" end\nlocal w = e:call(\"get_LockOnTarget\"):call(\"get_work\")\nif not w then return \"no work\" end\nlocal function b(n) local ok, v = pcall(w.call, w, \"get_\" .. n); return ok and tostring(v) or \"ERR\" end\nlocal function f(n) local ok, v = pcall(w.get_field, w, n); return ok and tostring(v) or \"ERR\" end\nreturn \"wall=\" .. b(\"isWall\") .. \" pl=\" .. b(\"isWallPL\") .. \" cam=\" .. b(\"isWallCam\") .. \" casted=\" .. f(\"IsRayCasted\") .. \" valid=\" .. b(\"isValid\")",
+   "edist": "\nlocal function nearest()\n  local a = H.arisen(); if not a then return nil end\n  local ap = a:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - ap.x) ^ 2 + (p.z - ap.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal e, d = nearest(); return d and math.floor(d * 10) / 10",
+   "ehp": "\nlocal function nearest()\n  local a = H.arisen(); if not a then return nil end\n  local ap = a:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - ap.x) ^ 2 + (p.z - ap.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal e = nearest(); return e and e:call('get_Hp')",
+   "brain": "local d = H.dpc_brain(); return d and (tostring(d.mode) .. ' | blocked=' .. tostring(d.los_blocked) .. ' | presses=' .. tostring(d.presses)) or 'n/a'",
+   "anode": "return H.node(H.arisen())",
+   "apos": "local p = H.arisen():call('get_Transform'):call('get_Position'); return string.format('%.1f,%.1f,%.1f', p.x, p.y, p.z)",
+   "off": "local d = H.dpc_brain(); return d and d.off_deg",
+   "presses": "local d = H.dpc_brain(); return d and d.presses"
+  },
+  "show": [
+   "los",
+   "brain",
+   "edist",
+   "off"
+  ]
+ },
+ "requires": {
+  "DirectPawnControl": "0.9.10",
+  "TestGuide": "2.0"
+ }
+}

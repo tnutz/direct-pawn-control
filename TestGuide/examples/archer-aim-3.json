@@ -1,0 +1,139 @@
+{
+ "id": "archer-aim-3",
+ "title": "Archer pawn on DPC 0.9.29: aim camera, body follow, reticle experiment",
+ "requires": {
+  "DirectPawnControl": "0.9.29",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 1 minute, two parts, each started with End. Arisen must be an Archer; an Archer pawn in the party.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Releasing possession; installing the reticle hook",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "each_frame": "\nif not _G.AIMZ then\n  local A = { n = 0 }\n  _G.AIMZ = A\n  local td = sdk.find_type_definition(\"app.ui020801\"); local m = td and td:get_method(\"requestDraw(via.Point, System.Single, System.Boolean)\")\n  if m then\n    sdk.hook(m, function(args)\n      pcall(function()\n        if A.mine then A.mine_n = (A.mine_n or 0) + 1; return end\n        A.n = A.n + 1\n        local i = sdk.to_int64(args[3]); A.i = i\n        local x, y = i & 0xFFFFFFFF, (i >> 32) & 0xFFFFFFFF\n        A.x0 = math.min(A.x0 or x, x); A.x1 = math.max(A.x1 or x, x); A.y0 = math.min(A.y0 or y, y); A.y1 = math.max(A.y1 or y, y)\n        A.raw4 = sdk.to_int64(args[4])\n        local ok, f = pcall(sdk.to_float, args[4]); A.f = ok and f or nil\n        A.b = (sdk.to_int64(args[5]) & 1) == 1\n      end)\n    end, function(r) return r end)\n    A.hooked = true\n  else A.hooked = false end\nelse\n  local A = _G.AIMZ\n  A.n, A.x0, A.x1, A.y0, A.y1, A.i, A.f, A.b, A.raw4, A.mine_n, A.p_t0, A.pt, A.r_res, A.phase, A.snap, A.s_t0, A.r_fail, A.t_err = 0\nend\n"
+  },
+  {
+   "wait": true,
+   "text": "1/2 BASELINE. As the ARISEN (Archer, bow out). Press End, then HOLD AIM for 6 s and turn the camera a little"
+  },
+  {
+   "secs": 6,
+   "text": "ARISEN: HOLD AIM now, turn the camera a little... keep holding",
+   "expect": [
+    {
+     "probe": "cap_n",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "Arisen: reticle goes through ui020801.requestDraw"
+    },
+    {
+     "probe": "flow",
+     "agg": "max",
+     "op": "==",
+     "value": 1,
+     "label": "Arisen: reticle UI active (baseline)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Release aim",
+   "each_frame": "\nlocal A = _G.AIMZ; if not A then return end\nA.s_t0 = A.s_t0 or os.clock()\nif not A.snap and os.clock() - A.s_t0 > 1.5 then A.snap = { i = A.i, f = A.f, b = A.b, n = A.n } end\n"
+  },
+  {
+   "wait": true,
+   "text": "2/2 PAWN on DPC 0.9.29. Possess the ARCHER pawn (F6 / F7). Press End, then HOLD AIM for 16 s, turn the camera, shoot at something. Phase 1 (8 s): camera + reticle. Phase 2 (8 s): + arrows steered to the screen centre"
+  },
+  {
+   "secs": 16,
+   "text": "PAWN: HOLD AIM, turn, shoot. Watch the 'phase' line: zoom? reticle? where do arrows land?",
+   "each_frame": "\nlocal A = _G.AIMZ; if not A then return end\nA.p_t0 = A.p_t0 or os.clock()\nlocal dt = os.clock() - A.p_t0\nA.phase = dt < 8 and \"1: camera + reticle\" or \"2: + arrows to screen centre\"\nlocal cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return end\nlocal ch = mcc:call(\"get_TargetCharacter\"); if not ch then return end\nlocal up = tostring(H.node(ch, 1) or \"\")\nif not (up:find(\"Job02\", 1, true) and not up:find(\"WithoutAim\", 1, true)) then return end\nif not A.r_fail then\n  local ok, err = pcall(function()\n    local gm = sdk.get_managed_singleton(\"app.GuiManager\"); local ui = gm:get_field(\"Aim\")\n    if not A.pt then\n      local x, y, src\n      local c = A.snap\n      if c and c.i then x, y, src = c.i & 0xFFFFFFFF, (c.i >> 32) & 0xFFFFFFFF, \"captured\" end\n      if not (x and x > 0 and x < 20000 and y > 0 and y < 20000) then\n        local sz = ui:get_field(\"ScreenSize\"); x, y, src = math.floor(sz.w / 2), math.floor(sz.h / 2), \"screen centre\"\n      end\n      local pt = ValueType.new(sdk.find_type_definition(\"via.Point\"))\n      pcall(function() pt:set_field(\"x\", x); pt:set_field(\"y\", y) end)\n      local okr, rx = pcall(pt.get_field, pt, \"x\")\n      if not (okr and rx == x) then pt:write_dword(0, x); pt:write_dword(4, y) end\n      A.pt, A.pt_s = pt, src .. \" \" .. x .. \",\" .. y\n      local f = c and c.f\n      if not (type(f) == \"number\" and f > 0.01 and f < 20) then f = 1.0 end\n      A.pf, A.pb = f, (c and c.b) == true\n    end\n    A.mine = true\n    local okc, e2 = pcall(ui.call, ui, \"requestDraw(via.Point, System.Single, System.Boolean)\", A.pt, A.pf, A.pb)\n    A.mine = false\n    if not okc then error(e2) end\n    A.r_res = \"reticle requested at \" .. A.pt_s .. \" scale \" .. tostring(A.pf) .. \" flag \" .. tostring(A.pb)\n  end)\n  if not ok then A.mine = false; A.r_fail = true; A.r_res = \"reticle failed: \" .. tostring(err) end\nend\nif dt >= 8 then\n  local ok, err = pcall(function()\n    local tr = sdk.get_primary_camera():call(\"get_GameObject\"):call(\"get_Transform\")\n    local p, z = tr:call(\"get_Position\"), tr:call(\"get_WorldMatrix\")[2]\n    ch:call(\"set_AimTargetPosition\", Vector3f.new(p.x - z.x * 60.0, p.y - z.y * 60.0, p.z - z.z * 60.0))\n  end)\n  if not ok and not A.t_err then A.t_err = tostring(err) end\nend\n",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "frac",
+     "min_frac": 0.6,
+     "label": "DPC 0.9.29 holds the aim camera for the pawn"
+    },
+    {
+     "probe": "yawd",
+     "agg": "avg",
+     "op": "<",
+     "value": 8.0,
+     "label": "pawn body follows the camera"
+    },
+    {
+     "probe": "flow",
+     "agg": "max",
+     "op": "==",
+     "value": 1,
+     "label": "reticle UI active for the pawn"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC script errors"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Release aim. Camera should go back by itself",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Usually",
+     "agg": "any",
+     "label": "camera returned to normal after releasing aim"
+    }
+   ]
+  },
+  {
+   "secs": 2,
+   "text": "Done"
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_archer-aim-3.json",
+  "probes": {
+   "ctl": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal c = mcc:get_field(\"_CurrentCameraController\"); return c and c:get_type_definition():get_name()",
+   "t_up": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nreturn H.node(mcc:call(\"get_TargetCharacter\"), 1)",
+   "yawd": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal ch = mcc:call(\"get_TargetCharacter\"); if not ch then return nil end\nlocal z = ch:call(\"get_Transform\"):call(\"get_AxisZ\")\nlocal m = sdk.find_type_definition(\"app.PlayerInputProcessorDetail\"):get_method(\"getCameraAngleRad\")\nlocal d = math.deg(math.atan(z.x, z.z)) - math.deg(m:call(nil))\nd = (d + 180) % 360 - 180; return math.abs(d)",
+   "phase": "return _G.AIMZ and _G.AIMZ.phase",
+   "cap": "local A = _G.AIMZ; if not A then return nil end\nreturn string.format(\"hooked=%s n=%s x=%s..%s y=%s..%s f=%s raw4=%s b=%s\", tostring(A.hooked), tostring(A.n), tostring(A.x0), tostring(A.x1), tostring(A.y0), tostring(A.y1), tostring(A.f), tostring(A.raw4), tostring(A.b))",
+   "cap_n": "return _G.AIMZ and _G.AIMZ.n",
+   "mine_n": "return _G.AIMZ and _G.AIMZ.mine_n",
+   "r_res": "return _G.AIMZ and _G.AIMZ.r_res",
+   "t_err": "return _G.AIMZ and _G.AIMZ.t_err",
+   "flow": "local gm = sdk.get_managed_singleton(\"app.GuiManager\"); local ui = gm and gm:get_field(\"Aim\"); return ui and ui:get_field(\"FlowNow\")",
+   "isdraw": "local gm = sdk.get_managed_singleton(\"app.GuiManager\"); local ui = gm and gm:get_field(\"Aim\"); return ui and ui:get_field(\"IsDraw\")",
+   "screen": "local gm = sdk.get_managed_singleton(\"app.GuiManager\"); local ui = gm and gm:get_field(\"Aim\"); if not ui then return nil end; local z = ui:get_field(\"ScreenSize\"); return tostring(z.w) .. \"x\" .. tostring(z.h)",
+   "dpc_aim": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); if not (ok and d) then return nil end\nlocal a = d.aim; return a and string.format(\"hold=%s blocked=%s reqs=%s learned=%s off=%s\", tostring(a.hold), tostring(a.blocked), tostring(a.reqs), tostring(a.learned), tostring(a.off))",
+   "errs": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); if not (ok and d) then return nil end\nreturn d.errors"
+  },
+  "show": [
+   "phase",
+   "ctl",
+   "dpc_aim",
+   "cap",
+   "r_res",
+   "flow"
+  ]
+ }
+}

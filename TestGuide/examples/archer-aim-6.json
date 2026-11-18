@@ -1,0 +1,150 @@
+{
+ "id": "archer-aim-6",
+ "title": "Archer pawn: what follows the camera pitch, and corrected arrow steering",
+ "requires": {
+  "DirectPawnControl": "0.9.33",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 90 s, three parts, each started with End. Arisen must be an Archer; an Archer pawn in the party; stand facing a wall or cliff for part 3.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Releasing possession",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_aim_point",
+     "value": false,
+     "save": false
+    }
+   ],
+   "each_frame": "if not _G.AIMP_loaded then _G.AIMP_loaded = true end\n\n_G.AIMP = { res = {} }\nlocal A = _G.AIMP\nA.snap = function(who)\n  local S, seen = {}, {}\n  local function add(o, name, depth)\n    if type(o) ~= \"userdata\" then return end\n    local okt, t = pcall(o.get_type_definition, o); if not (okt and t) then return end\n    local oka, addr = pcall(o.get_address, o)\n    if oka and addr and addr ~= 0 then if seen[addr] then return end; seen[addr] = true end\n    local d = 0\n    while t and d < 6 do\n      local tn = t:get_full_name()\n      if tn == \"System.Object\" or tn == \"System.ValueType\" or tn == \"via.Component\" or tn == \"via.Behavior\" then break end\n      for _, f in ipairs(t:get_fields()) do\n        local oks, st = pcall(f.is_static, f)\n        if not (oks and st) then\n          local fn = f:get_name()\n          local ok, v = pcall(o.get_field, o, fn)\n          if ok then\n            local tv = type(v)\n            if tv == \"number\" then S[name .. \".\" .. fn] = v\n            elseif tv == \"boolean\" then S[name .. \".\" .. fn] = v and 1 or 0\n            elseif tv == \"userdata\" then\n              local okn, ftn = pcall(function() return v:get_type_definition():get_full_name() end)\n              if not okn then\n                pcall(function() S[name .. \".\" .. fn .. \".x\"] = v.x + 0.0; S[name .. \".\" .. fn .. \".y\"] = v.y + 0.0; S[name .. \".\" .. fn .. \".z\"] = v.z + 0.0 end)\n                pcall(function() S[name .. \".\" .. fn .. \".w\"] = v.w + 0.0 end)\n              elseif depth > 0 and (ftn:find(\"Job02\") or ftn:find(\"Aim\") or ftn:find(\"Shoot\") or ftn:find(\"Shot\") or ftn:find(\"Bow\") or ftn:find(\"Detail\") or ftn:find(\"InputProcessor\") or ftn:find(\"Param\") or ftn:find(\"Nullable\") or ftn:find(\"LookAt\") or ftn:find(\"Angle\")) then\n                add(v, name .. \".\" .. fn, depth - 1)\n              end\n            end\n          end\n        end\n      end\n      t = t:get_parent_type(); d = d + 1\n    end\n  end\n  pcall(function()\n    local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm:call(\"getMainCameraController\", 0)\n    local ch, pip\n    if who == \"arisen\" then\n      ch = H.arisen()\n      local pl = ch:get_GameObject():call(\"getComponent(System.Type)\", sdk.typeof(\"app.Player\"))\n      pip = pl and pl:get_field(\"InputProcessor\")\n    else\n      ch = mcc:call(\"get_TargetCharacter\")\n      pip = _G.DPC_dbg and _G.DPC_dbg.native and _G.DPC_dbg.native.pip\n    end\n    add(ch, \"C\", 1); add(ch:call(\"get_Human\"), \"H\", 1); add(pip, \"P\", 2); add(mcc:get_field(\"_CurrentCameraController\"), \"Cam\", 1)\n    pcall(function() add(ch:get_GameObject():call(\"getComponent(System.Type)\", sdk.typeof(\"app.CharacterLookAt\")), \"Look\", 1) end)\n  end)\n  local n = 0; for _ in pairs(S) do n = n + 1 end\n  S.__n = n\n  return S\nend\nA.pitch = function()\n  local z = sdk.get_primary_camera():call(\"get_GameObject\"):call(\"get_Transform\"):call(\"get_WorldMatrix\")[2]\n  return math.deg(math.asin(math.max(-1, math.min(1, -z.y))))\nend\nA.track = function(who)\n  local T = A[who] or {}; A[who] = T\n  local okp, pitch = pcall(A.pitch); if not okp then return end\n  local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return end\n  local cur = mcc:get_field(\"_CurrentCameraController\")\n  if not (cur and cur:get_type_definition():get_name():find(\"Aim\", 1, true)) then return end\n  if not T.U1 then if pitch > 8 then T.U1 = A.snap(who); T.pU1 = pitch end\n  elseif not T.D1 then if pitch < -8 then T.D1 = A.snap(who); T.pD1 = pitch end\n  elseif not T.U2 then\n    if pitch > 8 then\n      T.U2 = A.snap(who); T.pU2 = pitch\n      local out, n = {}, 0\n      for k, u1 in pairs(T.U1) do\n        local d1, u2 = T.D1[k], T.U2[k]\n        if d1 and u2 and k ~= \"__n\" then\n          local span = math.abs(u1 - d1)\n          if span > 0.02 and math.abs(u1 - u2) <= 0.3 * span then out[k] = string.format(\"up %.3f | down %.3f | up %.3f\", u1, d1, u2); n = n + 1 end\n        end\n      end\n      A.res[who] = { fields = out, n = n, total = T.U1.__n, pitch = string.format(\"%.1f / %.1f / %.1f\", T.pU1, T.pD1, T.pU2) }\n      T.stage = \"done: \" .. n .. \" of \" .. tostring(T.U1.__n) .. \" values follow the pitch\"\n      pcall(json.dump_file, \"DPC_probe_aim_pitch.json\", A.res)\n    end\n  end\n  if not T.U2 then T.stage = (not T.U1 and \"look UP (waiting)\" or (not T.D1 and \"now look DOWN\" or \"now look UP again\")) .. string.format(\"  pitch %.0f\", pitch) end\nend\n"
+  },
+  {
+   "wait": true,
+   "text": "1/3 ARISEN. Press End, HOLD AIM, then slowly look UP, then DOWN, then UP again (the screen tells you which). 12 s"
+  },
+  {
+   "secs": 12,
+   "text": "ARISEN: HOLD AIM. Follow the 'a_stage' line: look UP, then DOWN, then UP again",
+   "each_frame": "if _G.AIMP and _G.AIMP.track then _G.AIMP.track('arisen') end",
+   "expect": [
+    {
+     "probe": "a_stage",
+     "op": "contains",
+     "value": "done",
+     "agg": "any",
+     "label": "Arisen: up / down / up captured"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Release aim"
+  },
+  {
+   "wait": true,
+   "text": "2/3 PAWN (steering off). Possess the ARCHER (F6 / F7). Press End, HOLD AIM, then look UP, DOWN, UP again as before. 12 s"
+  },
+  {
+   "secs": 12,
+   "text": "PAWN: HOLD AIM. Follow the 'p_stage' line: look UP, then DOWN, then UP again",
+   "each_frame": "if _G.AIMP and _G.AIMP.track then _G.AIMP.track('pawn') end",
+   "expect": [
+    {
+     "probe": "p_stage",
+     "op": "contains",
+     "value": "done",
+     "agg": "any",
+     "label": "pawn: up / down / up captured"
+    },
+    {
+     "probe": "dbg",
+     "agg": "any",
+     "op": "==",
+     "value": true,
+     "label": "pawn's input processor readable (dev hook)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Release aim. Next: steering ON, fixed version",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_aim_point",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "3/3 PAWN, steering ON (corrected). Press End, HOLD AIM 10 s, aim at a mark on a wall and shoot several arrows. Bow steady? Do arrows hit the reticle, also up and down?"
+  },
+  {
+   "secs": 10,
+   "text": "PAWN (steering ON): HOLD AIM, shoot at a mark. Bow steady? Arrows on the reticle?",
+   "expect": [
+    {
+     "probe": "has",
+     "agg": "any",
+     "op": "==",
+     "value": true,
+     "label": "pawn: aim target set while steering"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC script errors"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Release aim. Steering back off",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_aim_point",
+     "value": false,
+     "save": false
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_archer-aim-6.json",
+  "probes": {
+   "ctl": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal c = mcc:get_field(\"_CurrentCameraController\"); return c and c:get_type_definition():get_name()",
+   "t_up": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nreturn H.node(mcc:call(\"get_TargetCharacter\"), 1)",
+   "pitch": "return _G.AIMP and _G.AIMP.pitch and _G.AIMP.pitch()",
+   "a_stage": "return _G.AIMP and _G.AIMP.arisen and _G.AIMP.arisen.stage",
+   "p_stage": "return _G.AIMP and _G.AIMP.pawn and _G.AIMP.pawn.stage",
+   "has": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal ch = mcc:call(\"get_TargetCharacter\"); if not ch then return nil end\nlocal v = ch:call(\"get_AimTargetPosition\"); if not v then return nil end\nlocal has = v:get_field(\"_HasValue\")\nreturn has == true",
+   "tgt": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal ch = mcc:call(\"get_TargetCharacter\"); if not ch then return nil end\nlocal v = ch:call(\"get_AimTargetPosition\"); if not v then return nil end\nlocal has = v:get_field(\"_HasValue\")\nif not has then return \"none\" end\nlocal t = v:get_field(\"_Value\")\nlocal tr = sdk.get_primary_camera():call(\"get_GameObject\"):call(\"get_Transform\")\nlocal p, z = tr:call(\"get_Position\"), tr:call(\"get_WorldMatrix\")[2]\nlocal dx, dy, dz = t.x - p.x, t.y - p.y, t.z - p.z\nlocal along = -(dx * z.x + dy * z.y + dz * z.z)\nlocal lx, ly, lz = dx + along * z.x, dy + along * z.y, dz + along * z.z\nreturn string.format(\"along %.1f off %.2f\", along, math.sqrt(lx * lx + ly * ly + lz * lz))",
+   "dbg": "return _G.DPC_dbg ~= nil and _G.DPC_dbg.native ~= nil and _G.DPC_dbg.native.pip ~= nil",
+   "pts": "return _G.DPC_dbg and _G.DPC_dbg.R and _G.DPC_dbg.R.aim_pts",
+   "errs": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); if not (ok and d) then return nil end\nreturn d.errors"
+  },
+  "show": [
+   "a_stage",
+   "p_stage",
+   "pitch",
+   "has",
+   "tgt",
+   "pts"
+  ]
+ }
+}

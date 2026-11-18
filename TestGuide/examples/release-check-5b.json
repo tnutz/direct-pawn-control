@@ -1,0 +1,430 @@
+{
+ "id": "release-check-5b",
+ "title": "Release check 5: select, take control, Arisen fights, return, co-op (no hands, any controller layout)",
+ "requires": {
+  "DirectPawnControl": "0.9.140",
+  "CameraDistance": "2.9.8",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 2 minutes, nothing to press after End. Open ground, no enemies near, full party, your main pawn in the party, a controller connected. Do not touch the keyboard, mouse or controller until PASS / FAIL shows. Three goblins are spawned and removed again.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "HANDS OFF for the whole test (about 2 minutes). Getting ready.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Checks before anything is pressed",
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "DirectPawnControl reports no errors"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "CameraDistance reports no errors"
+    },
+    {
+     "probe": "binds",
+     "agg": "any",
+     "label": "skill buttons were read from the game",
+     "op": "~=",
+     "value": ""
+    },
+    {
+     "probe": "world",
+     "agg": "any",
+     "op": "==",
+     "value": true,
+     "label": "world guard says the game is playable"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: holds D-pad right (select the next character)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.0,
+     "buttons": [
+      "LRight"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sel",
+     "agg": "any",
+     "label": "holding D-pad right selects a character",
+     "op": "~=",
+     "value": ""
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: L1 + left stick click (take control of the selection)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "buttons": [
+      "LTrigTop",
+      "LStickPush"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "poss",
+     "agg": "any",
+     "label": "L1 + left stick click takes control"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Possessing. Nothing is pressed: the pawn should stand still.",
+   "expect": [
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "possession holds"
+    },
+    {
+     "probe": "lock_ok",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "lock-on belongs to the pawn being played"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no errors after taking control"
+    }
+   ]
+  },
+  {
+   "secs": 30,
+   "text": "Three goblins. The Arisen should fight on his own (30 s). Your pawn just stands there.",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 14.0,
+     "angle": 0,
+     "still": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shots",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "the Arisen attacks or uses a skill on his own"
+    },
+    {
+     "probe": "bmode",
+     "agg": "any",
+     "op": "contains",
+     "value": "engage",
+     "label": "the Arisen's brain reaches 'engage'"
+    },
+    {
+     "probe": "lock_ok",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "lock-on stays with the pawn during the fight"
+    },
+    {
+     "probe": "lockfix",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "the lock-on safety net never had to fire"
+    },
+    {
+     "probe": "ring",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.97,
+     "label": "the Arisen's magick-bow ring stays hidden"
+    },
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.9,
+     "label": "possession held through the fight (fails if the pawn went down)"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no errors during the fight"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Test enemies removed",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Robot: holds D-pad down (back to the Arisen)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.0,
+     "buttons": [
+      "LDown"
+     ]
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Back on the Arisen?",
+   "expect": [
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.9,
+     "label": "holding D-pad down returns to the Arisen"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Couch co-op on the main pawn",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "co-op started"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Robot: player 2 pushes the left stick",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v0",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "player 2's stick moves the pawn"
+    },
+    {
+     "probe": "va",
+     "agg": "max",
+     "op": "<",
+     "value": 1.0,
+     "label": "player 2's stick does not move the Arisen"
+    }
+   ]
+  },
+  {
+   "secs": 5,
+   "text": "Robot: player 2 presses light attack (whatever button the game has it on)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "act0",
+     "agg": "any",
+     "label": "the pawn attacks on the light-attack button"
+    }
+   ]
+  },
+  {
+   "secs": 6,
+   "text": "Robot: player 2 presses skill 1 (skill shift + its button, as set in the game)",
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.5,
+     "actions": [
+      "Shift1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Skill1"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "actions": [
+      "Shift1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "act0",
+     "agg": "any",
+     "label": "the pawn uses skill 1"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Final checks",
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.9,
+     "label": "co-op stopped"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "DirectPawnControl: no errors in the whole run"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "CameraDistance: no errors in the whole run"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_release-check-4.json",
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "dpc": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.info",
+   "sel": "local D = _G.DPC_dbg; return D and D.R.sel_label",
+   "holds": "local D = _G.DPC_dbg; return D and (D.R.holds or 0) or 0",
+   "poss": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "lock_ok": "local D = _G.DPC_dbg; if not (D and D.state.active and D.state.arisen_lockon_ctrl and D.state.pawn_chara) then return nil end\nlocal c = D.state.arisen_lockon_ctrl:get_field('Chara'); return c ~= nil and c:get_address() == D.state.pawn_chara:get_address()",
+   "lockfix": "local D = _G.DPC_dbg; return D and (D.R.lock_fixes or 0) or 0",
+   "ring": "local gm = sdk.get_managed_singleton('app.GuiManager'); local u = gm and gm:get_field('MagicBowReticle'); if not u then return false end\nreturn u:call('get_GameObject'):call('get_DrawSelf') == true",
+   "shots": "local b = H.dpc_brain(); return b and ((b.presses or 0) + (b.skill_uses or 0)) or 0",
+   "skills": "local b = H.dpc_brain(); return b and b.skill_uses or 0",
+   "bmode": "local b = H.dpc_brain(); return b and b.mode",
+   "world": "local D = _G.DPC_dbg; return D and D.R.world",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "v0": "return H.speed(H.pawn(0), 'pawn0')",
+   "va": "return H.speed()",
+   "act0": "local a, b = H.node(H.pawn(0)), H.node(H.pawn(0), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "binds": "local D = _G.DPC_dbg; return D and D.R.bind and D.R.bind.sig"
+  },
+  "show": [
+   "dpc",
+   "bmode"
+  ]
+ }
+}

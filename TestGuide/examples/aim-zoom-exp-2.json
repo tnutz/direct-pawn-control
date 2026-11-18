@@ -1,0 +1,69 @@
+{
+ "id": "aim-zoom-exp-2",
+ "title": "Bow aim experiment 2: three ways (P, Q, R)",
+ "intro": "No reset needed; leave 'Limit the bow-aim zoom' unticked. Clear view. Hold the bow aim for about 20 s. Remember which letters changed the view and whether the aim point moved.",
+ "steps": [
+  {
+   "text": "Co-op OFF. HOLD the bow aim (right mouse) until the end. Press End while aiming",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "Keep aiming (baseline)",
+   "secs": 3,
+   "each_frame": "\nif not AIMY then\n  AIMY = { mode = \"\", n = 0 }\n  local td = sdk.find_type_definition(\"app.AimCameraController\")\n  local m = td:get_method(\"onUpdate\")\n  AIMY.has = m ~= nil\n  if m then\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          AIMY.n = AIMY.n + 1\n          local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n          local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n          local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n          AIMY.pogdist = l\n          if AIMY.mode == \"P\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n          end\n          if AIMY.mode == \"Q\" then o:set_field(\"_Fov\", 90.0) end\n          if AIMY.mode == \"R\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n            g.x, g.y, g.z = g.x + dx / l * 3.0, g.y + dy / l * 3.0, g.z + dz / l * 3.0; o:set_field(\"_Pog\", g)\n          end\n        end)\n        return ret\n      end)\n  end\nend\nAIMY.mode = \"\"\n"
+  },
+  {
+   "text": "P - keep aiming",
+   "secs": 4,
+   "each_frame": "\nif not AIMY then\n  AIMY = { mode = \"\", n = 0 }\n  local td = sdk.find_type_definition(\"app.AimCameraController\")\n  local m = td:get_method(\"onUpdate\")\n  AIMY.has = m ~= nil\n  if m then\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          AIMY.n = AIMY.n + 1\n          local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n          local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n          local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n          AIMY.pogdist = l\n          if AIMY.mode == \"P\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n          end\n          if AIMY.mode == \"Q\" then o:set_field(\"_Fov\", 90.0) end\n          if AIMY.mode == \"R\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n            g.x, g.y, g.z = g.x + dx / l * 3.0, g.y + dy / l * 3.0, g.z + dz / l * 3.0; o:set_field(\"_Pog\", g)\n          end\n        end)\n        return ret\n      end)\n  end\nend\nAIMY.mode = \"P\"\n"
+  },
+  {
+   "text": "(reset) keep aiming",
+   "secs": 2,
+   "each_frame": "\nif not AIMY then\n  AIMY = { mode = \"\", n = 0 }\n  local td = sdk.find_type_definition(\"app.AimCameraController\")\n  local m = td:get_method(\"onUpdate\")\n  AIMY.has = m ~= nil\n  if m then\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          AIMY.n = AIMY.n + 1\n          local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n          local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n          local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n          AIMY.pogdist = l\n          if AIMY.mode == \"P\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n          end\n          if AIMY.mode == \"Q\" then o:set_field(\"_Fov\", 90.0) end\n          if AIMY.mode == \"R\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n            g.x, g.y, g.z = g.x + dx / l * 3.0, g.y + dy / l * 3.0, g.z + dz / l * 3.0; o:set_field(\"_Pog\", g)\n          end\n        end)\n        return ret\n      end)\n  end\nend\nAIMY.mode = \"\"\n"
+  },
+  {
+   "text": "Q - keep aiming",
+   "secs": 4,
+   "each_frame": "\nif not AIMY then\n  AIMY = { mode = \"\", n = 0 }\n  local td = sdk.find_type_definition(\"app.AimCameraController\")\n  local m = td:get_method(\"onUpdate\")\n  AIMY.has = m ~= nil\n  if m then\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          AIMY.n = AIMY.n + 1\n          local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n          local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n          local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n          AIMY.pogdist = l\n          if AIMY.mode == \"P\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n          end\n          if AIMY.mode == \"Q\" then o:set_field(\"_Fov\", 90.0) end\n          if AIMY.mode == \"R\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n            g.x, g.y, g.z = g.x + dx / l * 3.0, g.y + dy / l * 3.0, g.z + dz / l * 3.0; o:set_field(\"_Pog\", g)\n          end\n        end)\n        return ret\n      end)\n  end\nend\nAIMY.mode = \"Q\"\n"
+  },
+  {
+   "text": "(reset) keep aiming",
+   "secs": 2,
+   "each_frame": "\nif not AIMY then\n  AIMY = { mode = \"\", n = 0 }\n  local td = sdk.find_type_definition(\"app.AimCameraController\")\n  local m = td:get_method(\"onUpdate\")\n  AIMY.has = m ~= nil\n  if m then\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          AIMY.n = AIMY.n + 1\n          local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n          local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n          local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n          AIMY.pogdist = l\n          if AIMY.mode == \"P\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n          end\n          if AIMY.mode == \"Q\" then o:set_field(\"_Fov\", 90.0) end\n          if AIMY.mode == \"R\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n            g.x, g.y, g.z = g.x + dx / l * 3.0, g.y + dy / l * 3.0, g.z + dz / l * 3.0; o:set_field(\"_Pog\", g)\n          end\n        end)\n        return ret\n      end)\n  end\nend\nAIMY.mode = \"\"\n"
+  },
+  {
+   "text": "R - keep aiming",
+   "secs": 4,
+   "each_frame": "\nif not AIMY then\n  AIMY = { mode = \"\", n = 0 }\n  local td = sdk.find_type_definition(\"app.AimCameraController\")\n  local m = td:get_method(\"onUpdate\")\n  AIMY.has = m ~= nil\n  if m then\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          AIMY.n = AIMY.n + 1\n          local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n          local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n          local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n          AIMY.pogdist = l\n          if AIMY.mode == \"P\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n          end\n          if AIMY.mode == \"Q\" then o:set_field(\"_Fov\", 90.0) end\n          if AIMY.mode == \"R\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n            g.x, g.y, g.z = g.x + dx / l * 3.0, g.y + dy / l * 3.0, g.z + dz / l * 3.0; o:set_field(\"_Pog\", g)\n          end\n        end)\n        return ret\n      end)\n  end\nend\nAIMY.mode = \"R\"\n"
+  },
+  {
+   "text": "Done - release the aim",
+   "secs": 2,
+   "each_frame": "\nif not AIMY then\n  AIMY = { mode = \"\", n = 0 }\n  local td = sdk.find_type_definition(\"app.AimCameraController\")\n  local m = td:get_method(\"onUpdate\")\n  AIMY.has = m ~= nil\n  if m then\n    sdk.hook(m, function(args) thread.get_hook_storage().this = sdk.to_managed_object(args[2]) end,\n      function(ret)\n        pcall(function()\n          local o = thread.get_hook_storage().this\n          AIMY.n = AIMY.n + 1\n          local p, g = o:get_field(\"_Position\"), o:get_field(\"_Pog\")\n          local dx, dy, dz = p.x - g.x, p.y - g.y, p.z - g.z\n          local l = math.sqrt(dx * dx + dy * dy + dz * dz)\n          AIMY.pogdist = l\n          if AIMY.mode == \"P\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n          end\n          if AIMY.mode == \"Q\" then o:set_field(\"_Fov\", 90.0) end\n          if AIMY.mode == \"R\" and l > 0.01 then\n            p.x, p.y, p.z = p.x + dx / l * 3.0, p.y + dy / l * 3.0, p.z + dz / l * 3.0; o:set_field(\"_Position\", p)\n            g.x, g.y, g.z = g.x + dx / l * 3.0, g.y + dy / l * 3.0, g.z + dz / l * 3.0; o:set_field(\"_Pog\", g)\n          end\n        end)\n        return ret\n      end)\n  end\nend\nAIMY.mode = \"\"\n"
+  }
+ ],
+ "record": {
+  "hz": 8,
+  "at": "frame",
+  "out": "test_guide/result_aim-zoom-exp-2.json",
+  "probes": {
+   "fov": "return sdk.get_primary_camera():call('get_FOV')",
+   "ctrl": "local mc=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController',0); local c=mc:call('get_CurrentCameraController'); return c and (c:get_type_definition():get_name()..' '..tostring(c:call('get_BaseDistance'))) or 'nil'",
+   "camd": "local c=sdk.get_primary_camera():call('get_GameObject'):call('get_Transform'):call('get_Position'); local a=H.arisen():call('get_Transform'):call('get_Position'); local dx,dy,dz=c.x-a.x,c.y-a.y,c.z-a.z; return math.floor(math.sqrt(dx*dx+dy*dy+dz*dz)*10+0.5)/10",
+   "ascr": "local p=H.arisen():call('get_Transform'):call('get_Position'); local s=draw.world_to_screen(Vector3f.new(p.x,p.y+1.0,p.z)); return s and string.format('%.0f,%.0f',s.x,s.y) or 'off'",
+   "cfov": "local mc=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController',0); local c=mc:call('get_CurrentCameraController'); return c and c:get_field('_Fov')",
+   "calls": "return AIMY and (tostring(AIMY.has)..' n='..tostring(AIMY.n)..' pogdist='..string.format('%.2f', AIMY.pogdist or -1))",
+   "aimset": "\nif AIMSET_DONE then return nil end\nlocal mc=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController',0); local c=mc:call('get_CurrentCameraController')\nif not c or c:get_type_definition():get_name() ~= 'AimCameraController' then return nil end\nlocal function dump(o) if not o then return 'nil' end local t={} local td=o:get_type_definition() while td and td:get_full_name()~='System.Object' do for _,f in ipairs(td:get_fields()) do if not f:is_static() then local ok,v=pcall(o.get_field,o,f:get_name()); local s=tostring(v); if ok and type(v)=='userdata' then local okx,sx=pcall(function() return string.format('(%.2f,%.2f,%.2f)',v.x,v.y,v.z) end); s=okx and sx or (pcall(function() return v:get_type_definition():get_full_name() end) and v:get_type_definition():get_full_name() or s) end t[#t+1]=f:get_name()..'='..s end end td=td:get_parent_type() end return o:get_type_definition():get_full_name()..': '..table.concat(t,' | ') end\nAIMSET_DONE = true\nreturn dump(c:get_field('_CurrentAimSetting'))..' ## '..dump(c:get_field('_AimCameraSetting'))\n"
+  },
+  "show": [
+   "fov"
+  ]
+ }
+}

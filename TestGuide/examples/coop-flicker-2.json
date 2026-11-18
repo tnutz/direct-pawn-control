@@ -1,0 +1,75 @@
+{
+ "id": "coop-flicker-2",
+ "title": "Nametag flicker: which part causes it? (you set the pace)",
+ "intro": "Reset Scripts first (TestGuide 1.3: steps wait for End). Co-op starts by itself. Don't move; watch the pawn nametags and note yes/no for steps 1-4.",
+ "steps": [
+  {
+   "text": "Hands off - starting co-op. Stand near the pawns.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "1) Normal co-op - flicker? Remember yes/no, then press End",
+   "wait": true
+  },
+  {
+   "text": "2) DPC camera block OFF - flicker? Then press End",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_block_p2_camera",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "3) DPC controller zeroing also OFF - flicker? Then press End",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_zero_pad_for_arisen",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "Both back ON. Open REFramework menu > Camera Distance, untick 'Keep player 2's pawn on screen', close the menu, press End",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_block_p2_camera",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_zero_pad_for_arisen",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "4) Camera co-op framing OFF - flicker? Then press End",
+   "wait": true
+  },
+  {
+   "text": "Tick 'Keep player 2's pawn on screen' again, press End",
+   "wait": true
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_coop-flicker-2.json",
+  "at": "frame",
+  "probes": {
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active"
+  }
+ }
+}

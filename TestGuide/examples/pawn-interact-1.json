@@ -1,0 +1,109 @@
+{
+ "id": "pawn-interact-1",
+ "title": "Can the possessed pawn gather / loot by himself?",
+ "requires": {
+  "DirectPawnControl": "0.9.25",
+  "TestGuide": "2.1"
+ },
+ "intro": "No fight nearby. You position the possessed main pawn, press End, and the test asks the game to have HIM interact (the way AI pawns do). Hands off for 6 s after each End.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Possessing the main pawn",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "GATHER: stand the pawn within 2 m of a herb / ore / gather spot, Arisen well away. Press End, then hands off"
+  },
+  {
+   "secs": 7,
+   "text": "Asking the game: pawn, gather it. WATCH: does he gather? Does an item pop-up appear?",
+   "each_frame": "local KEY, PAT = \"g\", \"^gm\"\n\nif not INT then INT = { done = {} } end\nif not INT.done[KEY] then\n  INT.done[KEY] = true\n  local im = sdk.get_managed_singleton(\"app.InteractManager\")\n  local pw = H.pawn(0)\n  local pp = pw:call(\"get_Transform\"):call(\"get_Position\")\n  local best, bd, bn\n  for _, s in ipairs(im:get_field(\"InteractiveObjects\"):get_field(\"_entries\"):get_elements()) do\n    local ok, o = pcall(s.get_field, s, \"Value\"); if not (ok and o) then ok, o = pcall(s.get_field, s, \"value\") end\n    if ok and o then pcall(function()\n      local go = o:get_field(\"<Owner>k__BackingField\")\n      local nm = tostring(go:call(\"get_Name\"))\n      local p = go:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - pp.x) ^ 2 + (p.y - pp.y) ^ 2 + (p.z - pp.z) ^ 2)\n      if d < 4 and nm:find(PAT) and (not bd or d < bd) then best, bd, bn = o, d, nm end\n    end) end\n  end\n  if best then\n    local ok, r = pcall(im.call, im, \"requestInteractFromAI(app.InteractiveObject, System.UInt32, app.Character)\", best, 0, pw)\n    INT.req = ok and r or nil\n    INT.last = string.format(\"%s %.1f m sent=%s\", bn, bd, tostring(ok))\n  else\n    INT.last = \"nothing matching within 4 m\"\n  end\nend\n",
+   "expect": [
+    {
+     "probe": "res",
+     "op": "contains",
+     "value": "sent=true",
+     "agg": "any",
+     "label": "gather: request sent"
+    },
+    {
+     "probe": "p_act",
+     "agg": "any",
+     "label": "gather: pawn did something (left locomotion)"
+    },
+    {
+     "probe": "interacting",
+     "agg": "any",
+     "label": "gather: game says he is interacting"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "LOOT: stand the pawn within 2 m of a lootable corpse or a chest (kill something first if needed). Press End, then hands off"
+  },
+  {
+   "secs": 7,
+   "text": "Asking the game: pawn, loot it. WATCH: does he loot?",
+   "each_frame": "local KEY, PAT = \"l\", \"^[cg][hm][02-9]\"\n\nif not INT then INT = { done = {} } end\nif not INT.done[KEY] then\n  INT.done[KEY] = true\n  local im = sdk.get_managed_singleton(\"app.InteractManager\")\n  local pw = H.pawn(0)\n  local pp = pw:call(\"get_Transform\"):call(\"get_Position\")\n  local best, bd, bn\n  for _, s in ipairs(im:get_field(\"InteractiveObjects\"):get_field(\"_entries\"):get_elements()) do\n    local ok, o = pcall(s.get_field, s, \"Value\"); if not (ok and o) then ok, o = pcall(s.get_field, s, \"value\") end\n    if ok and o then pcall(function()\n      local go = o:get_field(\"<Owner>k__BackingField\")\n      local nm = tostring(go:call(\"get_Name\"))\n      local p = go:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - pp.x) ^ 2 + (p.y - pp.y) ^ 2 + (p.z - pp.z) ^ 2)\n      if d < 4 and nm:find(PAT) and (not bd or d < bd) then best, bd, bn = o, d, nm end\n    end) end\n  end\n  if best then\n    local ok, r = pcall(im.call, im, \"requestInteractFromAI(app.InteractiveObject, System.UInt32, app.Character)\", best, 0, pw)\n    INT.req = ok and r or nil\n    INT.last = string.format(\"%s %.1f m sent=%s\", bn, bd, tostring(ok))\n  else\n    INT.last = \"nothing matching within 4 m\"\n  end\nend\n",
+   "expect": [
+    {
+     "probe": "res",
+     "op": "contains",
+     "value": "sent=true",
+     "agg": "any",
+     "label": "loot: request sent"
+    },
+    {
+     "probe": "p_act",
+     "agg": "any",
+     "label": "loot: pawn did something"
+    },
+    {
+     "probe": "interacting",
+     "agg": "any",
+     "label": "loot: game says he is interacting"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Remember what you saw (gathered? looted? whose inventory?). Press End"
+  },
+  {
+   "secs": 2,
+   "text": "Done"
+  }
+ ],
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_pawn-interact-1.json",
+  "probes": {
+   "res": "return INT and INT.last",
+   "req": "if not (INT and INT.req) then return nil end\nlocal ok, v = pcall(function() local r = INT.req:get_field(\"Result\"); return type(r) == \"userdata\" and r:get_field(\"value__\") or r end)\nreturn ok and tostring(v) or \"?\"",
+   "interacting": "local im = sdk.get_managed_singleton(\"app.InteractManager\"); local pw = H.pawn(0); return pw and im:call(\"isInteracting(app.Character)\", pw)",
+   "p_node": "return H.node(H.pawn(0))",
+   "p_node1": "return H.node(H.pawn(0), 1)",
+   "a_node": "return H.node(H.arisen())",
+   "apart": "local a, p = H.arisen(), H.pawn(0); if not (a and p) then return nil end\nlocal x, y = a:call('get_Transform'):call('get_Position'), p:call('get_Transform'):call('get_Position')\nreturn math.sqrt((x.x - y.x) ^ 2 + (x.z - y.z) ^ 2)",
+   "p_act": "local n = H.node(H.pawn(0)); return n ~= nil and not tostring(n):find('Locomotion', 1, true)"
+  },
+  "show": [
+   "res",
+   "req",
+   "interacting",
+   "p_node"
+  ]
+ }
+}

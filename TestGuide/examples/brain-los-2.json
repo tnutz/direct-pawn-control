@@ -1,0 +1,107 @@
+{
+ "id": "brain-los-2",
+ "title": "Arisen brain: line of sight while you possess a pawn",
+ "intro": "Run after brain-los-1. Archer Arisen, main pawn in the party, a solid wall or big rock nearby.",
+ "steps": [
+  {
+   "text": "Co-op off, brain off.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "ARCHER Arisen. Stand him 2-3 m from a solid wall or big rock, FACING it. A dummy will appear 14 m ahead, behind it. Press End",
+   "wait": true
+  },
+  {
+   "text": "Spawning the dummy behind the wall, then possessing your main pawn",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 14.0,
+     "angle": 0,
+     "still": true
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_los",
+     "value": true
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "You are the pawn now. Walk out to where YOU can see the dummy, and watch the Arisen. Press End",
+   "wait": true
+  },
+  {
+   "text": "Watch the Arisen: does he hold fire and walk round the wall, then shoot once he can see it?",
+   "secs": 30,
+   "expect": [
+    {
+     "probe": "brain",
+     "op": "contains",
+     "value": "no line of sight",
+     "agg": "any",
+     "label": "brain noticed the blocked line"
+    },
+    {
+     "probe": "ehp",
+     "agg": "min",
+     "op": "<",
+     "value": 999,
+     "label": "he got a hit in after moving"
+    }
+   ]
+  },
+  {
+   "text": "Done - releasing, dummy removed",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_brain-los-2.json",
+  "probes": {
+   "los": "\nlocal function nearest()\n  local a = H.arisen(); if not a then return nil end\n  local ap = a:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - ap.x) ^ 2 + (p.z - ap.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\n\nlocal e = nearest(); if not e then return \"no enemy\" end\nlocal w = e:call(\"get_LockOnTarget\"):call(\"get_work\")\nlocal function b(n) local ok, v = pcall(w.get_field, w, n); return ok and tostring(v) or \"ERR\" end\nreturn \"wall=\" .. b(\"isWall\") .. \" pl=\" .. b(\"isWallPL\") .. \" cam=\" .. b(\"isWallCam\") .. \" casted=\" .. b(\"IsRayCasted\") .. \" valid=\" .. b(\"isValid\")",
+   "edist": "\nlocal function nearest()\n  local a = H.arisen(); if not a then return nil end\n  local ap = a:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - ap.x) ^ 2 + (p.z - ap.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal e, d = nearest(); return d and math.floor(d * 10) / 10",
+   "ehp": "\nlocal function nearest()\n  local a = H.arisen(); if not a then return nil end\n  local ap = a:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - ap.x) ^ 2 + (p.z - ap.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal e = nearest(); return e and e:call('get_Hp')",
+   "brain": "local d = H.dpc_brain(); return d and (tostring(d.mode) .. ' | blocked=' .. tostring(d.los_blocked) .. ' | presses=' .. tostring(d.presses)) or 'n/a'",
+   "anode": "return H.node(H.arisen())",
+   "apos": "local p = H.arisen():call('get_Transform'):call('get_Position'); return string.format('%.1f,%.1f,%.1f', p.x, p.y, p.z)"
+  },
+  "show": [
+   "los",
+   "brain"
+  ]
+ },
+ "requires": {
+  "DirectPawnControl": "0.9.7",
+  "TestGuide": "2.0"
+ }
+}

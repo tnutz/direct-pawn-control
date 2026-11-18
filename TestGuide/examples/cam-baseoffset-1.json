@@ -1,0 +1,43 @@
+{
+ "id": "cam-baseoffset-1",
+ "title": "Camera experiment: can the game itself shift the camera?",
+ "intro": "Reset Scripts first (TestGuide v1.4). Stand still; the camera will slide on its own for a few seconds. Note if nametags flicker during it.",
+ "steps": [
+  {
+   "text": "Hands off - co-op OFF. Don't touch mouse or keys.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "Watch the camera: target moved 3 m on X",
+   "secs": 4,
+   "each_frame": "local mc = sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController', 0); local v = mc:get_field('<BaseOffset>k__BackingField'); if not BO0 then BO0 = { v.x, v.y, v.z } end; v.x, v.y, v.z = BO0[1] + 3.0, BO0[2], BO0[3] + 0.0; mc:set_field('<BaseOffset>k__BackingField', v)"
+  },
+  {
+   "text": "Watch: target moved 3 m on Z",
+   "secs": 4,
+   "each_frame": "local mc = sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController', 0); local v = mc:get_field('<BaseOffset>k__BackingField'); if not BO0 then BO0 = { v.x, v.y, v.z } end; v.x, v.y, v.z = BO0[1] + 0.0, BO0[2], BO0[3] + 3.0; mc:set_field('<BaseOffset>k__BackingField', v)"
+  },
+  {
+   "text": "Back to normal",
+   "secs": 3,
+   "each_frame": "local mc = sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController', 0); local v = mc:get_field('<BaseOffset>k__BackingField'); if not BO0 then BO0 = { v.x, v.y, v.z } end; v.x, v.y, v.z = BO0[1] + 0.0, BO0[2], BO0[3] + 0.0; mc:set_field('<BaseOffset>k__BackingField', v)"
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "at": "frame",
+  "out": "test_guide/result_cam-baseoffset-1.json",
+  "probes": {
+   "rel": "local c=sdk.get_primary_camera():call('get_GameObject'):call('get_Transform'):call('get_Position'); local a=H.arisen():call('get_Transform'):call('get_Position'); return string.format('%.2f,%.2f,%.2f', c.x-a.x, c.y-a.y, c.z-a.z)",
+   "ascr": "local p=H.arisen():call('get_Transform'):call('get_Position'); local s=draw.world_to_screen(Vector3f.new(p.x,p.y+1.0,p.z)); return s and string.format('%.0f,%.0f',s.x,s.y) or 'off'",
+   "bo": "local v=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController', 0):get_field('<BaseOffset>k__BackingField'); return string.format('%.2f,%.2f,%.2f', v.x, v.y, v.z)",
+   "arq": "local q=H.arisen():call('get_Transform'):call('get_Rotation'); return string.format('%.2f,%.2f,%.2f,%.2f', q.x,q.y,q.z,q.w)"
+  }
+ }
+}

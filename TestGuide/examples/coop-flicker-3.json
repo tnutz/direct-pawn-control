@@ -1,0 +1,45 @@
+{
+ "id": "coop-flicker-3",
+ "title": "Nametag flicker: camera shift or pull-back?",
+ "intro": "Co-op starts by itself. Stand still near the pawns. You'll change two sliders under Camera Distance in the REFramework menu and tell me if the flicker stays.",
+ "steps": [
+  {
+   "text": "Hands off - starting co-op. Stand near the pawns.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Camera Distance menu: note 'Max shift (m)' and 'Max pull back (m)', then set Max shift to 0 (Ctrl+click the slider to type). Close the menu, press End",
+   "wait": true
+  },
+  {
+   "text": "A) Shift 0, pull-back normal - do the nametags flicker? Then press End",
+   "wait": true
+  },
+  {
+   "text": "Set Max shift back to what it was, set Max pull back to 0. Close the menu, press End",
+   "wait": true
+  },
+  {
+   "text": "B) Pull-back 0, shift normal - do they flicker? Then press End",
+   "wait": true
+  },
+  {
+   "text": "Put Max pull back back to what it was. Press End",
+   "wait": true
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_coop-flicker-3.json",
+  "at": "frame",
+  "probes": {
+   "doff": "local cm=sdk.get_managed_singleton('app.CameraManager'); return cm and cm:call('get_DistanceOffset')"
+  }
+ }
+}

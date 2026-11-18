@@ -1,0 +1,164 @@
+{
+ "id": "archer-aim-5",
+ "title": "Archer pawn on DPC 0.9.30: reticle position and where arrows go",
+ "requires": {
+  "DirectPawnControl": "0.9.31",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 90 s, three parts, each started with End. Arisen must be an Archer; an Archer pawn in the party; something to shoot at helps (a tree or rock is fine).",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Releasing possession",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_aim_point",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/3 BASELINE. As the ARISEN (Archer, bow out). Press End, then HOLD AIM for 7 s and sweep the camera left/right and up/down"
+  },
+  {
+   "secs": 7,
+   "text": "ARISEN: HOLD AIM, sweep the camera left/right and UP/DOWN...",
+   "expect": [
+    {
+     "probe": "flow",
+     "agg": "max",
+     "op": "==",
+     "value": 1,
+     "label": "Arisen: reticle active (baseline)"
+    },
+    {
+     "probe": "lat",
+     "agg": "avg",
+     "op": "<",
+     "value": 3.0,
+     "label": "(info) Arisen: aim target sits on the camera's centre line"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Release aim"
+  },
+  {
+   "wait": true,
+   "text": "2/3 PAWN, steering OFF (the default now). Possess the ARCHER (F6 / F7), face something to shoot. Press End, HOLD AIM 9 s, shoot several arrows. Reticle centred? Bow steady? Where do arrows go?"
+  },
+  {
+   "secs": 9,
+   "text": "PAWN (steering OFF): HOLD AIM and shoot. Reticle centred? Bow steady?",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "frac",
+     "min_frac": 0.6,
+     "label": "aim camera held for the pawn"
+    },
+    {
+     "probe": "flow",
+     "agg": "max",
+     "op": "==",
+     "value": 1,
+     "label": "reticle active for the pawn (drawn by the mod)"
+    },
+    {
+     "probe": "lat",
+     "agg": "avg",
+     "op": ">",
+     "value": -1,
+     "label": "(info) pawn without steering: distance of his aim target from the centre line"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Release aim. Next: steering ON (the version that made the bow circle)",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_aim_point",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "3/3 PAWN, steering ON. Press End, HOLD AIM 9 s. Does the bow circle again? (that tells us the cause)"
+  },
+  {
+   "secs": 9,
+   "text": "PAWN (steering ON): HOLD AIM. Bow circling?",
+   "expect": [
+    {
+     "probe": "lat",
+     "agg": "avg",
+     "op": "<",
+     "value": 3.0,
+     "label": "(info) pawn with steering: aim target on the camera's centre line"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Release aim. Steering back off",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_aim_point",
+     "value": false,
+     "save": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC script errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_archer-aim-5.json",
+  "probes": {
+   "ctl": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal c = mcc:get_field(\"_CurrentCameraController\"); return c and c:get_type_definition():get_name()",
+   "t_up": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nreturn H.node(mcc:call(\"get_TargetCharacter\"), 1)",
+   "along": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal ch = mcc:call(\"get_TargetCharacter\"); if not ch then return nil end\nlocal t = ch:call(\"get_AimTargetPosition\"); if not t then return nil end\nlocal tr = sdk.get_primary_camera():call(\"get_GameObject\"):call(\"get_Transform\")\nlocal p, z = tr:call(\"get_Position\"), tr:call(\"get_WorldMatrix\")[2]\nlocal dx, dy, dz = t.x - p.x, t.y - p.y, t.z - p.z\nlocal along = -(dx * z.x + dy * z.y + dz * z.z)\nlocal lx, ly, lz = dx + along * z.x, dy + along * z.y, dz + along * z.z\nreturn along",
+   "lat": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal ch = mcc:call(\"get_TargetCharacter\"); if not ch then return nil end\nlocal t = ch:call(\"get_AimTargetPosition\"); if not t then return nil end\nlocal tr = sdk.get_primary_camera():call(\"get_GameObject\"):call(\"get_Transform\")\nlocal p, z = tr:call(\"get_Position\"), tr:call(\"get_WorldMatrix\")[2]\nlocal dx, dy, dz = t.x - p.x, t.y - p.y, t.z - p.z\nlocal along = -(dx * z.x + dy * z.y + dz * z.z)\nlocal lx, ly, lz = dx + along * z.x, dy + along * z.y, dz + along * z.z\nreturn math.sqrt(lx * lx + ly * ly + lz * lz)",
+   "pitch": "local z = sdk.get_primary_camera():call(\"get_GameObject\"):call(\"get_Transform\"):call(\"get_WorldMatrix\")[2]; return math.deg(math.asin(math.max(-1, math.min(1, -z.y))))",
+   "flow": "local gm = sdk.get_managed_singleton(\"app.GuiManager\"); local ui = gm and gm:get_field(\"Aim\"); return ui and ui:get_field(\"FlowNow\")",
+   "drawpos": "local gm = sdk.get_managed_singleton(\"app.GuiManager\"); local ui = gm and gm:get_field(\"Aim\"); return ui and H.v3(ui:get_field(\"DrawPos\"))",
+   "disp": "local d = imgui.get_display_size(); return d.x .. \"x\" .. d.y",
+   "dpc_aim": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); if not (ok and d) then return nil end\nlocal a = d.aim; return a and string.format(\"hold=%s blocked=%s learned=%s seen=%s,%s n=%s pt=%s,%s fail=%s\", tostring(a.hold), tostring(a.blocked), tostring(a.learned), tostring(a.seen_x), tostring(a.seen_y), tostring(a.seen_n), tostring(a.pt_x), tostring(a.pt_y), tostring(a.ret_fail))",
+   "errs": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); if not (ok and d) then return nil end\nreturn d.errors"
+  },
+  "show": [
+   "ctl",
+   "dpc_aim",
+   "along",
+   "lat",
+   "pitch",
+   "drawpos"
+  ]
+ }
+}

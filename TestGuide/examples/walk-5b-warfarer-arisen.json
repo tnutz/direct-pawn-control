@@ -1,0 +1,166 @@
+{
+ "id": "walk-5b-warfarer-arisen",
+ "title": "Walk-through 5 of 5: WARFARER Arisen fights on his own (about 1.5 minutes, hands off)",
+ "requires": {
+  "DirectPawnControl": "0.9.140",
+  "CameraDistance": "2.9.8",
+  "TestGuide": "2.1"
+ },
+ "intro": "The ARISEN must be a Warfarer (never run at all; skip with Shift+End if it is not unlocked). Open ground, no enemies near, full party. Hands off after End; one question at the end.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Getting ready (hands off for 3 seconds)",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "HANDS OFF: taking control of your main pawn",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "poss",
+     "agg": "any",
+     "label": "possession started"
+    }
+   ]
+  },
+  {
+   "secs": 45,
+   "text": "HANDS OFF: three goblins. Watch the Arisen (Warfarer) fight on his own.",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 9.0,
+     "angle": 0,
+     "spread": 30,
+     "still": false,
+     "tough": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shots",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "the Warfarer Arisen attacks or uses a skill on his own"
+    },
+    {
+     "probe": "lock_ok",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.8,
+     "label": "lock-on stays with the played pawn"
+    },
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.95,
+     "label": "possession holds through the fight"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Cleaning up",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Did he fight sensibly (moved in, attacked, used skills, did not stand still or run off)? Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "secs": 3,
+   "text": "Final checks",
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "DirectPawnControl: no errors"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "CameraDistance: no errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_walk-5b-warfarer-arisen.json",
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "dpc": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.info",
+   "sel": "local D = _G.DPC_dbg; return D and D.R.sel_label",
+   "holds": "local D = _G.DPC_dbg; return D and (D.R.holds or 0) or 0",
+   "poss": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "lock_ok": "local D = _G.DPC_dbg; if not (D and D.state.active and D.state.arisen_lockon_ctrl and D.state.pawn_chara) then return nil end\nlocal c = D.state.arisen_lockon_ctrl:get_field('Chara'); return c ~= nil and c:get_address() == D.state.pawn_chara:get_address()",
+   "lockfix": "local D = _G.DPC_dbg; return D and (D.R.lock_fixes or 0) or 0",
+   "ring": "local gm = sdk.get_managed_singleton('app.GuiManager'); local u = gm and gm:get_field('MagicBowReticle'); if not u then return false end\nreturn u:call('get_GameObject'):call('get_DrawSelf') == true",
+   "shots": "local b = H.dpc_brain(); return b and ((b.presses or 0) + (b.skill_uses or 0)) or 0",
+   "skills": "local b = H.dpc_brain(); return b and b.skill_uses or 0",
+   "bmode": "local b = H.dpc_brain(); return b and b.mode",
+   "world": "local D = _G.DPC_dbg; return D and D.R.world",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "v0": "return H.speed(H.pawn(0), 'pawn0')",
+   "va": "return H.speed()",
+   "act0": "local a, b = H.node(H.pawn(0)), H.node(H.pawn(0), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "binds": "local D = _G.DPC_dbg; return D and D.R.bind and D.R.bind.sig",
+   "cam": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and tostring(d.info) or ''",
+   "aimsk": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.aim and d.aim.aim_skills or 0",
+   "anydead": "local pm = sdk.get_managed_singleton('app.PawnManager'); local l = pm and pm:call('get_PawnCharacterList'); if not l then return false end\nfor i = 0, l:call('get_Count') - 1 do local c = l:call('get_Item', i); if c and c:call('get_IsDead') == true then return true end end\nreturn false",
+   "who": "local D = _G.DPC_dbg; return D and D.state.active and tostring(D.state.pawn_name) or 'Arisen'",
+   "ajob": "local b = H.dpc_brain(); return b and b.job"
+  },
+  "show": [
+   "dpc",
+   "bmode",
+   "shots"
+  ]
+ }
+}

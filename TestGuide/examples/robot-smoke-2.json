@@ -1,0 +1,276 @@
+{
+ "id": "robot-smoke-2",
+ "title": "Robot smoke test: no hands needed",
+ "requires": {
+  "DirectPawnControl": "0.9.8",
+  "TestGuide": "2.0"
+ },
+ "intro": "Open ground, no enemies near, Arisen facing somewhere he can run 15 m. Press End, then HANDS OFF: the robot presses everything. You get PASS / FAIL at the end.",
+ "steps": [
+  {
+   "text": "HANDS OFF for the whole test (about 40 s). Getting ready.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "Robot: Arisen runs forward",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "robot can run the Arisen"
+    }
+   ]
+  },
+  {
+   "text": "Robot: Arisen light attack",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.5,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.5,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.5,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "a_act",
+     "agg": "any",
+     "label": "Arisen left locomotion (attacked)"
+    }
+   ]
+  },
+  {
+   "text": "Starting co-op on the main pawn",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "co-op started"
+    }
+   ]
+  },
+  {
+   "text": "Robot: player 2 pushes the left stick",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pv",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "player 2's stick moves the pawn"
+    },
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": "<",
+     "value": 1.0,
+     "label": "player 2's stick does not move the Arisen"
+    }
+   ]
+  },
+  {
+   "text": "Robot: player 2 taps R1 (light attack)",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "buttons": [
+      "RTrigTop"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "buttons": [
+      "RTrigTop"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "p_act",
+     "agg": "any",
+     "label": "pawn attacks on R1"
+    },
+    {
+     "probe": "a_act",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 1.0,
+     "label": "Arisen ignores player 2's R1"
+    }
+   ]
+  },
+  {
+   "text": "Robot: player 2 holds L2 (guard, Fighter pawn)",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "buttons": [
+      "LTrigBottom"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pnode",
+     "op": "contains",
+     "value": "Guard",
+     "agg": "any",
+     "label": "pawn guards on L2 (only a Fighter will pass)"
+    }
+   ]
+  },
+  {
+   "text": "Robot: player 2 holds L1 + Square (skill 1)",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 1.5,
+     "buttons": [
+      "LTrigTop"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "buttons": [
+      "LTrigTop",
+      "RLeft"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.5,
+     "buttons": [
+      "LTrigTop"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "p_act",
+     "agg": "any",
+     "label": "pawn uses skill 1"
+    }
+   ]
+  },
+  {
+   "text": "Co-op off. Done.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "co-op stopped"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_robot-smoke-2.json",
+  "probes": {
+   "v": "return H.speed()",
+   "pv": "return H.speed(H.pawn(0), 'pawn')",
+   "a_act": "local n = H.node(H.arisen()); return n ~= nil and not tostring(n):find('Locomotion', 1, true)",
+   "p_act": "local n = H.node(H.pawn(0)); return n ~= nil and not tostring(n):find('Locomotion', 1, true)",
+   "anode": "return H.node(H.arisen())",
+   "pnode": "return H.node(H.pawn(0))",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "dpc": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.info"
+  },
+  "show": [
+   "dpc"
+  ]
+ }
+}

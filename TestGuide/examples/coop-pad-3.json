@@ -1,0 +1,45 @@
+{
+ "id": "coop-pad-3",
+ "title": "Co-op v0.9.4: grab and sprint for the main pawn",
+ "intro": "Get the main pawn on screen first. Co-op starts by itself; controller only. Stand near an enemy or something grabbable.",
+ "steps": [
+  {
+   "text": "Hands off - starting co-op",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Square next to an enemy or object (grab)",
+   "secs": 7
+  },
+  {
+   "text": "Run with the stick, tap Triangle (sprint)",
+   "secs": 6
+  },
+  {
+   "text": "Run with the stick, click L3 (sprint)",
+   "secs": 6
+  },
+  {
+   "text": "Hold L1, tap Square (skill 1 - no grab)",
+   "secs": 7
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-pad-3.json",
+  "probes": {
+   "btn": "return string.format('0x%X', H.pad_buttons())",
+   "pacts": "\nif not ACTS then\n  ACTS = {}\n  local td = sdk.find_type_definition(\"app.CharacterInput.Action\")\n  local gm = sdk.find_type_definition(\"app.CharacterInput\"):get_method(\"getInputFlag\")\n  for _, f in ipairs(td:get_fields()) do\n    if f:is_static() and f:get_name() ~= \"value__\" then\n      local ok, id = pcall(f.get_data, f, nil)\n      if ok and type(id) == \"number\" and id >= 0 and id < 63 then\n        local flag = 1 << id\n        local ok2, fv = pcall(gm.call, gm, nil, id)\n        if ok2 and type(fv) == \"number\" and fv > 0 then flag = fv end\n        ACTS[#ACTS + 1] = { f:get_name(), flag }\n      end\n    end\n  end\nend\nlocal on = H.pawn(0):call(\"get_Input\"):get_field(\"ButtonOnFlags\") or 0\nlocal t = {}\nfor _, a in ipairs(ACTS) do if (on & a[2]) == a[2] and a[2] ~= 0 then t[#t + 1] = a[1] end end\nreturn table.concat(t, \"+\")\n",
+   "pnode": "return H.node(H.pawn(0))",
+   "anode": "return H.node(H.arisen())",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active",
+   "pv": "return H.speed(H.pawn(0), 'pawn')"
+  }
+ }
+}

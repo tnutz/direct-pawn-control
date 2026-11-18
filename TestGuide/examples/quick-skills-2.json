@@ -1,0 +1,106 @@
+{
+ "id": "quick-skills-2",
+ "title": "Numpad quick skills, warp (Numpad 7), heal / revive (Numpad .)",
+ "requires": {
+  "DirectPawnControl": "0.9.15",
+  "TestGuide": "2.0"
+ },
+ "intro": "Nobody possessed, no co-op. Main pawn selected in DPC (the one F6 would take). REFramework menu CLOSED during the steps. A dummy appears ahead.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Co-op and possession off.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Open ground, camera facing where the dummy should go. Press End"
+  },
+  {
+   "secs": 4,
+   "text": "Dummy appears 9 m ahead",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 9.0,
+     "angle": 0,
+     "still": true
+    }
+   ]
+  },
+  {
+   "secs": 24,
+   "text": "Keep the dummy in the middle of the screen. Press Numpad 1, 2, 3, 4, 5, 6 one at a time, about 3 s apart (wait for each skill).",
+   "expect": [
+    {
+     "probe": "num",
+     "agg": "any",
+     "label": "numpad keys seen"
+    },
+    {
+     "probe": "qn",
+     "agg": "max",
+     "op": ">=",
+     "value": 6,
+     "label": "six quick-skill orders sent"
+    },
+    {
+     "probe": "pskill",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn used a skill"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Did each numpad key make him use that slot's skill on the dummy? Note any that didn't. Press End"
+  },
+  {
+   "wait": true,
+   "text": "Walk 15 m away from your pawns, then press Numpad 7 (warp pawns to you). Did they appear next to you? Press End"
+  },
+  {
+   "wait": true,
+   "text": "If a pawn is hurt or down, press Numpad . (heal / revive all). Did it work? Press End"
+  },
+  {
+   "secs": 3,
+   "text": "Done, dummy removed",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_quick-skills-2.json",
+  "probes": {
+   "quick": "local ok, d = pcall(json.load_file, \"DPC_quick.json\"); return ok and d and (tostring(d.n) .. \" \" .. tostring(d.name) .. \" -> \" .. tostring(d.target) .. \" \" .. tostring(d.result))",
+   "qn": "local ok, d = pcall(json.load_file, \"DPC_quick.json\"); return ok and d and d.n",
+   "pskill": "local pw = H.pawn(0); local h = pw and pw:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "pnode": "return H.node(H.pawn(0))",
+   "num": "local s = \"\" for n = 1, 6 do if reframework:is_key_down(0x60 + n) then s = s .. n end end return s ~= \"\" and s or nil"
+  },
+  "show": [
+   "quick",
+   "pskill"
+  ]
+ }
+}

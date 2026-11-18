@@ -1,0 +1,76 @@
+{
+ "id": "coop-flicker-1",
+ "title": "Nametag flicker: which part causes it?",
+ "intro": "Co-op starts by itself. Don't move; just watch the pawn nametags in each step and remember the step number where the flicker stops.",
+ "steps": [
+  {
+   "text": "Hands off - starting co-op. Stand near the pawns.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "WATCH the nametags (normal co-op)",
+   "secs": 6
+  },
+  {
+   "text": "WATCH: DPC camera block switched OFF",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_block_p2_camera",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "WATCH: DPC controller zeroing also OFF",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_zero_pad_for_arisen",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "Both back ON. Open the REFramework menu > Camera Distance > untick 'Keep player 2's pawn on screen', close the menu",
+   "secs": 14,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_block_p2_camera",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_zero_pad_for_arisen",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "WATCH (camera co-op framing off)",
+   "secs": 6
+  },
+  {
+   "text": "Tick 'Keep player 2's pawn on screen' again",
+   "secs": 10
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_coop-flicker-1.json",
+  "at": "frame",
+  "probes": {
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active",
+   "ascr": "local p=H.arisen():call('get_Transform'):call('get_Position'); local s=draw.world_to_screen(Vector3f.new(p.x,p.y+1.0,p.z)); return s and string.format('%.0f,%.0f',s.x,s.y) or 'off'"
+  }
+ }
+}

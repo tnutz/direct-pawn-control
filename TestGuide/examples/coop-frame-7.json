@@ -1,0 +1,61 @@
+{
+ "id": "coop-frame-7",
+ "title": "CameraDistance 2.5: slide + pull back",
+ "intro": "Reset Scripts first (CameraDistance 2.5.0). The main pawn next to the Arisen; co-op starts by itself. Hands off mouse and keyboard until the last step. Watch the nametags too.",
+ "steps": [
+  {
+   "text": "Hands off - starting co-op",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Controller: run the main pawn RIGHT across the screen to ~15 m. Press End",
+   "wait": true
+  },
+  {
+   "text": "Run him LEFT, past the Arisen, to ~15 m on the other side. Press End",
+   "wait": true
+  },
+  {
+   "text": "Run him far AHEAD, away from the camera, to ~25 m. Press End",
+   "wait": true
+  },
+  {
+   "text": "Run him back and BEHIND the camera, ~15 m. Press End",
+   "wait": true
+  },
+  {
+   "text": "Circle the Arisen at ~15 m",
+   "secs": 12
+  },
+  {
+   "text": "Now turn the camera with the MOUSE while the main pawn runs around. Press End when you've seen enough",
+   "wait": true
+  },
+  {
+   "text": "Bring him back next to the Arisen. Press End",
+   "wait": true
+  }
+ ],
+ "record": {
+  "hz": 8,
+  "at": "frame",
+  "out": "test_guide/result_coop-frame-7.json",
+  "probes": {
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active",
+   "doff": "local cm=sdk.get_managed_singleton('app.CameraManager'); return cm and cm:call('get_DistanceOffset')",
+   "camd": "local c=sdk.get_primary_camera():call('get_GameObject'):call('get_Transform'):call('get_Position'); local a=H.arisen():call('get_Transform'):call('get_Position'); local dx,dy,dz=c.x-a.x,c.y-a.y,c.z-a.z; return math.floor(math.sqrt(dx*dx+dy*dy+dz*dz)*10+0.5)/10",
+   "pscr": "local p=H.pawn(0):call('get_Transform'):call('get_Position'); local s=draw.world_to_screen(Vector3f.new(p.x,p.y+1.0,p.z)); return s and string.format('%.0f,%.0f',s.x,s.y) or 'off'",
+   "ascr": "local p=H.arisen():call('get_Transform'):call('get_Position'); local s=draw.world_to_screen(Vector3f.new(p.x,p.y+1.0,p.z)); return s and string.format('%.0f,%.0f',s.x,s.y) or 'off'",
+   "apart_m": "local a=H.arisen():call('get_Transform'):call('get_Position'); local p=H.pawn(0):call('get_Transform'):call('get_Position'); local dx,dz=a.x-p.x,a.z-p.z; return math.floor(math.sqrt(dx*dx+dz*dz)*10+0.5)/10"
+  },
+  "show": [
+   "apart_m"
+  ]
+ }
+}

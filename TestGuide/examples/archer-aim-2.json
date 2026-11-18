@@ -1,0 +1,133 @@
+{
+ "id": "archer-aim-2",
+ "title": "Archer pawn: hold the aim camera, turn with it, aim at screen centre",
+ "requires": {
+  "DirectPawnControl": "0.9.28",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 1 minute, two parts, each started with End. Arisen must be an Archer; an Archer pawn in the party. Part 2 is an experiment on the camera (save first if you like).",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Releasing possession; installing hooks",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "each_frame": "\nif not _G.AIMY then\n  local A = { log = {}, blocked = 0, req = 0 }\n  _G.AIMY = A\n  local function note(s) A.last = s; if #A.log < 120 then A.log[#A.log + 1] = string.format(\"%.2f %s\", os.clock(), s) end end\n  local function obj(a) local ok, o = pcall(sdk.to_managed_object, a); if ok and o then pcall(o.add_ref, o); return o end return nil end\n  local td = sdk.find_type_definition(\"app.MainCameraController\"); local m = td and td:get_method(\"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam, app.PostEffectSetting, app.CameraDefine.ToPlayerCameraOption)\")\n  if m then\n    sdk.hook(m, function(args)\n      local ok, r = pcall(function()\n        local ct = sdk.to_int64(args[3]) & 0xFFFFFFFF\n        if A.mine then note(\"ours: type \" .. ct); return nil end\n        if ct ~= 7 and A.hold and os.clock() < (A.hold_until or 0) then\n          A.blocked = A.blocked + 1\n          if A.blocked <= 3 then note(\"BLOCKED the game's switch to type \" .. ct) end\n          return sdk.PreHookResult.SKIP_ORIGINAL\n        end\n        local e = { ct = ct, opt = sdk.to_int64(args[6]) & 0xFFFFFFFF, interp = obj(args[4]), pfx = obj(args[5]) }\n        note(string.format(\"game: type %d opt %d interp %s\", ct, e.opt, tostring(e.interp ~= nil)))\n        if ct == 7 then A.enter = e; A.want_exit = true elseif A.want_exit then A.exit = e; A.want_exit = false end\n        return nil\n      end)\n      if ok and r then return r end\n    end, function(r) return r end)\n    note(\"hook installed\")\n  else note(\"NO METHOD\") end\nelse\n  local A = _G.AIMY\n  A.hold, A.hold_until, A.p_t0, A.p_res, A.t_err, A.S0, A.S1, A.diff_n, A.s_done, A.b_t0, A.phase, A.aim_t, A.req_t = nil\n  A.blocked, A.req = 0, 0\nend\n_G.AIMY.snap = function()\n  local S = {}\n  local function add(o, name, depth)\n    if not o then return end\n    local t, d = o:get_type_definition(), 0\n    while t and d < 4 do\n      for _, f in ipairs(t:get_fields()) do\n        local oks, st = pcall(f.is_static, f)\n        if not (oks and st) then\n          local fn = f:get_name()\n          local ok, v = pcall(o.get_field, o, fn)\n          if ok then\n            local tv = type(v)\n            if tv == \"number\" or tv == \"boolean\" or tv == \"string\" then S[name .. \".\" .. fn] = tostring(v)\n            elseif tv == \"userdata\" then\n              local okn, tn = pcall(function() return v:get_type_definition():get_full_name() end)\n              S[name .. \".\" .. fn] = okn and (\"<\" .. tostring(tn) .. \">\") or \"<value>\"\n              if depth > 0 and okn and (tostring(tn):find(\"InputProcessor\") or tostring(tn):find(\"HoldDownChecker\")) then add(v, name .. \".\" .. fn, depth - 1) end\n            else S[name .. \".\" .. fn] = \"nil\" end\n          end\n        end\n      end\n      t = t:get_parent_type(); d = d + 1\n    end\n  end\n  pcall(function()\n    local gm = sdk.get_managed_singleton(\"app.GuiManager\")\n    local aim = gm:get_field(\"Aim\")\n    add(aim, \"ui.Aim\", 0)\n    if aim then\n      local go = aim:call(\"get_GameObject\")\n      S[\"ui.Aim.go.DrawSelf\"] = tostring(go:call(\"get_DrawSelf\")); S[\"ui.Aim.go.UpdateSelf\"] = tostring(go:call(\"get_UpdateSelf\"))\n    end\n    local a = H.arisen()\n    add(a:get_GameObject():call(\"getComponent(System.Type)\", sdk.typeof(\"app.Player\")), \"Player\", 1)\n    add(a:call(\"get_Human\"), \"Human\", 0)\n  end)\n  return S\nend\n"
+  },
+  {
+   "wait": true,
+   "text": "1/2 BASELINE. As the ARISEN (Archer, bow out). Press End, do NOT aim for 2 s, then hold aim when told"
+  },
+  {
+   "secs": 2,
+   "text": "Do NOT aim yet...",
+   "each_frame": "\nlocal A = _G.AIMY; if not A then return end\nA.b_t0 = A.b_t0 or os.clock()\nif not A.S0 and os.clock() - A.b_t0 > 1.0 then A.S0 = A.snap() end\n"
+  },
+  {
+   "secs": 5,
+   "text": "ARISEN: HOLD AIM now... keep holding",
+   "each_frame": "\nlocal A = _G.AIMY; if not A then return end\nA.b1_t0 = A.b1_t0 or os.clock()\nif not A.S1 and os.clock() - A.b1_t0 > 3.0 and A.S0 then\n  A.S1 = A.snap()\n  local diff, ui0, ui1, n = {}, {}, {}, 0\n  for k, v in pairs(A.S1) do\n    if A.S0[k] ~= v then diff[k] = tostring(A.S0[k]) .. \" -> \" .. v; n = n + 1 end\n    if k:sub(1, 6) == \"ui.Aim\" then ui1[k] = v; ui0[k] = A.S0[k] end\n  end\n  A.diff_n = n\n  pcall(json.dump_file, \"DPC_probe_aim_diff.json\", { changed = diff, ui_idle = ui0, ui_aiming = ui1 })\nend\n",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "any",
+     "label": "Arisen: aim camera (baseline)"
+    },
+    {
+     "probe": "diff_n",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "Arisen: reticle / player state difference captured"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Release aim",
+   "each_frame": "\nlocal A = _G.AIMY; if not A then return end\nA.r_t0 = A.r_t0 or os.clock()\nif not A.s_done and os.clock() - A.r_t0 > 2.0 then\n  A.s_done = true\n  A.enter0 = A.enter or (_G.AIMX and _G.AIMX.enter0)\n  A.exit0 = A.exit or (_G.AIMX and _G.AIMX.exit0)\nend\n"
+  },
+  {
+   "wait": true,
+   "text": "2/2 EXPERIMENT. Possess the ARCHER pawn (F6 / F7). Press End, then HOLD AIM for 15 s, turn the camera and shoot. Three 5 s phases shown on screen: 1 camera only, 2 + body follows camera, 3 + arrows to screen centre. Note what works in each"
+  },
+  {
+   "secs": 15,
+   "text": "PAWN: HOLD AIM, turn the camera, shoot. Watch the 'phase' line",
+   "each_frame": "\nlocal A = _G.AIMY; if not A then return end\nA.p_t0 = A.p_t0 or os.clock()\nlocal now = os.clock(); local dt = now - A.p_t0\nA.phase = dt < 5 and \"1: camera only\" or (dt < 10 and \"2: + body follows camera\" or \"3: + arrows to screen centre\")\nlocal cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return end\nlocal ch = mcc:call(\"get_TargetCharacter\"); if not ch then return end\nlocal up = tostring(H.node(ch, 1) or \"\")\nif up:find(\"Job02\", 1, true) then A.aim_t = now end\nlocal aiming = A.aim_t ~= nil and (now - A.aim_t) < 0.4\nlocal cur = mcc:get_field(\"_CurrentCameraController\")\nlocal on_aim = cur ~= nil and cur:get_type_definition():get_name():find(\"Aim\", 1, true) ~= nil\nlocal e, x = A.enter0, A.exit0\nif aiming then\n  A.hold = true; A.hold_until = now + 0.5\n  if not e then A.p_res = \"no captured aim switch to replay\"\n  elseif not on_aim and now >= (A.req_t or 0) then\n    A.req_t = now + 0.5; A.req = A.req + 1\n    A.mine = true\n    local ok, err = pcall(mcc.call, mcc, \"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam, app.PostEffectSetting, app.CameraDefine.ToPlayerCameraOption)\", 7, e.interp, e.pfx, e.opt)\n    A.mine = false\n    A.p_res = \"aim camera requested ok=\" .. tostring(ok) .. (ok and \"\" or (\" \" .. tostring(err)))\n  end\n  if dt >= 5 then\n    pcall(function()\n      local m = sdk.find_type_definition(\"app.PlayerInputProcessorDetail\"):get_method(\"getCameraAngleRad\")\n      ch:call(\"set_TargetFrontAngleDeg(System.Single)\", math.deg(m:call(nil)) + 0.0)\n    end)\n  end\n  if dt >= 10 then\n    local ok, err = pcall(function()\n      local tr = sdk.get_primary_camera():call(\"get_GameObject\"):call(\"get_Transform\")\n      local p, z = tr:call(\"get_Position\"), tr:call(\"get_WorldMatrix\")[2]\n      ch:call(\"set_AimTargetPosition\", Vector3f.new(p.x - z.x * 60.0, p.y - z.y * 60.0, p.z - z.z * 60.0))\n    end)\n    if not ok and not A.t_err then A.t_err = tostring(err) end\n  end\nelseif A.hold then\n  A.hold = false\n  if on_aim then\n    local s = x or e\n    A.mine = true\n    pcall(mcc.call, mcc, \"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam, app.PostEffectSetting, app.CameraDefine.ToPlayerCameraOption)\", x and x.ct or 0, s and s.interp, s and s.pfx, x and x.opt or 0)\n    A.mine = false\n  end\nend\n",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Aim",
+     "agg": "frac",
+     "min_frac": 0.5,
+     "label": "aim camera held for the pawn"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC script errors"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Release aim. Camera back to normal",
+   "each_frame": "\nlocal A = _G.AIMY; if not A then return end\nif not A.x_done or A.hold then\n  A.x_done = true; A.hold = false; A.hold_until = 0\n  local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return end\n  local cur = mcc:get_field(\"_CurrentCameraController\")\n  if cur and cur:get_type_definition():get_name():find(\"Aim\", 1, true) then\n    local x, e = A.exit0, A.enter0; local s = x or e\n    A.mine = true\n    pcall(mcc.call, mcc, \"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam, app.PostEffectSetting, app.CameraDefine.ToPlayerCameraOption)\", x and x.ct or 0, s and s.interp, s and s.pfx, x and x.opt or 0)\n    A.mine = false\n  end\nend\n",
+   "expect": [
+    {
+     "probe": "ctl",
+     "op": "contains",
+     "value": "Usually",
+     "agg": "any",
+     "label": "camera returned to normal"
+    }
+   ]
+  },
+  {
+   "secs": 2,
+   "text": "Done. If the camera is stuck zoomed: F6 to release, then aim once as the Arisen",
+   "each_frame": "\nlocal A = _G.AIMY; if not A then return end\nif not A.x_done or A.hold then\n  A.x_done = true; A.hold = false; A.hold_until = 0\n  local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return end\n  local cur = mcc:get_field(\"_CurrentCameraController\")\n  if cur and cur:get_type_definition():get_name():find(\"Aim\", 1, true) then\n    local x, e = A.exit0, A.enter0; local s = x or e\n    A.mine = true\n    pcall(mcc.call, mcc, \"switchCamera(app.CameraDefine.ControlType, app.CameraSwitchInterpParam, app.PostEffectSetting, app.CameraDefine.ToPlayerCameraOption)\", x and x.ct or 0, s and s.interp, s and s.pfx, x and x.opt or 0)\n    A.mine = false\n  end\nend\n"
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_archer-aim-2.json",
+  "probes": {
+   "ctl": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal c = mcc:get_field(\"_CurrentCameraController\"); return c and c:get_type_definition():get_name()",
+   "tgt": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal t = mcc:call(\"get_TargetObject\"); return t and tostring(t:call(\"get_Name\"))",
+   "t_node": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nreturn H.node(mcc:call(\"get_TargetCharacter\"))",
+   "t_up": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nreturn H.node(mcc:call(\"get_TargetCharacter\"), 1)",
+   "yawd": "local cm = sdk.get_managed_singleton(\"app.CameraManager\"); local mcc = cm and cm:call(\"getMainCameraController\", 0); if not mcc then return nil end\nlocal ch = mcc:call(\"get_TargetCharacter\"); if not ch then return nil end\nlocal z = ch:call(\"get_Transform\"):call(\"get_AxisZ\")\nlocal m = sdk.find_type_definition(\"app.PlayerInputProcessorDetail\"):get_method(\"getCameraAngleRad\")\nlocal d = math.deg(math.atan(z.x, z.z)) - math.deg(m:call(nil))\nd = (d + 180) % 360 - 180; return math.abs(d)",
+   "phase": "return _G.AIMY and _G.AIMY.phase",
+   "hold": "return _G.AIMY and _G.AIMY.hold == true",
+   "blocked": "return _G.AIMY and _G.AIMY.blocked",
+   "req": "return _G.AIMY and _G.AIMY.req",
+   "p_res": "return _G.AIMY and _G.AIMY.p_res",
+   "t_err": "return _G.AIMY and _G.AIMY.t_err",
+   "diff_n": "return _G.AIMY and _G.AIMY.diff_n",
+   "log": "local A = _G.AIMY; if not A then return nil end; local n = #A.log; return table.concat(A.log, \" | \", math.max(1, n - 5), n)",
+   "errs": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); return ok and d and d.errors"
+  },
+  "show": [
+   "phase",
+   "ctl",
+   "blocked",
+   "req",
+   "yawd",
+   "p_res"
+  ]
+ }
+}

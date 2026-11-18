@@ -1,0 +1,168 @@
+{
+ "id": "coop-target-1",
+ "title": "Pawn skill targeting: possession vs co-op",
+ "requires": {
+  "DirectPawnControl": "0.9.12",
+  "TestGuide": "2.0"
+ },
+ "intro": "The main pawn (Fighter) as main pawn, with Burst Strike or another lunging skill in slot 1. Open ground, no wild enemies near. Player 2's controller connected. A dummy appears ahead and to the right; you use a skill WITHOUT turning toward it, to see whether the skill finds it on its own.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Co-op and possession off.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Stand on open ground, camera looking straight ahead. Press End"
+  },
+  {
+   "secs": 4,
+   "text": "Dummy appears 7 m ahead, 35 deg to the right. Possessing the main pawn (normal).",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 7.0,
+     "angle": 35,
+     "still": true
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "NORMAL POSSESSION (keyboard/mouse). Walk the main pawn so the dummy is about 5-8 m away and off to his RIGHT side, camera looking past it. Don't lock on. Press End"
+  },
+  {
+   "secs": 8,
+   "text": "Now use skill 1 once, without turning toward the dummy. Then hold still.",
+   "expect": [
+    {
+     "probe": "arlock",
+     "op": "~=",
+     "value": "none",
+     "agg": "any",
+     "label": "possession: the lock-on had a target"
+    },
+    {
+     "probe": "poff",
+     "agg": "min",
+     "op": "<",
+     "value": 20,
+     "label": "possession: he turned to face the dummy"
+    },
+    {
+     "probe": "ehp",
+     "agg": "min",
+     "op": "<",
+     "value": 999,
+     "label": "possession: the dummy took a hit"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Release. Starting co-op on the main pawn.",
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "CO-OP (player 2's controller). Walk the main pawn so the dummy is 5-8 m away and off to his RIGHT side. Watch p2tgt on the overlay. Press End"
+  },
+  {
+   "secs": 8,
+   "text": "Player 2: L1 + Square (skill 1) once, without steering toward the dummy. Then hold still.",
+   "expect": [
+    {
+     "probe": "p2tgt",
+     "op": "contains",
+     "value": "ch",
+     "agg": "any",
+     "label": "co-op: player 2's pawn had a target"
+    },
+    {
+     "probe": "paim",
+     "op": "~=",
+     "value": "none",
+     "agg": "any",
+     "label": "co-op: the pawn's aim was set"
+    },
+    {
+     "probe": "poff",
+     "agg": "min",
+     "op": "<",
+     "value": 20,
+     "label": "co-op: he turned to face the dummy"
+    },
+    {
+     "probe": "ehp",
+     "agg": "min",
+     "op": "<",
+     "value": 999,
+     "label": "co-op: the dummy took a hit"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Done: co-op off, dummy removed",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-target-1.json",
+  "probes": {
+   "pnode": "return H.node(H.pawn(0))",
+   "ehp": "\nlocal function near(ch)\n  if not ch then return nil end\n  local p0 = ch:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - p0.x) ^ 2 + (p.z - p0.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal e = near(H.pawn(0)); return e and e:call('get_Hp')",
+   "edist": "\nlocal function near(ch)\n  if not ch then return nil end\n  local p0 = ch:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - p0.x) ^ 2 + (p.z - p0.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal e, d = near(H.pawn(0)); return d",
+   "poff": "\nlocal function near(ch)\n  if not ch then return nil end\n  local p0 = ch:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - p0.x) ^ 2 + (p.z - p0.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal pw = H.pawn(0); local e = near(pw); if not (pw and e) then return nil end\nlocal a = pw:call(\"get_Transform\"); local p = a:call(\"get_Position\"); local f = a:call(\"get_Rotation\") * Vector3f.new(0, 0, 1)\nlocal q = e:call(\"get_Transform\"):call(\"get_Position\")\nlocal d = math.deg(math.atan(q.x - p.x, q.z - p.z) - math.atan(f.x, f.z)); d = (d + 180) % 360 - 180\nreturn math.abs(d)",
+   "paim": "local pw = H.pawn(0); if not pw then return nil end\nlocal ok, c = pcall(pw.get_field, pw, \"AimCharacter\"); if not ok or not c then ok, c = pcall(pw.get_field, pw, \"<AimCharacter>k__BackingField\") end\nreturn ok and c and c:call(\"get_CharaIDString\") or \"none\"",
+   "arlock": "local a = H.arisen(); if not a then return nil end\nlocal pl = a:get_GameObject():call(\"getComponent(System.Type)\", sdk.typeof(\"app.Player\"))\nlocal lk = pl and pl:call(\"get_LockOnCtrl\"); local t = lk and lk:call(\"get_Target\")\nlocal c = t and t:call(\"get_Character\"); return c and c:call(\"get_CharaIDString\") or \"none\"",
+   "p2tgt": "local ok, d = pcall(json.load_file, \"DPC_coop.json\"); if not (ok and d) then return nil end\nreturn d.active and tostring(d.target or \"none\") or \"co-op off\""
+  },
+  "show": [
+   "p2tgt",
+   "arlock",
+   "paim",
+   "poff",
+   "edist"
+  ]
+ }
+}

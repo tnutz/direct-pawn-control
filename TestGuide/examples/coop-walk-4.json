@@ -1,0 +1,58 @@
+{
+  "id": "coop-walk-4",
+  "title": "Co-op v0.9.2: who moves what (co-op starts itself)",
+  "intro": "TestGuide starts co-op for you in step 1 - no Ctrl+F6 needed. Arisen in open ground.",
+  "steps": [
+    {
+      "text": "Hands off - starting co-op",
+      "secs": 3,
+      "cmds": [
+        {
+          "cmd": "coop",
+          "idx": 0
+        }
+      ]
+    },
+    {
+      "text": "Hold W (Arisen runs)",
+      "secs": 4
+    },
+    {
+      "text": "Let go of W - push the controller's LEFT stick",
+      "secs": 4
+    },
+    {
+      "text": "Hold W AND push the controller's left stick",
+      "secs": 4
+    },
+    {
+      "text": "Move the MOUSE left-right",
+      "secs": 4
+    },
+    {
+      "text": "Mouse still - push the controller's RIGHT stick",
+      "secs": 4
+    },
+    {
+      "text": "Controller: press Square, Triangle, Cross",
+      "secs": 4
+    }
+  ],
+  "record": {
+    "hz": 10,
+    "out": "test_guide/result_coop-walk-4.json",
+    "probes": {
+      "v": "return H.speed()",
+      "pv": "return H.speed(H.pawn(0), 'pawn')",
+      "W": "return H.key(0x57)",
+      "pad": "return H.v2(H.pad():call('get_AxisL'))",
+      "padR": "return H.v2(H.pad():call('get_AxisR'))",
+      "btn": "return H.pad_buttons()",
+      "mag": "return H.ar_input():call('get_AxisMagnitudeL')",
+      "cam": "return H.v3(sdk.get_primary_camera():call('get_GameObject'):call('get_Transform'):call('get_EulerAngle'))",
+      "node": "return H.node(H.arisen())",
+      "pnode": "return H.node(H.pawn(0))",
+      "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active"
+    }
+  }
+}

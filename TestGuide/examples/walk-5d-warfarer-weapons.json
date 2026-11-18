@@ -1,0 +1,386 @@
+{
+ "id": "walk-5d-warfarer-weapons",
+ "title": "Walk-through 5 of 5: WARFARER Arisen fights with each of his weapons (about 2.5 minutes, hands off)",
+ "requires": {
+  "DirectPawnControl": "0.9.146",
+  "CameraDistance": "2.9.8",
+  "TestGuide": "2.1"
+ },
+ "intro": "The ARISEN must be a Warfarer with Rearmament in one skill slot and several weapons set. Start as the Arisen (not playing a pawn), open ground, no enemies near, full party. Hands off after End; one question at the end.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Getting ready (hands off for 3 seconds)",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_rearm",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "HANDS OFF: taking control of your main pawn",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "poss",
+     "agg": "any",
+     "label": "possession started"
+    }
+   ]
+  },
+  {
+   "secs": 22,
+   "text": "HANDS OFF: three goblins that cannot die. Weapon 1 of 4: watch the Arisen fight.",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 9.0,
+     "angle": 0,
+     "spread": 30,
+     "still": false,
+     "tough": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "wshots",
+     "agg": "last",
+     "op": ">",
+     "value": 0,
+     "label": "he attacks with weapon 1"
+    },
+    {
+     "probe": "lock_ok",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.8,
+     "label": "lock-on stays with the played pawn (weapon 1)"
+    },
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.95,
+     "label": "possession holds (weapon 1)"
+    }
+   ]
+  },
+  {
+   "secs": 22,
+   "text": "HANDS OFF: the Arisen is told to swap (Rearmament). Weapon 2 of 4.",
+   "cmds": [
+    {
+     "cmd": "rearm"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "wshots",
+     "agg": "last",
+     "op": ">",
+     "value": 0,
+     "label": "he attacks with weapon 2"
+    },
+    {
+     "probe": "lock_ok",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.8,
+     "label": "lock-on stays with the played pawn (weapon 2)"
+    },
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.95,
+     "label": "possession holds (weapon 2)"
+    },
+    {
+     "probe": "rearm_ok",
+     "agg": "max",
+     "op": ">=",
+     "value": 1,
+     "label": "the swap went through (swap 1)"
+    },
+    {
+     "probe": "weapons",
+     "agg": "max",
+     "op": ">=",
+     "value": 2,
+     "label": "he now holds a different weapon (2 seen)"
+    }
+   ]
+  },
+  {
+   "secs": 22,
+   "text": "HANDS OFF: the Arisen is told to swap (Rearmament). Weapon 3 of 4.",
+   "cmds": [
+    {
+     "cmd": "rearm"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "wshots",
+     "agg": "last",
+     "op": ">",
+     "value": 0,
+     "label": "he attacks with weapon 3"
+    },
+    {
+     "probe": "lock_ok",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.8,
+     "label": "lock-on stays with the played pawn (weapon 3)"
+    },
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.95,
+     "label": "possession holds (weapon 3)"
+    },
+    {
+     "probe": "rearm_ok",
+     "agg": "max",
+     "op": ">=",
+     "value": 2,
+     "label": "the swap went through (swap 2)"
+    },
+    {
+     "probe": "weapons",
+     "agg": "max",
+     "op": ">=",
+     "value": 3,
+     "label": "he now holds a different weapon (3 seen)"
+    }
+   ]
+  },
+  {
+   "secs": 22,
+   "text": "HANDS OFF: the Arisen is told to swap (Rearmament). Weapon 4 of 4.",
+   "cmds": [
+    {
+     "cmd": "rearm"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "wshots",
+     "agg": "last",
+     "op": ">",
+     "value": 0,
+     "label": "he attacks with weapon 4"
+    },
+    {
+     "probe": "lock_ok",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.8,
+     "label": "lock-on stays with the played pawn (weapon 4)"
+    },
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.95,
+     "label": "possession holds (weapon 4)"
+    },
+    {
+     "probe": "rearm_ok",
+     "agg": "max",
+     "op": ">=",
+     "value": 3,
+     "label": "the swap went through (swap 3)"
+    },
+    {
+     "probe": "weapons",
+     "agg": "max",
+     "op": ">=",
+     "value": 4,
+     "label": "he now holds a different weapon (4 seen)"
+    }
+   ]
+  },
+  {
+   "secs": 45,
+   "text": "HANDS OFF: now he swaps on his own (every 12 seconds). Watch him change weapons.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_brain_rearm",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_rearm_every",
+     "value": 12,
+     "save": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "rearm_ok",
+     "agg": "max",
+     "op": ">=",
+     "value": 5,
+     "label": "he swaps weapons on his own (at least twice in 45 s)"
+    },
+    {
+     "probe": "wshots",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "he keeps attacking between swaps"
+    },
+    {
+     "probe": "anydead",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 1.0,
+     "label": "nobody in the party died"
+    },
+    {
+     "probe": "rearm_fail",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no swap failed in the whole run"
+    }
+   ]
+  },
+  {
+   "secs": 4,
+   "text": "Cleaning up",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "heal"
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_rearm_every",
+     "value": 20,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_rearm",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Did he fight sensibly with every weapon and did the swaps look right (no standing still, no stuck pose)? Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "secs": 3,
+   "text": "Final checks",
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "DirectPawnControl: no errors"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "CameraDistance: no errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_walk-5d-warfarer-weapons.json",
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "dpc": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.info",
+   "sel": "local D = _G.DPC_dbg; return D and D.R.sel_label",
+   "holds": "local D = _G.DPC_dbg; return D and (D.R.holds or 0) or 0",
+   "poss": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "lock_ok": "local D = _G.DPC_dbg; if not (D and D.state.active and D.state.arisen_lockon_ctrl and D.state.pawn_chara) then return nil end\nlocal c = D.state.arisen_lockon_ctrl:get_field('Chara'); return c ~= nil and c:get_address() == D.state.pawn_chara:get_address()",
+   "lockfix": "local D = _G.DPC_dbg; return D and (D.R.lock_fixes or 0) or 0",
+   "ring": "local gm = sdk.get_managed_singleton('app.GuiManager'); local u = gm and gm:get_field('MagicBowReticle'); if not u then return false end\nreturn u:call('get_GameObject'):call('get_DrawSelf') == true",
+   "shots": "local b = H.dpc_brain(); return b and ((b.presses or 0) + (b.skill_uses or 0)) or 0",
+   "skills": "local b = H.dpc_brain(); return b and b.skill_uses or 0",
+   "bmode": "local b = H.dpc_brain(); return b and b.mode",
+   "world": "local D = _G.DPC_dbg; return D and D.R.world",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "v0": "return H.speed(H.pawn(0), 'pawn0')",
+   "va": "return H.speed()",
+   "act0": "local a, b = H.node(H.pawn(0)), H.node(H.pawn(0), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "binds": "local D = _G.DPC_dbg; return D and D.R.bind and D.R.bind.sig",
+   "cam": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and tostring(d.info) or ''",
+   "aimsk": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.aim and d.aim.aim_skills or 0",
+   "anydead": "local pm = sdk.get_managed_singleton('app.PawnManager'); local l = pm and pm:call('get_PawnCharacterList'); if not l then return false end\nfor i = 0, l:call('get_Count') - 1 do local c = l:call('get_Item', i); if c and c:call('get_IsDead') == true then return true end end\nreturn false",
+   "who": "local D = _G.DPC_dbg; return D and D.state.active and tostring(D.state.pawn_name) or 'Arisen'",
+   "ajob": "local b = H.dpc_brain(); return b and b.job",
+   "fjob": "local b = H.dpc_brain(); return b and b.fjob",
+   "rearms": "local b = H.dpc_brain(); return b and b.rearms or 0",
+   "bskills": "local b = H.dpc_brain(); return b and b.skills and table.concat(b.skills, ',')",
+   "wshots": "local b = H.dpc_brain(); if not b then return nil end\n_G.TG_wf2 = _G.TG_wf2 or { seen = {}, n = 0 }; local t = _G.TG_wf2\nlocal s = (b.presses or 0) + (b.skill_uses or 0)\nif t.fj ~= b.fjob then t.fj = b.fjob; t.base = s; if b.fjob and b.fjob > 0 and not t.seen[b.fjob] then t.seen[b.fjob] = true; t.n = t.n + 1 end end\nreturn s - (t.base or s)",
+   "weapons": "return _G.TG_wf2 and _G.TG_wf2.n or 0",
+   "rearm_ok": "local b = H.dpc_brain(); return b and b.rearm_ok or 0",
+   "rearm_fail": "local b = H.dpc_brain(); return b and b.rearm_fail or 0"
+  },
+  "show": [
+   "dpc",
+   "fjob",
+   "wshots",
+   "weapons",
+   "bmode"
+  ]
+ }
+}

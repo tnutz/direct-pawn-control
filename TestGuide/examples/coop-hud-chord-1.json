@@ -1,0 +1,136 @@
+{
+ "id": "coop-hud-chord-1",
+ "title": "Co-op: keyboard prompts on the HUD, chord skills for player 2",
+ "requires": {
+  "DirectPawnControl": "0.9.13",
+  "CameraDistance": "2.9.0",
+  "TestGuide": "2.0"
+ },
+ "intro": "Main pawn with skills equipped in slots 5 and 6 if he has them. Player 2's controller connected. Open ground.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Co-op and possession off.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Press End to start co-op on the main pawn"
+  },
+  {
+   "secs": 4,
+   "text": "Co-op on",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Player 2: press a few buttons and move the stick. Check the button prompts on screen: they should stay KEYBOARD/MOUSE. Press End",
+   "expect": [
+    {
+     "probe": "hid",
+     "agg": "frac",
+     "op": "==",
+     "value": 1,
+     "min_frac": 0.95,
+     "label": "HUD stayed on keyboard/mouse"
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Player 2: hold L1 and press SQUARE + CROSS together (skill 5). Let go.",
+   "expect": [
+    {
+     "probe": "chords",
+     "agg": "max",
+     "op": ">=",
+     "value": 1,
+     "label": "chord Square+Cross registered"
+    },
+    {
+     "probe": "pskill",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "pawn used a skill"
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Player 2: hold L1 and press CROSS + CIRCLE together (skill 6). Let go.",
+   "expect": [
+    {
+     "probe": "chords",
+     "agg": "max",
+     "op": ">=",
+     "value": 2,
+     "label": "chord Cross+Circle registered"
+    },
+    {
+     "probe": "pskill",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "pawn used a skill"
+    }
+   ]
+  },
+  {
+   "secs": 7,
+   "text": "Player 2: L1 + Square alone, then L1 + Cross alone (skills 1 and 4 still work)",
+   "expect": [
+    {
+     "probe": "pskill",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "single skills still fire"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Co-op off",
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_coop-hud-chord-1.json",
+  "probes": {
+   "hid": "local m = sdk.get_managed_singleton(\"app.UserInputManager\"); return m and m:call(\"get_HIDInputMode\")",
+   "pad": "return H.pad_buttons and H.pad_buttons() or nil",
+   "chords": "local ok, d = pcall(json.load_file, \"DPC_coop.json\"); return ok and d and d.chords",
+   "skips": "local ok, d = pcall(json.load_file, \"DPC_coop.json\"); return ok and d and d.glyph_skips",
+   "pskill": "local pw = H.pawn(0); local h = pw and pw:call(\"get_Human\"); return h and h:call(\"get_CustomSkillState\")",
+   "pnode": "return H.node(H.pawn(0))"
+  },
+  "show": [
+   "hid",
+   "chords",
+   "pskill"
+  ]
+ }
+}

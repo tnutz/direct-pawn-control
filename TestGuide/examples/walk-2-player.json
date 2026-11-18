@@ -1,0 +1,59 @@
+{
+ "id": "walk-2-player",
+ "title": "Walk-through 2 of 5: the mod as a player gets it (developer mode off, any Arisen vocation, about 8 minutes)",
+ "intro": "BEFORE YOU PRESS END: open the REFramework menu and press Reset Scripts (the last test switched developer mode off; this loads it that way). The Dev HUD line for DirectPawnControl goes grey: that is right. Then step through with End. There are no automatic PASS / FAIL checks in this one: it is your eyes. Press Home when something looks wrong, then carry on.",
+ "steps": [
+  {
+   "wait": true,
+   "text": "SETTINGS WINDOW. Open the REFramework menu and the Direct Pawn Control window. It should be short and tidy: no 'Test bench', no developer lines, no old skill panel on the game screen. Close the REFramework menu: the mod's window must vanish with it. Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "SELECT AND TAKE CONTROL. F7: an arrow over a pawn and 'Selected: <name>' left of the health bar. F6: a short line 'Playing as <name>'. Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "PLAY THE PAWN for a minute: move, sprint, jump, attack, one or two skills (L1 + button). A real fight if one is near. The Arisen should follow and fight on his own. Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "INTERACT as the pawn: pick a plant, loot a corpse or open a chest. Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "BACK: F6. A short line 'Back to the Arisen'. Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "CONTROLLER: hold D-pad right (next pawn is selected), L1 + left stick click (take control), hold D-pad down (back to the Arisen). A short D-pad tap should still give the game's own pawn order. Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "KEYS THAT MUST DO NOTHING for a player: Numpad . (heal cheat, off by default), F9, F10, F11 (test tools). Press each once: nothing should happen. Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "QUICK SKILL: with a pawn selected (not played) press Numpad 1, an enemy near if you can. The pawn uses skill 1 (or a short 'no enemy' line). Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "CO-OP: Ctrl+F6. Controller moves and fights with the pawn, keyboard and mouse the Arisen, both at once. About a minute. Ctrl+F6 to stop. Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "wait": true,
+   "text": "QUIT WHILE PLAYING A PAWN: F6 to take control of a pawn, then pause menu -> quit to the title screen -> load your save again. It must not crash and you must come back as the Arisen. This test keeps waiting meanwhile. When you are back in the world: Then press End. (If it looked wrong: press Home first, then End.)"
+  },
+  {
+   "secs": 3,
+   "text": "Last step: developer mode is being switched back ON. Do Reset Scripts after this.",
+   "each_frame": "if not TG_dev_on then TG_dev_on = true; json.dump_file('DPC_dev.json', { dev = true, note = 'switched by a TestGuide walk-through plan' }) end"
+  }
+ ],
+ "record": {
+  "hz": 1,
+  "out": "test_guide/result_walk-2-player.json",
+  "probes": {
+   "clock": "return os.clock()"
+  }
+ }
+}

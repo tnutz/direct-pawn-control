@@ -1,0 +1,180 @@
+{
+ "id": "melee-brain-1",
+ "title": "Arisen melee brain: approach, attack chains, skills, wait",
+ "requires": {
+  "DirectPawnControl": "0.9.51",
+  "TestGuide": "2.1"
+ },
+ "intro": "About 1 minute. Change the Arisen to Fighter, Thief, Warrior or Mystic Spearhand first. Open flat ground, no enemies. The dummy is a goblin that cannot die and stands still.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Co-op and possession off",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/2 MELEE BRAIN. Arisen must be a FIGHTER, THIEF, WARRIOR or MYSTIC SPEARHAND. Open flat ground, face clear space, no enemies. Press End (a dummy appears 10 m ahead and you become the main pawn)"
+  },
+  {
+   "secs": 2,
+   "text": "Dummy ahead...",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_brain_battle_only",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 10.0,
+     "angle": 0,
+     "still": true
+    }
+   ]
+  },
+  {
+   "secs": 25,
+   "text": "You are the pawn: step aside and WATCH THE ARISEN. Does he run in, face the dummy, chain attacks, use skills?",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "on",
+     "agg": "any",
+     "op": "==",
+     "value": true,
+     "label": "brain switched on for this vocation"
+    },
+    {
+     "probe": "mode",
+     "op": "contains",
+     "value": "engage",
+     "agg": "frac",
+     "min_frac": 0.25,
+     "label": "he spent time attacking (engage)"
+    },
+    {
+     "probe": "thp",
+     "agg": "min",
+     "op": "<",
+     "value": 900.0,
+     "label": "the dummy took damage"
+    },
+    {
+     "probe": "skills",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "he used a skill"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "2/2 WAIT. Press WAIT (pawn order) so the Arisen stays, then walk your pawn 15 m away. Press End: a new dummy appears 10 m from the Arisen; he should NOT chase it"
+  },
+  {
+   "secs": 12,
+   "text": "Arisen waiting: he should stay put (dummy 10 m from him)",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 10.0,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mode",
+     "op": "contains",
+     "value": "approach",
+     "agg": "frac",
+     "min_frac": 0.0,
+     "label": "(info) share of time approaching while told to wait (should be 0)"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Done: dummy removed, releasing. Press FOLLOW afterwards",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_battle_only",
+     "value": true,
+     "save": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no script errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_melee-brain-1.json",
+  "probes": {
+   "mode": "local d = H.dpc_brain(); if not d then return nil end\nreturn tostring(d.mode)",
+   "job": "local d = H.dpc_brain(); if not d then return nil end\nreturn d.job",
+   "on": "local d = H.dpc_brain(); if not d then return nil end\nreturn d.on == true",
+   "dist": "local d = H.dpc_brain(); if not d then return nil end\nreturn d.dist",
+   "thp": "local d = H.dpc_brain(); if not d then return nil end\nreturn d.target_hp",
+   "off": "local d = H.dpc_brain(); if not d then return nil end\nreturn d.off_deg",
+   "want": "local d = H.dpc_brain(); if not d then return nil end\nreturn d.want",
+   "skills": "local d = H.dpc_brain(); if not d then return nil end\nreturn d.skill_uses",
+   "a_node": "return H.node(H.arisen())",
+   "a_up": "return H.node(H.arisen(), 1)",
+   "ev": "local d = H.dpc_brain(); if not d then return nil end\nlocal e = d.events; if type(e) ~= \"table\" then return nil end; return tostring(e[#e])",
+   "errs": "local ok, d = pcall(json.load_file, \"dev_status/DirectPawnControl.json\"); return ok and d and d.errors"
+  },
+  "show": [
+   "mode",
+   "job",
+   "dist",
+   "thp",
+   "want",
+   "ev"
+  ]
+ }
+}

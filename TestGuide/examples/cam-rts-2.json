@@ -1,0 +1,33 @@
+{
+ "id": "cam-rts-2",
+ "title": "RTS camera: nametag flicker",
+ "requires": {
+  "CameraDistance": "2.9.2",
+  "TestGuide": "2.0"
+ },
+ "intro": "Near your pawns so their nametags show.",
+ "steps": [
+  {
+   "wait": true,
+   "text": "Open the menu (Insert), pick the RTS preset, close the menu. The Dev HUD's CameraDistance line should say 'pitch 32 native'. Press End"
+  },
+  {
+   "wait": true,
+   "text": "Walk around, turn the camera, zoom. Nametags steady? Does the tilt look like before (not spinning, not drifting down)? Press End"
+  },
+  {
+   "wait": true,
+   "text": "Pick your usual preset again. Press End"
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_cam-rts-2.json",
+  "probes": {
+   "cd": "local ok, d = pcall(json.load_file, \"dev_status/CameraDistance.json\"); return ok and d and d.info"
+  },
+  "show": [
+   "cd"
+  ]
+ }
+}

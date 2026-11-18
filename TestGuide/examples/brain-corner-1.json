@@ -1,0 +1,112 @@
+{
+ "id": "brain-corner-1",
+ "title": "Arisen brain: backing off into a wall",
+ "requires": {
+  "DirectPawnControl": "0.9.11",
+  "TestGuide": "2.0"
+ },
+ "intro": "ARCHER Arisen, not possessing, no wild enemies near. You will stand him with his BACK to a wall. A dummy appears close in front, so he tries to back off into the wall.",
+ "steps": [
+  {
+   "secs": 3,
+   "text": "Co-op and possession off.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Stand the Arisen with his BACK about 2-3 m from a wall or cliff face, FACING open ground. Press End"
+  },
+  {
+   "secs": 3,
+   "text": "Dummy appears 4 m in front of him",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 4.0,
+     "angle": 0,
+     "still": true
+    }
+   ]
+  },
+  {
+   "secs": 25,
+   "text": "Hands off - watch: he backs into the wall. Does he steer along it, or stand and fight, instead of running at it?",
+   "cmds": [
+    {
+     "cmd": "solo",
+     "on": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "brain",
+     "op": "contains",
+     "value": "backoff",
+     "agg": "any",
+     "label": "he tried to back off"
+    },
+    {
+     "probe": "brain",
+     "op": "contains",
+     "value": "unstick",
+     "agg": "any",
+     "label": "he noticed he was stuck and steered"
+    },
+    {
+     "probe": "presses",
+     "agg": "max",
+     "op": ">",
+     "value": 2,
+     "label": "he still got shots off"
+    }
+   ]
+  },
+  {
+   "secs": 3,
+   "text": "Done - brain off, dummy removed",
+   "cmds": [
+    {
+     "cmd": "solo",
+     "on": false
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_brain-corner-1.json",
+  "probes": {
+   "brain": "local d = H.dpc_brain(); return d and (tostring(d.mode) .. ' | blocked=' .. tostring(d.los_blocked) .. ' | presses=' .. tostring(d.presses)) or 'n/a'",
+   "ehp": "\nlocal function nearest()\n  local a = H.arisen(); if not a then return nil end\n  local ap = a:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - ap.x) ^ 2 + (p.z - ap.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal e = nearest(); return e and e:call('get_Hp')",
+   "edist": "\nlocal function nearest()\n  local a = H.arisen(); if not a then return nil end\n  local ap = a:call(\"get_Transform\"):call(\"get_Position\")\n  local em = sdk.get_managed_singleton(\"app.EnemyManager\")\n  local arr = em and em:call(\"getAllEnemies\"); if not arr then return nil end\n  local best, bd\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local ok, e = pcall(function() return arr[i]:get_field(\"_Chara\") end)\n    if ok and e and (e:call(\"get_Hp\") or 0) > 0 then\n      local p = e:call(\"get_Transform\"):call(\"get_Position\")\n      local d = math.sqrt((p.x - ap.x) ^ 2 + (p.z - ap.z) ^ 2)\n      if not bd or d < bd then best, bd = e, d end\n    end\n  end\n  return best, bd\nend\nlocal e, d = nearest(); return d and math.floor(d * 10) / 10",
+   "off": "local d = H.dpc_brain(); return d and d.off_deg",
+   "presses": "local d = H.dpc_brain(); return d and d.presses",
+   "apos": "local p = H.arisen():call('get_Transform'):call('get_Position'); return string.format('%.1f,%.1f,%.1f', p.x, p.y, p.z)",
+   "anode": "return H.node(H.arisen())"
+  },
+  "show": [
+   "brain",
+   "edist"
+  ]
+ }
+}
