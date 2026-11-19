@@ -58,6 +58,24 @@ you like; nothing in it deletes or rewrites a recording.
 7. **Another video** is another shot list: the menu at the top of the desk starts a new one and opens the others.
    The list you leave is kept in `lists\` with its edit. The recordings and the take log are shared by all lists.
 
+## Events: what happened in each take (CaptureGuide 1.2)
+While a take runs, the guide notes what happens and when: kills, big hits on enemies, party members hit hard, someone
+going down or getting back up, climbing a monster, every skill used (by whom, with the game's own skill name), who you
+are playing, co-op starting and stopping, the shot's timed actions ("cues"), and **Delete** pressed to mark a moment by
+hand. They go into the take in `log.json` and reach the desk with "Get new footage".
+
+- **Timeline:** coloured ticks under the take's scrub bar; hover for what it was, click to jump just before it. The
+  chips below switch each kind on and off (remembered by the browser) and count them for the take on screen.
+- **Search:** the box at the top searches every take, kept or not ("launchboard", "kill ogre", "player 2"). Click a
+  result to look at that take at that moment; "Use this take for the shot" puts it in the cut, "Back" returns to the
+  chosen take.
+- **Must show:** under a shot's details, list what the shot needs (a kind, plus optional who / what and a count). The
+  guide's card lists them before you shoot and ticks them off on the keep / retake screen after the take; the desk
+  shows the same checklist, "has 2 of 3" next to each take, and "missing" on a shot whose take in the cut lacks one.
+- Big hit = an enemy losing 6 % of its health at once, hit hard = a party member losing 25 %; a shot list can set
+  `"events": {"big_hit_pct": 4, "hurt_pct": 20}`. Enemies spawned to "not die" never give a kill.
+- Nothing is shown on screen during a take (it would be in the recording); the checklist appears after it.
+
 Good to know:
 - One take log serves every shot list. Changing the list, or replacing it with a new one, never starts the log
   over; takes of shots that are no longer on the list stay in the log and the recordings.

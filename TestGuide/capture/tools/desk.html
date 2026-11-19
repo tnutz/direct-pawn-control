@@ -47,6 +47,23 @@ video { max-width: 100%; max-height: 100%; } video[hidden] { display: none; }
 .bar .sp { flex: 1; } .info { color: var(--dim); font-variant-numeric: tabular-nums; }
 #scrub { width: 100%; padding: 0; margin: 0; height: 20px; accent-color: var(--go); border: 0; background: none; }
 #trimbar { height: 6px; border-radius: 3px; margin: -4px 8px 2px; background: #2a3340; }
+#evbar { position: relative; height: 16px; margin: 0 8px; }
+#evbar b { position: absolute; top: 1px; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px; cursor: pointer; }
+#evbar b:hover { width: 6px; margin-left: -3px; outline: 1px solid #fff; }
+.kinds { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.kinds label { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: var(--dim); border: 1px solid var(--line); border-radius: 9px; padding: 0 7px 0 4px; cursor: pointer; }
+.kinds label i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.kinds label.off { opacity: .45; }
+.kinds input { margin: 0; }
+.search { margin-bottom: 10px; } .search input { width: 100%; }
+.results { max-height: 260px; overflow-y: auto; margin-top: 5px; }
+.results button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; padding: 4px 2px; font-size: 12.5px; }
+.results button:hover { background: var(--panel); }
+.results .when { color: var(--dim); font-variant-numeric: tabular-nums; }
+.results i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 5px; }
+.wants { margin-top: 7px; font-size: 12.5px; } .wants .ok { color: var(--keep); } .wants .no { color: var(--bad); }
+.preview { background: #2a2410; border: 1px solid var(--go); border-radius: 6px; padding: 5px 9px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.preview[hidden] { display: none; }
 .tl { display: flex; height: 30px; gap: 2px; }
 .tl div { background: #2a3340; border-radius: 3px; min-width: 6px; position: relative; cursor: pointer; overflow: hidden; font-size: 11px; padding: 2px 4px; color: var(--dim); white-space: nowrap; }
 .tl div.on { background: #4a5a30; color: var(--text); } .tl div i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,208,48,.35); width: 0; }
@@ -65,6 +82,8 @@ kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font: 1
     <a id="final" href="/media/final.mp4" target="_blank" rel="noopener" hidden><button type="button">Open final.mp4</button></a>
   </div>
   <p class="hint" id="hint"></p>
+  <div class="search"><input type="search" id="q" placeholder="Search every take: kill ogre, launchboard, player 2, marked..." aria-label="Search the events in every take">
+    <div class="results" id="results"></div></div>
   <details class="ai" id="aibox"><summary>Describe a shot and have Claude draft it</summary>
     <textarea class="prose" id="aitext" rows="3" placeholder="e.g. Player 2 is the archer pawn and keeps shooting a griffin that cannot die while I climb it as the Arisen. About 20 seconds."></textarea>
     <div class="tools" style="margin:0"><button id="ainew" type="button">Draft a new shot</button><button id="airev" type="button">Change the selected shot</button></div>
@@ -78,6 +97,9 @@ kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font: 1
   <div class="stage"><video id="v" playsinline preload="auto"></video><video id="v2" playsinline preload="auto" hidden></video><div class="cap" id="cap"></div></div>
   <input type="range" id="scrub" min="0" max="1" step="0.001" value="0" aria-label="Position in the take">
   <div id="trimbar" title="Bright: the part of the take that is in the cut"></div>
+  <div id="evbar" aria-label="Events in this take"></div>
+  <div class="preview" id="preview" hidden><span id="prevtext"></span><button id="prevuse" type="button">Use this take for the shot</button><button id="prevback" type="button">Back to the chosen take</button></div>
+  <div class="kinds" id="kinds"></div>
   <div class="bar">
     <button id="b10" type="button" title="Back 10 frames (Shift+Left)">&laquo; 10</button>
     <button id="b1" type="button" title="Back 1 frame (Left)">&lsaquo; 1</button>
@@ -104,7 +126,7 @@ const $ = id => document.getElementById(id);
 let v = $("v"), w = $("v2"); // w waits, loaded, at the start of the next file when a take runs over two recordings
 let S = null, L = null, C = null;   // server state, shot list, edit choices
 let cur = null, open = false;       // selected shot id, its details open
-const P = { id: null, parts: null, pos: 0, k: -1, mode: null }; // player; mode: null | "free" | "one" | "all"
+const P = { id: null, parts: null, pos: 0, k: -1, mode: null, preview: null }; // player; mode: null | "free" | "one" | "all"
 let busy = false, saveT = {}, pending = 0;
 
 const api = async (path, body) => {
@@ -131,9 +153,12 @@ function autoTake(id) { // the newest kept take that is in the recordings, else 
   const t = kept.length ? kept[kept.length - 1] : ts[ts.length - 1];
   return t ? t.index : null;
 }
-function takeIdx(id) { const c = ch(id); return c.auto !== false || c.take_index === null ? autoTake(id) : c.take_index; }
+function chosenIdx(id) { const c = ch(id); return c.auto !== false || c.take_index === null ? autoTake(id) : c.take_index; }
+// a take opened from the search is shown in place of the chosen one until "Use" or "Back"
+function takeIdx(id) { if (P.preview !== null && P.preview !== undefined && S.takes[P.preview] && S.takes[P.preview].shot === id) return P.preview; return chosenIdx(id); }
 function take(id) { const i = takeIdx(id); const t = i === null ? null : S.takes[i]; return t && t.parts ? t : null; }
-function trim(id) { const c = ch(id), i = takeIdx(id); if (i === null) return { in: 0, out: 0 }; if (!c.trims[i]) c.trims[i] = { in: 0, out: 0 }; return c.trims[i]; }
+function trimOf(id, i) { const c = ch(id); if (i === null) return { in: 0, out: 0 }; if (!c.trims[i]) c.trims[i] = { in: 0, out: 0 }; return c.trims[i]; }
+function trim(id) { return trimOf(id, takeIdx(id)); }
 const total = id => { const t = take(id); return t ? t.parts.reduce((a, x) => a + x.t1 - x.t0, 0) : 0; };
 const dur = id => { const tr = trim(id); return Math.max(0, total(id) - tr.in - tr.out); };
 const usable = id => !!take(id) && dur(id) > 0.05;
@@ -160,12 +185,114 @@ function adopt(state) {
   if (!cur || !C.shots[cur]) cur = live()[0] || C.order[0] || null;
 }
 
+// ---- events noted by the guide during each take -----------------------------------------------------------------------
+const KINDS_EV = { kill: ["Kills", "#e0736b"], hit: ["Big hits", "#ffa040"], hurt: ["Party hit hard", "#c084fc"], down: ["Down", "#ff5c8a"],
+  revive: ["Revives", "#6fc48a"], climb: ["Climbs", "#a3e635"], skill: ["Skills", "#6fb0e0"], switch: ["Switches", "#ffd030"],
+  coop: ["Co-op", "#2dd4bf"], cue: ["Cues", "#98a2ae"], mark: ["Marked", "#ffffff"] };
+let shown = {}; try { shown = JSON.parse(localStorage.getItem("desk.kinds") || "{}") || {}; } catch (e) { shown = {}; }
+const kindOn = k => shown[k] !== false;
+const lc = x => String(x || "").toLowerCase();
+function evLabel(e) {
+  switch (e.k) {
+    case "kill": return "Killed " + (e.what || "an enemy");
+    case "hit": return `Big hit on ${e.what || "an enemy"}` + (e.n ? ` (${e.n}%)` : "");
+    case "hurt": return `${e.who || "?"} hit hard` + (e.n ? ` (${e.n}%)` : "");
+    case "down": return `${e.who || "?"} is down`;
+    case "revive": return `${e.who || "?"} is back up`;
+    case "climb": return `${e.who || "?"} climbs a monster`;
+    case "skill": return `${e.who || "?"}: ${e.what || "skill"}`;
+    case "switch": return e.who === "player 2" ? `Player 2 plays ${e.what}` : (e.what === "Arisen" ? "Back to the Arisen" : `You play ${e.what}`);
+    case "coop": return "Co-op " + (e.what || "");
+    case "cue": return "Cue: " + (e.what || "");
+    case "mark": return "Marked moment";
+  }
+  return [e.k, e.who, e.what].filter(Boolean).join(" ");
+}
+// a take's position 0 is just after its start mark: event times count from the first frame of the mark
+const evPos = (t, e) => e.t - (t.mark_t == null ? 7 / 60 : t.mark_t) - 0.05;
+function wantCheck(sh, t) {
+  return (Array.isArray(sh.want) ? sh.want : []).filter(w => w && w.k).map(w => {
+    const got = (t && t.events || []).filter(e => e.k === w.k && (!w.who || lc(e.who).includes(lc(w.who))) && (!w.what || lc(e.what).includes(lc(w.what)))).length;
+    return { w, got, need: Math.max(1, +w.n || 1) };
+  });
+}
+const WANT_WORD = { kill: "kill", hit: "big hit", hurt: "party member hit hard", down: "someone down", revive: "revive", climb: "climb",
+  skill: "skill", switch: "switch", coop: "co-op", cue: "cue", mark: "marked moment" };
+function wantText(w) { return (WANT_WORD[w.k] || w.k) + (w.what ? ": " + w.what : "") + (w.who ? " by " + w.who : "") + ((+w.n || 1) > 1 ? " x" + w.n : ""); }
+const missing = (sh, t) => wantCheck(sh, t).filter(c => c.got < c.need).length;
+
+function renderKinds() {
+  const box = $("kinds"); box.textContent = "";
+  const t = P.id && take(P.id), counts = {};
+  for (const e of (t && t.events) || []) counts[e.k] = (counts[e.k] || 0) + 1;
+  for (const k of Object.keys(KINDS_EV)) {
+    const l = document.createElement("label"); l.className = kindOn(k) ? "" : "off";
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = kindOn(k);
+    cb.onchange = () => { shown[k] = cb.checked; try { localStorage.setItem("desk.kinds", JSON.stringify(shown)); } catch (e) {} renderKinds(); renderEvbar(); runSearch(); };
+    const sw = document.createElement("i"); sw.style.background = KINDS_EV[k][1];
+    l.append(cb, sw, KINDS_EV[k][0] + (counts[k] ? ` ${counts[k]}` : ""));
+    box.appendChild(l);
+  }
+}
+function renderEvbar() {
+  const bar = $("evbar"); bar.textContent = "";
+  const t = P.id && take(P.id); if (!t) return;
+  const tot = total(P.id); if (!tot) return;
+  for (const e of t.events || []) {
+    if (!kindOn(e.k)) continue;
+    const pos = evPos(t, e); if (pos < 0 || pos > tot) continue;
+    const b = document.createElement("b"); b.style.left = (pos / tot * 100) + "%"; b.style.background = (KINDS_EV[e.k] || ["", "#888"])[1];
+    b.title = `${fmt(pos)}  ${evLabel(e)}`;
+    b.onclick = () => show(P.id, Math.max(0, pos - 0.5));
+    bar.appendChild(b);
+  }
+}
+function runSearch() {
+  const q = lc($("q").value).trim(), box = $("results"); box.textContent = "";
+  if (!q) return;
+  const words = q.split(/\s+/);
+  const hits = [];
+  for (const t of S.takes) {
+    if (!t.parts) continue;
+    const sh = shotDef(t.shot);
+    for (const e of t.events || []) {
+      const hay = lc([e.k, KINDS_EV[e.k] && KINDS_EV[e.k][0], evLabel(e), e.who, e.what, sh && sh.title].join(" "));
+      if (words.every(w => hay.includes(w))) hits.push({ t, e, sh });
+    }
+  }
+  if (!hits.length) { box.textContent = "Nothing found in the takes that are in the recordings."; return; }
+  for (const h of hits.slice(0, 150)) {
+    const b = document.createElement("button"); b.type = "button";
+    const sw = document.createElement("i"); sw.style.background = (KINDS_EV[h.e.k] || ["", "#888"])[1];
+    const when = document.createElement("span"); when.className = "when";
+    when.textContent = ` ${(h.sh && h.sh.title) || h.t.shot} · take ${h.t.take}${h.t.verdict === "keep" ? " (kept)" : ""} · ${fmt(evPos(h.t, h.e))}`;
+    b.append(sw, evLabel(h.e), when);
+    b.onclick = () => openTake(h.t.index, Math.max(0, evPos(h.t, h.e) - 1.0));
+    box.appendChild(b);
+  }
+  if (hits.length > 150) box.append(`${hits.length - 150} more; add a word to narrow it down.`);
+}
+function openTake(i, pos) {
+  const t = S.takes[i]; if (!t || !shotDef(t.shot)) { note("That take belongs to a shot that is not on this list.", "bad"); return; }
+  stopPlay();
+  P.preview = i === chosenIdx(t.shot) ? null : i;
+  cur = t.shot; render(); show(t.shot, pos);
+}
+function renderPreview() {
+  const on = P.preview !== null && P.preview !== undefined && S.takes[P.preview];
+  $("preview").hidden = !on;
+  if (on) { const t = S.takes[P.preview]; $("prevtext").textContent = `Looking at take ${t.take} of "${(shotDef(t.shot) || {}).title || t.shot}" (${t.verdict}); the cut still uses the chosen take.`; }
+}
+$("q").oninput = () => runSearch();
+$("prevuse").onclick = () => { const i = P.preview; if (i === null || i === undefined) return; const t = S.takes[i]; const c = ch(t.shot); c.auto = false; c.take_index = i; P.preview = null; saveChoices(); render(); show(t.shot, trim(t.shot).in); note(`Take ${t.take} is now the one in the cut.`, "ok"); };
+$("prevback").onclick = () => { const id = P.id; P.preview = null; render(); show(id, trim(id).in); };
+
 // ---- saving ---------------------------------------------------------------------------------------------------
 function later(key, fn, ms) { clearTimeout(saveT[key]); pending++; saveT[key] = setTimeout(async () => { try { await fn(); note("Saved", "ok", true); } catch (e) { note("Not saved: " + e.message, "bad"); } pending--; }, ms); }
 function saveChoices() {
   later("c", () => {
     const out = { list: L.id, order: C.order, shots: {} };
-    for (const id of C.order) { const c = ch(id), tr = trim(id); out.shots[id] = { auto: c.auto !== false, take_index: takeIdx(id), trim_in: tr.in, trim_out: tr.out, skip: !!c.skip, trims: c.trims }; }
+    for (const id of C.order) { const c = ch(id), tr = trim(id); out.shots[id] = { auto: c.auto !== false, take_index: chosenIdx(id), trim_in: trimOf(id, chosenIdx(id)).in, trim_out: trimOf(id, chosenIdx(id)).out, skip: !!c.skip, trims: c.trims }; }
     return api("/api/choices", out);
   }, 400);
 }
@@ -183,6 +310,7 @@ function render() {
     el.className = "shot" + (cur === id ? " on" : "") + (c.skip ? " skip" : "");
     const top = document.createElement("div"); top.className = "top";
     top.innerHTML = `<span class="n">${n + 1}</span><span class="ttl"></span>` + (need ? `<span class="chip todo">to shoot</span>` : "") +
+      (ok && missing(sh, take(id)) ? `<span class="chip none" title="The take in the cut is missing something this shot must show">missing ${missing(sh, take(id))}</span>` : "") +
       `<span class="chip ${ok ? "" : "none"}">${ok ? fmt(dur(id)) : "no take"}</span>`;
     top.querySelector(".ttl").textContent = sh.title || id;
     top.onclick = () => select(id);
@@ -230,10 +358,12 @@ function editor(id, n) {
   for (const t of ts) {
     const o = document.createElement("option"); o.value = t.index; o.disabled = !t.parts;
     const len = t.parts ? t.parts.reduce((a, x) => a + x.t1 - x.t0, 0) : t.len || 0;
-    o.textContent = `take ${t.take}: ${t.verdict}, ${len.toFixed(1)} s` + (t.parts ? (t.parts.length > 1 ? ", runs over two recording files" : "") : ", not in the recordings");
+    const wc = wantCheck(sh, t), got = wc.filter(c => c.got >= c.need).length;
+    o.textContent = `take ${t.take}: ${t.verdict}, ${len.toFixed(1)} s` + (wc.length ? `, has ${got} of ${wc.length}` : "") + (t.parts ? (t.parts.length > 1 ? ", runs over two recording files" : "") : ", not in the recordings");
     sel.appendChild(o);
   }
   sel.value = c.auto !== false || c.take_index === null ? "auto" : String(c.take_index);
+  if (P.preview !== null && P.preview !== undefined && S.takes[P.preview] && S.takes[P.preview].shot === id) sel.disabled = true;
   sel.onchange = () => { if (sel.value === "auto") { c.auto = true; c.take_index = null; } else { c.auto = false; c.take_index = +sel.value; } saveChoices(); render(); show(id, trim(id).in); };
   const lab = document.createElement("label"); lab.append("Take ", sel); r1.appendChild(lab);
   const num = (text, key) => { const l = document.createElement("label"); const i = document.createElement("input"); i.type = "number"; i.step = "0.1"; i.min = "0"; i.value = +tr[key].toFixed(3);
@@ -269,8 +399,45 @@ function editor(id, n) {
                mk("Send the clean-up", "Sends the clean-up steps to the running game", () => sendCmds(sh.cleanup || RESET, "Clean-up sent to the game")));
   det.appendChild(stage);
   const idl = document.createElement("p"); idl.className = "sub"; idl.style.margin = "7px 0 0"; idl.textContent = "id: " + id; det.appendChild(idl);
-  box.append(r1, r2, r3, det); return box;
+  const wc = wantCheck(sh, take(id));
+  if (wc.length) {
+    const wl = document.createElement("div"); wl.className = "wants";
+    wl.append(take(id) ? "This take: " : "Must show: ");
+    wc.forEach((c, j) => { const sp = document.createElement("span"); sp.className = take(id) ? (c.got >= c.need ? "ok" : "no") : "";
+      sp.textContent = (take(id) ? (c.got >= c.need ? "\u2713 " : "\u2717 ") : "") + wantText(c.w) + (take(id) ? ` (${c.got})` : ""); wl.append(j ? " \u00b7 " : "", sp); });
+    box.append(r1, wl, r2, r3, det);
+  } else box.append(r1, r2, r3, det);
+  det.insertBefore(wantList(sh), stage);
+  return box;
 }
+// ---- what a shot must show: checked against each take's events ------------------------------------------------------------
+function wantList(sh) {
+  const box = document.createElement("div"); box.className = "steps";
+  const h = document.createElement("h3"); h.textContent = "Must show (each take is checked for these)"; box.appendChild(h);
+  const list = () => Array.isArray(sh.want) ? sh.want : (sh.want = []);
+  const redo = () => { if (!list().length) delete sh.want; saveShots(); render(); };
+  list().forEach((w, i) => {
+    const row = document.createElement("div"); row.className = "step";
+    const sel = document.createElement("select"); sel.setAttribute("aria-label", "Kind of event");
+    for (const k of Object.keys(KINDS_EV)) { const o = document.createElement("option"); o.value = k; o.textContent = KINDS_EV[k][0]; sel.appendChild(o); }
+    sel.value = w.k; sel.onchange = () => { w.k = sel.value; redo(); };
+    const tx = (key, ph) => { const l = document.createElement("label"); const i2 = document.createElement("input"); i2.type = "text"; i2.placeholder = ph; i2.value = w[key] || "";
+      i2.onchange = () => { if (i2.value.trim()) w[key] = i2.value.trim(); else delete w[key]; redo(); }; l.append(i2); return l; };
+    const nl = document.createElement("label"); const ni = document.createElement("input"); ni.type = "number"; ni.min = "1"; ni.value = w.n || 1;
+    ni.onchange = () => { const v2 = Math.max(1, Math.round(+ni.value || 1)); if (v2 > 1) w.n = v2; else delete w.n; redo(); }; nl.append("x", ni);
+    const x = document.createElement("span"); x.className = "x"; const del = document.createElement("button"); del.type = "button"; del.textContent = "×"; del.title = "Remove";
+    del.onclick = () => { list().splice(i, 1); redo(); }; x.append(del);
+    row.append(sel, tx("what", w.k === "skill" ? "skill, e.g. Launchboard" : w.k === "switch" ? "who is played" : "what (any part)"), tx("who", w.k === "switch" ? "you / player 2" : "who (any part)"), nl, x);
+    box.appendChild(row);
+  });
+  const adds = document.createElement("div"); adds.className = "adds";
+  const add = document.createElement("select"); add.setAttribute("aria-label", "Add something the shot must show");
+  add.innerHTML = "<option value=''>+ Add a must-show...</option>"; for (const k of Object.keys(KINDS_EV)) { const o = document.createElement("option"); o.value = k; o.textContent = KINDS_EV[k][0]; add.appendChild(o); }
+  add.onchange = () => { if (!add.value) return; list().push({ k: add.value }); redo(); };
+  adds.appendChild(add); box.appendChild(adds);
+  return box;
+}
+
 // ---- scenario steps: the DirectPawnControl developer commands, as forms ---------------------------------------------
 const ENEMIES = ["Goblin", "Goblin thrower", "Hobgoblin", "Wolf", "Harpy (flying)", "Saurian", "Skeleton fighter", "Ogre", "Cyclops", "Minotaur", "Chimera",
   "Griffin (flying, large)", "Golem (large)", "Drake (very large)", "Grim Ogre", "Gore Chimera", "Gore Minotaur", "Goblin (strong)", "Chopper", "Asp (poison)", "Rattler", "Succubus (flying)"];
@@ -377,7 +544,7 @@ async function draft(revise) {
   try {
     const r = await api("/api/draft", { text, shot: revise ? shotDef(cur) : null, notes: L.notes || "" });
     const d = r.shot;
-    if (revise) { const sh = shotDef(cur); for (const k of ["title", "caption", "brief", "you", "setup", "setup_secs", "secs", "actions", "cleanup"]) { if (d[k] === undefined) delete sh[k]; else sh[k] = d[k]; } open = true; saveShots(); render(); }
+    if (revise) { const sh = shotDef(cur); for (const k of ["title", "caption", "brief", "you", "setup", "setup_secs", "secs", "actions", "cleanup", "want"]) { if (d[k] === undefined) delete sh[k]; else sh[k] = d[k]; } open = true; saveShots(); render(); }
     else { addShot(null); const sh = shotDef(cur); for (const k of Object.keys(d)) if (k !== "id" && k !== "fresh_after") sh[k] = d[k]; saveShots(); render(); }
     note("Drafted. Check the steps before you shoot it.", "ok");
   } catch (e) { note("No draft: " + e.message, "bad"); }
@@ -385,7 +552,7 @@ async function draft(revise) {
 }
 $("ainew").onclick = () => draft(false); $("airev").onclick = () => draft(true);
 
-function select(id) { if (cur === id) return; cur = id; stopPlay(); render(); show(id, trim(id).in); }
+function select(id) { if (cur === id) return; cur = id; P.preview = null; stopPlay(); render(); show(id, trim(id).in); }
 function move(n, d) { const m = n + d; if (m < 0 || m >= C.order.length) return; [C.order[n], C.order[m]] = [C.order[m], C.order[n]]; saveChoices(); render(); }
 function addShot(from) {
   let k = Date.now(), id; do { id = "shot-" + (k++).toString(36); } while (shotDef(id)); // unique over every list: the take log is shared
@@ -421,13 +588,18 @@ function seekVideo(k, t, play) {
 function show(id, pos) { // park on one frame
   const t = id && take(id);
   P.mode = null; v.pause();
-  if (!t) { P.id = id; P.parts = null; v.removeAttribute("src"); delete v.dataset.src; v.load(); ui(); return; }
+  if (!t) { P.id = id; P.parts = null; v.removeAttribute("src"); delete v.dataset.src; v.load(); ui(); renderEvbar(); renderKinds(); return; }
+  const changed = P.id !== id || P.parts !== t.parts;
   P.id = id; P.parts = t.parts; P.pos = Math.min(Math.max(pos, 0), total(id));
   const at = locate(P.parts, P.pos); seekVideo(at.k, at.t, false); ui();
+  if (changed) { renderEvbar(); renderKinds(); }
 }
 function playFrom(id, pos, mode) {
+  if (mode === "all" || mode === "one") { if (P.preview !== null && P.preview !== undefined) { P.preview = null; render(); } }
   const t = take(id); if (!t) { stopPlay(); return; }
+  const changed = P.id !== id || P.parts !== t.parts;
   P.id = id; P.parts = t.parts; P.pos = pos; P.mode = mode;
+  if (changed) { renderEvbar(); renderKinds(); }
   const at = locate(P.parts, pos); seekVideo(at.k, at.t, true); ui();
 }
 function playShot(id, mode) { if (!usable(id)) { stopPlay(); return; } if (cur !== id) { cur = id; render(); } playFrom(id, trim(id).in, mode); }
@@ -457,6 +629,7 @@ function ui() {
   const bar = has && document.querySelector(`.tl div[data-id="${CSS.escape(P.id)}"] i`);
   if (bar) bar.style.width = (cut ? Math.min(100, Math.max(0, into / Math.max(dur(P.id), 0.01) * 100)) : 0) + "%";
   for (const id of ["b10", "b1", "pp", "f1", "f10", "setin", "setout", "cleartrim"]) $(id).disabled = !has;
+  renderPreview();
 }
 function step(n) { if (!P.parts) return; const f = fps(); show(P.id, (Math.round(P.pos * f) + n) / f); }
 function setTrim(id, key, val) {
@@ -498,7 +671,7 @@ document.addEventListener("keydown", e => {
 });
 
 // ---- jobs -----------------------------------------------------------------------------------------------------
-async function reload() { adopt(await api("/api/state")); render(); if (!P.mode) show(cur, cur ? trim(cur).in : 0); }
+async function reload() { adopt(await api("/api/state")); render(); if (!P.mode) show(cur, cur ? trim(cur).in : 0); runSearch(); renderEvbar(); renderKinds(); }
 async function watch() {
   busy = true; $("fetch").disabled = $("render").disabled = true;
   for (;;) {
