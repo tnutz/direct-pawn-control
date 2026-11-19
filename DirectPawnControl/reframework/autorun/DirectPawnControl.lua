@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.168"
+local VERSION = "0.9.169"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -202,6 +202,19 @@ local cfg = {
     arisen_brain_rearm = true,      -- v0.9.146 Warfarer Arisen: swaps weapons (Rearmament) while he fights
     arisen_brain_rearm_every = 20,  -- seconds between his weapon swaps (5 at the least)
     arisen_brain_lock = true,
+    switch_cine = true,               -- v0.9.169: camera transition when control changes hands (look at the new character, then glide behind them)
+    switch_cine_profile = 2,          -- v0.9.169: 1 Instant, 2 Establish, 3 Bird's-eye, 4 Custom (the sliders below)
+    switch_cine_hold_s = 0.15,        -- custom: seconds to hold the establishing view before gliding in
+    switch_cine_look_s = 0.45,        -- seconds: turn to look at who you are about to play (while pulling out, if on)
+    switch_cine_pull = true,          -- v0.9.169: first pull back and up so both characters are in view (less turning)
+    switch_cine_pull_m = 2.0,         -- extra metres back for the pull-out
+    switch_cine_rise_m = 1.2,         -- metres up for the pull-out
+    switch_cine_glide_s = 0.80,       -- seconds: glide from there to the game's camera behind them
+    switch_cine_speed_back_s = 0.95,  -- v0.9.169: full game speed is back this long before the camera lands (control feels yours sooner)
+    switch_cine_speed_ramp_s = 0.5,   -- v0.9.169: and eases up from the slow-down over this long before that
+    switch_cine_slowmo = 0.40,        -- game speed during the transition (1.0 = no slow-down); eases back to normal while gliding
+    switch_glow = "RimLightPawnLift", -- v0.9.169: the game's own rim light on who you take over ("" = none). Pawn lift reads best in every light (the tester)
+    switch_cine_glow_s = 1.4,         -- seconds the glow stays on
     possess_no_climb_cam = true,      -- v0.9.143: the Arisen's climbing camera is not switched to while a pawn is played
     possess_no_cinematic_cam = true,  -- v0.9.139: the game's cinematic action camera is not started while a pawn is played
     arisen_own_lockon = true,         -- v0.9.168: while a pawn is played the Arisen gets a lock-on of his own; the game's one is the played pawn's alone
@@ -4003,6 +4016,284 @@ end
 -- ----------------------------------------------------------------------------
 -- Start / Stop Pawn Possession
 -- ----------------------------------------------------------------------------
+-- v0.9.169 switch transition (requested: "establish the pawn we're about to control, maybe a bit of a slowdown, and a
+-- nice transition to them ... highlight the pawn ... something that matches the native game's aesthetic").
+-- Until now the camera was retargeted with registerTargetObject + onWarpTarget: an instant cut. Now, when control
+-- changes hands, the camera first turns (from where it is) to look at the character you are about to play, then
+-- glides to wherever the game's own camera wants to be behind them, while the game runs slowed and eases back to
+-- full speed. The game's camera is retargeted at once as before; DPC only overrides the drawn camera pose for the
+-- length of the transition (on the camera joint, in a post-hook on MainCameraController.lateUpdate), so
+-- when it ends the game's camera is simply where it already was. Timings run on real time, not game time.
+-- Glow: the game's own rim lights (app.MIRimLightHash, e.g. PawnRimStone) requested on each of the character's
+-- MaterialInterpolationRimLight parts and finished after switch_cine_glow_s. Slow-down: each object's app.WorkRate (see R.cine_timescale).
+-- Never in co-op, never on a load / teardown release; anything left (time scale, glow) is undone on release,
+-- world loading and Reset Scripts.
+R.CINE_GLOWS = {
+    { "", "No glow" },
+    { "RimLightRevival", "Revival (sky blue / pale gold)", 0xFFFFC828, 0xFFA0FFE6 },
+    { "RimLightInteractLarge", "Can interact (amber / blue, subtle)", 0xFF64B4FF, 0xFFF08C3C },
+    { "PawnRimStone", "Riftstone (blue / cyan)", 0xFFFF7850, 0xFFFFFF78 },
+    { "RimLightSummon", "Summon (violet)", 0xFFFF1E50, 0xFFFF3C64 },
+    { "ChRecovery", "Healing (green)", 0xFF328069, 0xFF64FFD2 },
+    { "AstralPlayer", "Astral (soft blue)", 0xFFFF463C, 0xFFFF6E64 },
+    { "RimLightPawnLift", "Pawn lift (green / deep blue)", 0xFF20FF40, 0xFFB44000 },
+}
+R.CINE_PROFILES = { "Instant (cut)", "Establish (pull back, then in)", "Bird's-eye (up into the sky, then down)", "Custom" }
+R.cine_params = function()
+    local pr = cfg.switch_cine_profile or 2
+    if pr == 2 then return { look = 0.75, hold = 0.20, glide = 0.95, pull = 3.0, rise = 2.0, slow = cfg.switch_cine_slowmo or 0.4 } end
+    if pr == 3 then return { look = 1.10, hold = 0.35, glide = 1.30, pull = 4.0, rise = 14.0, slow = cfg.switch_cine_slowmo or 0.4 } end
+    return { look = cfg.switch_cine_look_s or 0.45, hold = cfg.switch_cine_hold_s or 0.15, glide = cfg.switch_cine_glide_s or 0.8,
+             pull = cfg.switch_cine_pull and (cfg.switch_cine_pull_m or 2.0) or nil, rise = cfg.switch_cine_rise_m or 1.2, slow = cfg.switch_cine_slowmo or 0.4 }
+end
+R.cine_ease = function(x) x = math.max(0, math.min(1, x)); return x * x * (3 - 2 * x) end
+R.cine_slerp = function(a, b, t)
+    local ax, ay, az, aw = a[1], a[2], a[3], a[4]
+    local bx, by, bz, bw = b[1], b[2], b[3], b[4]
+    local d = ax * bx + ay * by + az * bz + aw * bw
+    if d < 0 then bx, by, bz, bw, d = -bx, -by, -bz, -bw, -d end
+    local k0, k1
+    if d > 0.9995 then k0, k1 = 1 - t, t
+    else
+        local th = math.acos(d); local sn = math.sin(th)
+        k0, k1 = math.sin((1 - t) * th) / sn, math.sin(t * th) / sn
+    end
+    local x, y, z, w = ax * k0 + bx * k1, ay * k0 + by * k1, az * k0 + bz * k1, aw * k0 + bw * k1
+    local n = math.sqrt(x * x + y * y + z * z + w * w)
+    return { x / n, y / n, z / n, w / n }
+end
+-- rotation of a camera at p looking at q (the engine's cameras look along their -Z axis)
+R.cine_look = function(p, q)
+    local dx, dy, dz = q[1] - p[1], q[2] - p[2], q[3] - p[3]
+    local len = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if len < 0.01 then return nil end
+    dx, dy, dz = dx / len, dy / len, dz / len
+    local yaw = math.atan(-dx, -dz)
+    local pitch = math.asin(math.max(-1, math.min(1, dy)))
+    local sy, cy = math.sin(yaw / 2), math.cos(yaw / 2)
+    local sx, cx = math.sin(pitch / 2), math.cos(pitch / 2)
+    return { cy * sx, sy * cx, -sy * sx, cy * cx }
+end
+-- v0.9.169b: the pose comes from MainCameraController._Position / _Rotation and goes to its _CameraJoint, inside
+-- a post-hook on its lateUpdate (the way Camera Distance does it). 0.9.169 wrote the camera GameObject's own
+-- transform at BeginRendering: that transform is not rewritten by the game, can read ~2 km off (a different
+-- coordinate frame, seen in the logs before this feature), and after a few switches the camera and the nametags
+-- came apart (the tester, [time]). The joint is rewritten by the controller every frame, so nothing can stick.
+R.cine_mcc = function()
+    local cm = sdk.get_managed_singleton("app.CameraManager")
+    return cm and cm:call("getMainCameraController", 0)
+end
+-- Game speed while switching. v0.9.169 first used app.TimeManager.setTimeScale: that is the speed of the in-game
+-- day clock, not of the action (the tester caught it). The real slow motion is each object's app.WorkRate
+-- (NextRateValue / NextApplyRate), the way Pawn Tactical Wheel does it: the player, the party, every enemy and every
+-- shell (arrows, spells), the list gathered again every 0.15 s and written every frame while it lasts.
+R.cine_rates_gather = function()
+    local out, seen = {}, {}
+    local function add_chara(c)
+        if not c then return end
+        local ok, a = pcall(c.get_address, c)
+        if not ok or not a or seen[a] then return end
+        seen[a] = true
+        local okw, wr = pcall(c.get_field, c, "<WorkRate>k__BackingField")
+        if okw and wr then out[#out + 1] = wr end
+    end
+    pcall(function() add_chara(sdk.get_managed_singleton("app.CharacterManager"):call("get_ManualPlayer")) end)
+    pcall(function() add_chara(state.arisen_chara) end)
+    pcall(function()
+        local l = sdk.get_managed_singleton("app.PawnManager"):call("get_PawnCharacterList")
+        for i = 0, l:call("get_Count") - 1 do add_chara(l:call("get_Item", i)) end
+    end)
+    pcall(function()
+        local arr = sdk.get_managed_singleton("app.EnemyManager"):call("getAllEnemies")
+        for i = 0, arr:call("get_Count") - 1 do
+            local e = arr:call("get_Item", i)
+            add_chara(e and e:get_field("_Chara"))
+        end
+    end)
+    pcall(function()
+        local list = sdk.get_managed_singleton("app.ShellManager"):get_field("ShellList")
+        local items, size = list:get_field("_items"), list:get_field("_size") or 0
+        local wt = sdk.typeof("app.WorkRate")
+        for i = 0, size - 1 do
+            local sh = items:get_element(i)
+            local okw, wr = pcall(function() return sh and sh:call("get_GameObject"):call("getComponent(System.Type)", wt) end)
+            if okw and wr then out[#out + 1] = wr end
+        end
+    end)
+    return out
+end
+R.cine_rates_write = function(v)
+    local r = math.max(0.005, v)
+    for _, wr in ipairs(R.cine_rates or {}) do
+        pcall(function() wr:set_field("NextRateValue", r); wr:set_field("NextApplyRate", r) end)
+    end
+end
+R.cine_timescale = function(v)
+    if v == nil then
+        if R.cine_ts_set then R.cine_rates_write(1.0) end
+        R.cine_ts_set, R.cine_rates, R.cine_rates_t = false, nil, nil
+        return
+    end
+    local now = os.clock()
+    if not R.cine_rates or now - (R.cine_rates_t or 0) >= 0.15 then
+        R.cine_rates, R.cine_rates_t = R.cine_rates_gather(), now
+    end
+    R.cine_ts_set = true
+    R.cine_rates_write(v)
+end
+R.cine_glow = function(chara, name, on)
+    if not chara or not name or name == "" then return end
+    pcall(function()
+        local f = sdk.find_type_definition("app.MIRimLightHash"):get_field(name)
+        if not f then return end
+        local h = f:get_data(nil)
+        local rm = chara:call("get_GameObject"):call("getComponent(System.Type)", sdk.typeof("app.MaterialInterpolationRequestManager"))
+        if not rm then return end
+        -- as the game calls it (logged 2026-11-19): category RimLight (8), then -1, -1 = all materials. 0, 0 drew nothing.
+        local sig = on and "requestMaterialMode(System.UInt32, app.MaterialInterpolationRequestManager.RequestListCategory, System.Int32, System.Int32)"
+            or "finishMaterialMode(System.UInt32, app.MaterialInterpolationRequestManager.RequestListCategory, System.Int32, System.Int32)"
+        rm:call(sig, h, 8, -1, -1)
+    end)
+end
+R.cine_glow_off = function()
+    local g = R.cine_glowing
+    if g then R.cine_glowing = nil; R.cine_glow(g.chara, g.name, false) end
+end
+R.cine_stop = function(why)
+    R.cine = nil
+    R.cine_timescale(nil)
+    if why ~= "keep glow" then R.cine_glow_off() end
+end
+R.cine_begin = function(chara)
+    if coop.active or not chara then return end
+    if not cfg.switch_cine or (cfg.switch_cine_profile or 2) == 1 then -- no camera move; the glow still plays
+        if cfg.switch_glow and cfg.switch_glow ~= "" then
+            R.cine_glow_off()
+            R.cine_glow(chara, cfg.switch_glow, true)
+            R.cine_glowing = { chara = chara, name = cfg.switch_glow, t_end = os.clock() + (cfg.switch_cine_glow_s or 1.4) }
+        end
+        return
+    end
+    local P = R.cine_params()
+    local ok, err = pcall(function()
+        local mcc = R.cine_mcc()
+        local joint = mcc and mcc:get_field("_CameraJoint")
+        if not joint then return end
+        local p, r = joint:call("get_Position"), joint:call("get_Rotation")
+        R.cine_install()
+        R.cine_glow_off()
+        R.cine = { t0 = os.clock(), chara = chara, p0 = { p.x, p.y, p.z }, q0 = { r.x, r.y, r.z, r.w }, P = P }
+        -- pull-out point: back and up from the midpoint between who the camera follows now and who comes next
+        pcall(function()
+            if not P.pull then return end
+            local c = R.cine
+            local og = mcc:call("get_TargetObject")
+            local a = og and og:call("get_Transform"):call("get_Position")
+            local b = chara:call("get_GameObject"):call("get_Transform"):call("get_Position")
+            if not (a and b) then return end
+            local A, B = { a.x, a.y + 1.2, a.z }, { b.x, b.y + 1.2, b.z }
+            -- skip it when the new character is already near the middle of the view
+            local fx, fy, fz = -2 * (r.x * r.z + r.w * r.y), -2 * (r.y * r.z - r.w * r.x), -(1 - 2 * (r.x * r.x + r.y * r.y))
+            local dx, dy, dz = B[1] - p.x, B[2] - p.y, B[3] - p.z
+            local dl = math.sqrt(dx * dx + dy * dy + dz * dz)
+            if P.rise < 5 and dl > 0.1 and (fx * dx + fy * dy + fz * dz) / dl > math.cos(math.rad(20)) then return end
+            local M = { (A[1] + B[1]) / 2, (A[2] + B[2]) / 2, (A[3] + B[3]) / 2 }
+            local vx, vz = p.x - M[1], p.z - M[3]
+            local vl = math.sqrt(vx * vx + vz * vz)
+            if vl < 0.5 then vx, vz, vl = -fx, -fz, math.sqrt(fx * fx + fz * fz) end
+            if vl < 0.01 then return end
+            vx, vz = vx / vl, vz / vl
+            local sep = math.sqrt((A[1] - B[1]) ^ 2 + (A[3] - B[3]) ^ 2)
+            local rad = math.max(vl, sep * 0.6 + 3.0) + P.pull
+            c.pp = { M[1] + vx * rad, math.max(p.y, M[2]) + P.rise, M[3] + vz * rad }
+        end)
+        R.cine_n = (R.cine_n or 0) + 1
+        if (P.slow or 1) < 0.99 then R.cine_timescale(math.max(0.05, P.slow)) end
+        if cfg.switch_glow and cfg.switch_glow ~= "" then
+            R.cine_glow(chara, cfg.switch_glow, true)
+            local whole = (P.look or 0) + (P.hold or 0) + (P.glide or 0) + 0.3 -- v0.9.169: on for the whole transition
+            R.cine_glowing = { chara = chara, name = cfg.switch_glow, t_end = os.clock() + math.max(cfg.switch_cine_glow_s or 1.4, whole) }
+        end
+    end)
+    if not ok then R.cine_stop(); dev_error("switch transition", err) end
+end
+R.cine_frame = function(mcc)
+    local c = R.cine
+    if not c then return end
+    local ok, err = pcall(function()
+        local now = os.clock()
+        local P = c.P or R.cine_params()
+        local look_s = math.max(0.0, P.look or 0.35)
+        local hold_s = math.max(0.0, P.hold or 0.0)
+        local glide_s = math.max(0.05, P.glide or 0.8)
+        local t = now - c.t0
+        if t >= look_s + hold_s + glide_s or coop.active then R.cine_stop("keep glow"); return end
+        local joint = mcc and mcc:get_field("_CameraJoint")
+        if not joint then R.cine_stop("keep glow"); return end
+        -- where the game's camera is this frame (its final pose, incl. Camera Distance when its hook ran first)
+        local gp, gr = joint:call("get_Position"), joint:call("get_Rotation")
+        local pg, qg = { gp.x, gp.y, gp.z }, { gr.x, gr.y, gr.z, gr.w }
+        -- the look-at point: the new character's chest
+        local tp
+        pcall(function()
+            local cp = c.chara:call("get_GameObject"):call("get_Transform"):call("get_Position")
+            tp = { cp.x, cp.y + 1.4, cp.z }
+        end)
+        -- game speed: slow, then eased back to full speed_back_s before the camera lands (the tester: it felt sluggish;
+        -- the move is still going but it is good enough to take control)
+        if R.cine_ts_set then
+            local total = look_s + hold_s + glide_s
+            local t_full = math.max(0, total - (cfg.switch_cine_speed_back_s or 0.95))
+            local t_ramp = math.max(0, t_full - math.max(0.01, cfg.switch_cine_speed_ramp_s or 0.5))
+            local s0 = math.max(0.05, P.slow or 1)
+            if t >= t_full then R.cine_timescale(nil) -- full speed: let go of the game's rates
+            elseif t >= t_ramp then R.cine_timescale(s0 + (1 - s0) * R.cine_ease((t - t_ramp) / math.max(0.01, t_full - t_ramp)))
+            else R.cine_timescale(s0) end
+        end
+        local pp = c.pp or c.p0 -- where the look phase ends (the pull-out point, or where the camera was)
+        local pos, rot
+        if t < look_s then
+            local e = R.cine_ease(t / math.max(look_s, 0.001))
+            pos = { c.p0[1] + (pp[1] - c.p0[1]) * e, c.p0[2] + (pp[2] - c.p0[2]) * e, c.p0[3] + (pp[3] - c.p0[3]) * e }
+            local qn = (tp and R.cine_look(pos, tp)) or qg
+            rot = R.cine_slerp(c.q0, qn, e)
+        elseif t < look_s + hold_s then
+            pos = pp
+            rot = (tp and R.cine_look(pp, tp)) or qg
+        else
+            local ql = (tp and R.cine_look(pp, tp)) or qg
+            local u = R.cine_ease((t - look_s - hold_s) / glide_s)
+            pos = { pp[1] + (pg[1] - pp[1]) * u, pp[2] + (pg[2] - pp[2]) * u, pp[3] + (pg[3] - pp[3]) * u }
+            rot = R.cine_slerp(ql, qg, u)
+        end
+        gp.x, gp.y, gp.z = pos[1], pos[2], pos[3]
+        joint:call("set_Position", gp)
+        gr.x, gr.y, gr.z, gr.w = rot[1], rot[2], rot[3], rot[4]
+        joint:call("set_Rotation", gr)
+        c.frames = (c.frames or 0) + 1
+        R.cine_last = { t = t, frames = c.frames }
+    end)
+    if not ok then R.cine_stop(); R.cine_err = tostring(err); dev_error("switch transition", err) end
+end
+-- installed at the first switch, so it is registered after Camera Distance's own lateUpdate hook and runs after it
+R.cine_install = function()
+    if R.cine_hooked then return end
+    R.cine_hooked = true
+    local td = sdk.find_type_definition("app.MainCameraController")
+    local m = td and td:get_method("lateUpdate")
+    if not m then return end
+    sdk.hook(m, function(args)
+        if R.cine then thread.get_hook_storage().cine_mcc = sdk.to_managed_object(args[2]) end
+    end, function(retval)
+        if R.cine then
+            local mcc = thread.get_hook_storage().cine_mcc
+            if mcc then R.cine_frame(mcc) end
+        end
+        return retval
+    end)
+end
+re.on_frame(function() local g = R.cine_glowing; if g and os.clock() >= g.t_end then R.cine_glow_off() end end)
+
 local function release_possession(reason)
     if not state.active then return end
     write_trace("release_possession begin", reason)
@@ -4066,6 +4357,7 @@ local function release_possession(reason)
 
     -- 4. Re-attach MainCameraController to Arisen (not if the Arisen / managers are the ones being destroyed)
     if state.arisen_go and not (teardown and (reason:find("arisen") or reason:find("Manager"))) then
+        if not teardown and reason ~= "loading" and reason ~= "script reset" then R.cine_begin(state.arisen_chara) else R.cine_stop() end -- v0.9.169
         attach_camera_to(state.arisen_go)
     end
 
@@ -4272,6 +4564,7 @@ local function start_possession(target_pawn_idx)
     -- 3. Attach Camera to Pawn
     if cfg.sub_camera_attach then
         write_trace("start_possession: attach_camera_to")
+        R.cine_begin(pawn_chara) -- v0.9.169: look at them, then glide behind them
         attach_camera_to(pawn_go)
     end
 
@@ -8533,6 +8826,7 @@ R.world_check = function()
             coop.tgt, coop.tgt_work = nil, nil
             quick.rows, quick.defs, quick.packs, quick.rows_try_t = nil, nil, {}, nil -- v0.9.115: game objects, read again later
             R.aim_pick, R.aim_pick_idx, R.aim_asset_addr = nil, nil, nil -- v0.9.168: aim setting, read again later
+            pcall(R.cine_stop) -- v0.9.169
             log_msg("World is loading: the mod pauses until it is back")
         end
         R.world, R.world_back_t = false, nil
@@ -8941,6 +9235,7 @@ re.on_script_reset(function()
     if state.active then
         pcall(release_possession, "script reset")
     end
+    pcall(R.cine_stop) -- v0.9.169: game speed and glow back to normal
     pcall(function()
         if R.nodie_on then sdk.get_managed_singleton("app.CharacterManager"):call("get_ManualPlayer"):call("get_Hit"):call("set_IsNoDie", false) end
     end)
@@ -9383,6 +9678,43 @@ re.on_frame(function()
         local on = cfg.hud_safe_169 == true or (cfg.hud_safe_169 == "auto" and select(3, R.hud_rect()) < imgui.get_display_size().x)
         local c2, v = imgui.checkbox("Keep overlays inside the middle 16:9 (ultrawide / recording)", on)
         if c2 then cfg.hud_safe_169 = v; R.hud_repos = 3; save_cfg() end
+    end
+
+    imgui.text_colored("Switching characters", BLUE) -- v0.9.169
+    cb("Camera transition (look at them, then glide behind them)", "switch_cine")
+    if cfg.switch_cine then
+        local cp, pv = imgui.combo("   Style", cfg.switch_cine_profile or 2, R.CINE_PROFILES)
+        if cp then cfg.switch_cine_profile = pv; save_cfg() end
+        sl("   Game speed while switching (1 = normal)", "switch_cine_slowmo", 0.1, 1.0)
+        if (cfg.switch_cine_slowmo or 1) < 0.99 then
+            sl("   Full speed back before the camera lands (s)", "switch_cine_speed_back_s", 0.0, 2.0)
+            sl("   ... easing up over (s)", "switch_cine_speed_ramp_s", 0.05, 1.5)
+        end
+    end
+    if cfg.switch_cine and (cfg.switch_cine_profile or 2) == 4 then
+        sl("   Look (s)", "switch_cine_look_s", 0.0, 1.5)
+        sl("   Hold (s)", "switch_cine_hold_s", 0.0, 1.5)
+        cb("   Pull back first so both are in view", "switch_cine_pull")
+        if cfg.switch_cine_pull then
+            sl("      Extra distance (m)", "switch_cine_pull_m", 0.0, 8.0)
+            sl("      Height (m)", "switch_cine_rise_m", 0.0, 20.0)
+        end
+        sl("   Glide (s)", "switch_cine_glide_s", 0.1, 3.0)
+    end
+
+    do -- v0.9.169: the game's own rim lights; colours read from the game's settings for each (inner, outer)
+        local GLOWS = R.CINE_GLOWS
+        local cur = 1
+        for i, g in ipairs(GLOWS) do if g[1] == (cfg.switch_glow or "") then cur = i end end
+        local labels = {}
+        for i, g in ipairs(GLOWS) do labels[i] = g[2] end
+        local c3, v = imgui.combo("Glow on who you take over", cur, labels)
+        if c3 then cfg.switch_glow = GLOWS[v][1]; save_cfg() end
+        local g = GLOWS[c3 and v or cur]
+        if g and g[3] then
+            imgui.same_line(); imgui.text_colored("||||||", g[3]); imgui.same_line(); imgui.text_colored("||||||", g[4])
+        end
+        if (cfg.switch_glow or "") ~= "" then sl("   Glow (s)", "switch_cine_glow_s", 0.2, 4.0) end
     end
 
     imgui.text_colored("Cheats", BLUE)

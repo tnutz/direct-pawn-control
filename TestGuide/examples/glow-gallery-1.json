@@ -1,0 +1,59 @@
+{
+ "id": "glow-gallery-1",
+ "title": "Which of the game's glows suits taking over a pawn?",
+ "intro": "Stand next to your main pawn, camera on them. Press End (or click both sticks) to start.",
+ "steps": [
+  {
+   "text": "Look at your MAIN PAWN (stand close, camera on them). The next steps light them up with 7 of the game's own glows, 4 s each, A to G. Press End when they're in view.",
+   "wait": true
+  },
+  {
+   "text": "A: the Riftstone glow pawns get (PawnRimStone). Does the main pawn glow?",
+   "secs": 4,
+   "each_frame": "local function rims()\n  local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0)\n  local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager'))\n  local l = rm:get_field('MIRimLightList'); local t = {}\n  for i = 0, l:call('get_Count') - 1 do t[#t+1] = l:call('get_Item', i) end\n  return t\nend\nlocal function hash(n) return sdk.find_type_definition('app.MIRimLightHash'):get_field(n):get_data(nil) end\nlocal function set(n, on)\n  local h = hash(n)\n  for _, mi in ipairs(rims()) do pcall(mi.call, mi, on and 'requestMaterialMode(System.UInt32, System.Int32, System.Int32)' or 'finishMaterialMode(System.UInt32, System.Int32, System.Int32)', h, 0, 0) end\nend\nif G_prev_off ~= 'A' then G_prev_off = 'A'; set('PawnRimStone', true) end"
+  },
+  {
+   "text": "B: summon glow (RimLightSummon). Does the main pawn glow?",
+   "secs": 4,
+   "each_frame": "local function rims()\n  local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0)\n  local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager'))\n  local l = rm:get_field('MIRimLightList'); local t = {}\n  for i = 0, l:call('get_Count') - 1 do t[#t+1] = l:call('get_Item', i) end\n  return t\nend\nlocal function hash(n) return sdk.find_type_definition('app.MIRimLightHash'):get_field(n):get_data(nil) end\nlocal function set(n, on)\n  local h = hash(n)\n  for _, mi in ipairs(rims()) do pcall(mi.call, mi, on and 'requestMaterialMode(System.UInt32, System.Int32, System.Int32)' or 'finishMaterialMode(System.UInt32, System.Int32, System.Int32)', h, 0, 0) end\nend\nif G_prev_off ~= 'B' then G_prev_off = 'B'; set('PawnRimStone', false); set('RimLightSummon', true) end"
+  },
+  {
+   "text": "C: revival glow (RimLightRevival). Does the main pawn glow?",
+   "secs": 4,
+   "each_frame": "local function rims()\n  local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0)\n  local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager'))\n  local l = rm:get_field('MIRimLightList'); local t = {}\n  for i = 0, l:call('get_Count') - 1 do t[#t+1] = l:call('get_Item', i) end\n  return t\nend\nlocal function hash(n) return sdk.find_type_definition('app.MIRimLightHash'):get_field(n):get_data(nil) end\nlocal function set(n, on)\n  local h = hash(n)\n  for _, mi in ipairs(rims()) do pcall(mi.call, mi, on and 'requestMaterialMode(System.UInt32, System.Int32, System.Int32)' or 'finishMaterialMode(System.UInt32, System.Int32, System.Int32)', h, 0, 0) end\nend\nif G_prev_off ~= 'C' then G_prev_off = 'C'; set('RimLightSummon', false); set('RimLightRevival', true) end"
+  },
+  {
+   "text": "D: healing glow (ChRecovery). Does the main pawn glow?",
+   "secs": 4,
+   "each_frame": "local function rims()\n  local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0)\n  local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager'))\n  local l = rm:get_field('MIRimLightList'); local t = {}\n  for i = 0, l:call('get_Count') - 1 do t[#t+1] = l:call('get_Item', i) end\n  return t\nend\nlocal function hash(n) return sdk.find_type_definition('app.MIRimLightHash'):get_field(n):get_data(nil) end\nlocal function set(n, on)\n  local h = hash(n)\n  for _, mi in ipairs(rims()) do pcall(mi.call, mi, on and 'requestMaterialMode(System.UInt32, System.Int32, System.Int32)' or 'finishMaterialMode(System.UInt32, System.Int32, System.Int32)', h, 0, 0) end\nend\nif G_prev_off ~= 'D' then G_prev_off = 'D'; set('RimLightRevival', false); set('ChRecovery', true) end"
+  },
+  {
+   "text": "E: astral glow (AstralPlayer). Does the main pawn glow?",
+   "secs": 4,
+   "each_frame": "local function rims()\n  local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0)\n  local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager'))\n  local l = rm:get_field('MIRimLightList'); local t = {}\n  for i = 0, l:call('get_Count') - 1 do t[#t+1] = l:call('get_Item', i) end\n  return t\nend\nlocal function hash(n) return sdk.find_type_definition('app.MIRimLightHash'):get_field(n):get_data(nil) end\nlocal function set(n, on)\n  local h = hash(n)\n  for _, mi in ipairs(rims()) do pcall(mi.call, mi, on and 'requestMaterialMode(System.UInt32, System.Int32, System.Int32)' or 'finishMaterialMode(System.UInt32, System.Int32, System.Int32)', h, 0, 0) end\nend\nif G_prev_off ~= 'E' then G_prev_off = 'E'; set('ChRecovery', false); set('AstralPlayer', true) end"
+  },
+  {
+   "text": "F: the 'you can interact' glow (RimLightInteractLarge). Does the main pawn glow?",
+   "secs": 4,
+   "each_frame": "local function rims()\n  local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0)\n  local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager'))\n  local l = rm:get_field('MIRimLightList'); local t = {}\n  for i = 0, l:call('get_Count') - 1 do t[#t+1] = l:call('get_Item', i) end\n  return t\nend\nlocal function hash(n) return sdk.find_type_definition('app.MIRimLightHash'):get_field(n):get_data(nil) end\nlocal function set(n, on)\n  local h = hash(n)\n  for _, mi in ipairs(rims()) do pcall(mi.call, mi, on and 'requestMaterialMode(System.UInt32, System.Int32, System.Int32)' or 'finishMaterialMode(System.UInt32, System.Int32, System.Int32)', h, 0, 0) end\nend\nif G_prev_off ~= 'F' then G_prev_off = 'F'; set('AstralPlayer', false); set('RimLightInteractLarge', true) end"
+  },
+  {
+   "text": "G: pawn lift glow (RimLightPawnLift). Does the main pawn glow?",
+   "secs": 4,
+   "each_frame": "local function rims()\n  local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0)\n  local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager'))\n  local l = rm:get_field('MIRimLightList'); local t = {}\n  for i = 0, l:call('get_Count') - 1 do t[#t+1] = l:call('get_Item', i) end\n  return t\nend\nlocal function hash(n) return sdk.find_type_definition('app.MIRimLightHash'):get_field(n):get_data(nil) end\nlocal function set(n, on)\n  local h = hash(n)\n  for _, mi in ipairs(rims()) do pcall(mi.call, mi, on and 'requestMaterialMode(System.UInt32, System.Int32, System.Int32)' or 'finishMaterialMode(System.UInt32, System.Int32, System.Int32)', h, 0, 0) end\nend\nif G_prev_off ~= 'G' then G_prev_off = 'G'; set('RimLightInteractLarge', false); set('RimLightPawnLift', true) end"
+  },
+  {
+   "text": "Done (glow off). Tell Claude which letters you saw, and which you liked best.",
+   "secs": 3,
+   "each_frame": "local function rims()\n  local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0)\n  local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager'))\n  local l = rm:get_field('MIRimLightList'); local t = {}\n  for i = 0, l:call('get_Count') - 1 do t[#t+1] = l:call('get_Item', i) end\n  return t\nend\nlocal function hash(n) return sdk.find_type_definition('app.MIRimLightHash'):get_field(n):get_data(nil) end\nlocal function set(n, on)\n  local h = hash(n)\n  for _, mi in ipairs(rims()) do pcall(mi.call, mi, on and 'requestMaterialMode(System.UInt32, System.Int32, System.Int32)' or 'finishMaterialMode(System.UInt32, System.Int32, System.Int32)', h, 0, 0) end\nend\nif G_prev_off ~= 'end' then G_prev_off = 'end'; set('RimLightPawnLift', false) end"
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_glow-gallery-1.json",
+  "show": [],
+  "probes": {
+   "active": "local ch = sdk.get_managed_singleton('app.PawnManager'):call('get_PawnCharacterList'):call('get_Item', 0); local rm = ch:call('get_GameObject'):call('getComponent(System.Type)', sdk.typeof('app.MaterialInterpolationRequestManager')); return rm:get_field('MIRimLightList'):call('get_Item', 0):call('get_ApplicateModeHash')"
+  }
+ }
+}

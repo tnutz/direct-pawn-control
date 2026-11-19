@@ -1,0 +1,37 @@
+{
+ "id": "switch-cine-2",
+ "title": "Camera transition when switching (0.9.169b, on the camera joint)",
+ "intro": "Release the pawn, Reset Scripts. Stand with the party around you. Press End (or click both sticks) to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.169"
+ },
+ "steps": [
+  {
+   "text": "Same as before: take over pawns and come back a few times, including pawn to pawn. Watch the camera AND the nametags (they should stay on the characters).",
+   "secs": 30
+  },
+  {
+   "text": "Done. Tell Claude how it felt: too slow / too fast, too much slow-down, anything odd.",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 30,
+  "out": "test_guide/result_switch-cine-2.json",
+  "show": [
+   "who",
+   "cine",
+   "ts",
+   "cam"
+  ],
+  "probes": {
+   "cine": "local d=_G.DPC_dbg; local R=d and d.R; if not R then return '-' end; return R.cine and string.format('%.2f', os.clock() - R.cine.t0) or '-'",
+   "cine_n": "local d=_G.DPC_dbg; local R=d and d.R; if not R then return '-' end; return R.cine_n or 0",
+   "cine_err": "local d=_G.DPC_dbg; local R=d and d.R; if not R then return '-' end; return R.cine_err or '-'",
+   "ts": "local tm=sdk.get_managed_singleton('app.TimeManager'); return tm and string.format('%.2f', tm:call('get_TimeScale')) or '-'",
+   "who": "local d=_G.DPC_dbg; local s=d and d.state; if not s then return '-' end; return s.active and tostring(s.pawn_name) or 'Arisen'",
+   "cam": "local d=_G.DPC_dbg; local R=d and d.R; local s=d and d.state; local tgt = (R and R.cine and R.cine.chara) or (s and (s.active and s.pawn_chara or s.arisen_chara)); if not tgt then return '-' end; local j=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController',0):get_field('_CameraJoint'); local p=j:call('get_Position'); local r=j:call('get_Rotation'); local f={x=2*(r.x*r.z+r.w*r.y), y=2*(r.y*r.z-r.w*r.x), z=1-2*(r.x*r.x+r.y*r.y)}; local q=tgt:call('get_GameObject'):call('get_Transform'):call('get_Position'); local dx,dy,dz=q.x-p.x,q.y+1.4-p.y,q.z-p.z; local l=math.sqrt(dx*dx+dy*dy+dz*dz); local c=(-f.x*dx-f.y*dy-f.z*dz)/l; return string.format('%.1fm %ddeg', l, math.floor(math.deg(math.acos(math.max(-1,math.min(1,c))))+0.5))",
+   "camgo": "local tr=sdk.get_primary_camera():call('get_GameObject'):call('get_Transform'); local p=tr:call('get_Position'); local j=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController',0):get_field('_CameraJoint'):call('get_Position'); return string.format('%.1f', math.sqrt((p.x-j.x)^2+(p.y-j.y)^2+(p.z-j.z)^2))"
+  }
+ }
+}

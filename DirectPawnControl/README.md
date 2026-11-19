@@ -35,6 +35,8 @@ Take direct control of your pawns. Possess your main pawn or a hired pawn and pl
 - Remapped controls are fine. The mod reads the game's own controller and keyboard settings instead of assuming the defaults. If one of the mod's own keys (F6, F7, F8, the number pad) is also bound to something in the game, the settings window says so.
 - In co-op, player 2's buttons follow the controller layout set in the game's options, remapped or not: every action sits where the game shows it.
 
+When control changes hands, the camera pulls back so both characters are in view, the action slows for a moment, and the camera glides in behind the one you now play while they light up with one of the game's own glows. Full speed returns just before the camera lands. Under **Switching characters** you can pick another camera style (Instant, Establish, Bird's-eye or Custom), the slow-down, when full speed returns, and the glow (Pawn lift by default; Revival, Can interact, Riftstone, Summon, Healing, Astral or none).
+
 Open the REFramework menu (Insert) and look for **Direct Pawn Control** to change options. The things most players change are at the top; everything else is folded away. Outside that menu the mod puts very little on screen: one line saying who you are playing or have selected, the Arisen's bars over his head, and in co-op player 2's bars and skill list.
 
 ## What your pawn can do while you play it
