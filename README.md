@@ -22,6 +22,10 @@ Things in there that other modders have asked about: how the Arisen is made to f
 
 The log and comments have been edited for privacy (reports are paraphrased, clock times and names removed). Nothing technical was taken out.
 
+## Contributing
+
+Bug reports and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for how to send them and what happens next.
+
 ## Licence
 
 [PolyForm Noncommercial 1.0.0](LICENSE.md). In short: use it, change it, share it and build on it, for any purpose that is not commercial. It may not be sold, put behind a paywall or bundled into anything that is.
