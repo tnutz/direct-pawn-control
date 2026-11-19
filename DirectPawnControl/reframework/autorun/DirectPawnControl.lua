@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.165"
+local VERSION = "0.9.167"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -252,6 +252,7 @@ local cfg = {
     cycle_switches_now = false,       -- v0.9.90: F7 while possessing switches pawn at once (the old behaviour) instead of selecting
     show_legacy = false,              -- v0.9.82: the advanced / test / legacy bin of the settings window
     pawn_aim_skills = true,           -- v0.9.87: bow pawns: L2 + face button = the aimed skill, whatever the Arisen's vocation
+    pawn_hip_skill_aim = true,        -- v0.9.167: an Archer pawn's skill used from the hip keeps its aim up until it fires
     pad_hold_select = true,           -- v0.9.96: hold a D-pad direction: left / right select, up switch, down back to the Arisen
     pad_hold_s = 0.5,
     quick_skill_hold_ai = true,       -- v0.9.151: an ordered pawn skill is kept: the pawn's own AI waits until it is over
@@ -5187,6 +5188,10 @@ R.aim_rsig = "requestDraw(via.Point, System.Single, System.Boolean)"
 -- DrawPos 960,540 (centre of its 1920x1080 canvas); a request at 1920,540 on a 7680x2160 screen gave DrawPos 480,270
 -- and one at 960,540 gave a reticle further left, i.e. DrawPos = point * (1920 / width, 1080 / height). So the centre
 -- of the real screen is the right point on any aspect ratio.
+-- v0.9.166: not on every PC. On a 5120x1440 screen with Windows display scaling at 150 %, REFramework reported the
+-- display as 7680x2160, the request went to 3840,1080 and the reticle was drawn at DrawPos 1440,810: three quarters
+-- of the way right and down, i.e. the game's own screen is the unscaled 5120x1440. So the point now corrects itself:
+-- after each request the widget's DrawPos is read back, and the point is scaled until DrawPos is 960,540.
 R.aim_reticle = function()
     if not cfg.pawn_aim_reticle or R.aim_ret_fail then return end
     local ok, err = pcall(function()
@@ -5196,7 +5201,8 @@ R.aim_reticle = function()
         local okd, ds = pcall(imgui.get_display_size)
         if okd and ds and ds.x and ds.x > 0 then R.aim_disp_x, R.aim_disp_y = ds.x, ds.y end
         if not R.aim_disp_x then return end
-        local x, y = math.floor(R.aim_disp_x * 0.5 + 0.5), math.floor(R.aim_disp_y * 0.5 + 0.5)
+        local x = math.floor(R.aim_disp_x * 0.5 * (R.aim_fix_x or 1.0) + 0.5)
+        local y = math.floor(R.aim_disp_y * 0.5 * (R.aim_fix_y or 1.0) + 0.5)
         if not R.aim_pt or R.aim_pt_x ~= x or R.aim_pt_y ~= y then
             local pt = ValueType.new(sdk.find_type_definition("via.Point"))
             pcall(function() pt:set_field("x", x); pt:set_field("y", y) end)
@@ -5208,6 +5214,16 @@ R.aim_reticle = function()
         local okc, e2 = pcall(ui.call, ui, R.aim_rsig, R.aim_pt, 1.0, false)
         R.aim_mine = false
         if not okc then error(e2) end
+        -- read back where the widget put it (UI canvas 1920x1080; centre 960,540) and correct the point
+        local okp, dp = pcall(ui.get_field, ui, "DrawPos")
+        if okp and dp and dp.x and dp.y and dp.x > 1 and dp.y > 1 then
+            R.aim_dp_x, R.aim_dp_y = dp.x, dp.y
+            if math.abs(dp.x - 960) > 2 or math.abs(dp.y - 540) > 2 then
+                R.aim_fix_x = math.max(0.1, math.min(4.0, (R.aim_fix_x or 1.0) * 960 / dp.x))
+                R.aim_fix_y = math.max(0.1, math.min(4.0, (R.aim_fix_y or 1.0) * 540 / dp.y))
+                R.aim_fixes = (R.aim_fixes or 0) + 1
+            end
+        end
     end)
     if not ok then R.aim_mine = false; R.aim_ret_fail = true; dev_error("aim reticle", err) end
 end
@@ -7279,6 +7295,30 @@ local function update_puppeteer_controls(is_first_frame)
         end
     end
 
+    -- v0.9.167 bow skills used from the hip. Measured on 0.9.166 (archer-chord-1, Archer pawn, skill-shift chords): a
+    -- skill started while the aim button was held always fired; started from the hip it began (Prepare node) and the
+    -- game cancelled it: Whirling Arrow went to Job02_AimCancel after 1.2 s, Full Blast to CrouchShotCancel after 0.4 s.
+    -- For the player the game keeps a hip skill's aim up by itself; the pawn's input processor does not. So while the
+    -- played Archer is in a skill's Prepare / Ready / charge stage, the aim flags are held for him, as if the aim
+    -- button were down, until the skill leaves that stage. (The Arisen brain fires its bow skills the same way.)
+    if cfg.pawn_hip_skill_aim and cfg.native_controls and native.pip and not native.failed and state.pawn_input
+       and not coop.active and state.pawn_job == 2 and state.pawn_chara then
+        local _, up = node_names(state.pawn_chara)
+        local hold = up:find("Job02_SkillAttack", 1, true) ~= nil and up:find("Cancel", 1, true) == nil
+            and (up:find("Prepare", 1, true) or up:find("Ready", 1, true) or up:find("Charge", 1, true)) ~= nil
+        local AIMF = (ACTION_FLAGS["AimHold"] or 0) | (ACTION_FLAGS["JobSpecialAction"] or 0)
+        if hold and AIMF ~= 0 then
+            local on0 = field(state.pawn_input, "ButtonOnFlags") or 0
+            if (on0 & AIMF) ~= AIMF then
+                set_field(state.pawn_input, "ButtonOnFlags", on0 | AIMF)
+                if not R.hip_aim then R.hip_aim_n = (R.hip_aim_n or 0) + 1 end
+            end
+            R.hip_aim = true
+        elseif R.hip_aim then
+            R.hip_aim = false
+        end
+    end
+
     -- v0.9.26 the possessed pawn gathers and loots by himself. The game's Gather / Loot prompt is computed for the
     -- player character only (InteractManager.HighestPriorityObjectForPlayer). Verified live 2026-11-15 on a corpse:
     -- addActiveInteract(pawn, InteractPoint{object, 0}) + executeInteract(pawn) makes the pawn loot it and the
@@ -9318,6 +9358,7 @@ re.on_frame(function()
         cb("Aim reticle", "pawn_aim_reticle")
         cb("Arrows go to the reticle", "pawn_aim_point")
         cb("Skills while aiming on a controller (aim button + skill buttons)", "pawn_aim_skills")
+        cb("Skills from the hip keep their aim until they fire", "pawn_hip_skill_aim")
         imgui.tree_pop()
     end
 
@@ -9584,7 +9625,7 @@ re.on_frame(function()
         aim = { hold = R.aim_hold == true, blocked = R.aim_blocked or 0, reqs = R.aim_reqs or 0, learned = R.aim_enter ~= nil, off = R.aim_off == true,
 dash_label = { text = R.dash_n_text or 0, seen = R.dash_seen, repoints = R.hud_repoints or 0, slots = R.dash_slots, puts = R.dash_puts or 0 },
     flash = { skips = R.danger_skips or 0, flag_clears = R.danger_flag_clears or 0, flow_resets = R.danger_flow_resets or 0, hides = R.danger_hides or 0, unstuck = R.danger_unstuck or 0 },
-            pt_x = R.aim_pt_x, pt_y = R.aim_pt_y, ret_fail = R.aim_ret_fail == true, setting = R.aim_set, setups = R.aim_setups or 0, evals = R.aim_evals or 0, aim_skills = R.aim_skill_n or 0,
+            pt_x = R.aim_pt_x, pt_y = R.aim_pt_y, dp_x = R.aim_dp_x, dp_y = R.aim_dp_y, fixes = R.aim_fixes or 0, hip_aims = R.hip_aim_n or 0, ret_fail = R.aim_ret_fail == true, setting = R.aim_set, setups = R.aim_setups or 0, evals = R.aim_evals or 0, aim_skills = R.aim_skill_n or 0,
             dist = R.aim_last_d, ray_errs = R.aim_ray_errs or 0, ray_off = R.aim_ray_off == true },
         gyro = { blocked = R.gyro_blocked or 0, cleared = R.gyro_cleared or 0 },
         arrows = R.arrows and R.arrows.n or nil,

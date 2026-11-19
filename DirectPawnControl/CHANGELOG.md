@@ -13,6 +13,18 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 - Archer: move and skill 1 (Threefold Arrow, skill state 13) pass; the "attacks" check failed in both runs, with layer 0 staying in `Strafe`. Probably the test's blind spot (bow shots may run on the upper-body layer), not confirmed. `party-matrix-4` also watches layer 1.
 - Sorcerer not covered yet.
 
+### v0.9.167 (2026-11-19): Archer pawn skills used from the hip abort
+- Report (second PC, Xbox controller, default controls): the played Archer's Spiral Arrow (Whirling Arrow) and Heavenly Shot (Full Blast) light up on the skill palette but abort; "it often seemed to work but not in all cases".
+- `archer-chord-1` (TestGuide, 70 s of recorded actions): every attempt started while the aim button (R1) was held fired (Prepare -> Shoot). Every attempt from the hip started and was cancelled by the game: Whirling Arrow `Job02_AimCancel` after 1.2 s, Full Blast `Job02_CrouchShotCancel` after 0.4 s. Stamina was never short. The mod's aim camera was not the cause: it was on in the attempts that worked. (The test's "aim camera off" step did not take; the command did not reach the mod. Not needed after this result.)
+- Fix: while the played Archer is in a skill's Prepare / Ready / charge stage, the mod holds AimHold + JobSpecialAction on his input until the skill leaves that stage, as the aim button would. Setting `pawn_hip_skill_aim` (on; Archer pawn group). Dev status `aim.hip_aims` counts them. Not in co-op yet.
+- Confirmed (`archer-chord-2`, the tester: "that seems to have worked"): from the hip, Whirling Arrow fired twice and Full Blast once (Prepare -> Shoot, no cancels); with R1 held, Whirling Arrow and Full Blast also fired.
+
+### v0.9.166 (2026-11-19): Archer pawn reticle off screen on some PCs
+- Report on the second PC (5120x1440 screen, Xbox controller, default controls): the possessed Archer zooms but shows no reticle.
+- Watch over 12 s of aiming (`apt1`, read-only): every reticle request came from the mod (492, none from the game), no errors, the widget switched on while aiming (FlowNow 1, UpdateSelf true), and it drew at **DrawPos 1440,810** on its 1920x1080 canvas. The mod had asked for 3840,1080, the centre of the 7680x2160 display REFramework reported. 3840 x 1920 / 1440 = 5120 and 1080 x 1080 / 810 = 1440: the game's own screen is 5120x1440, so the reported size includes the 150 % Windows display scaling. The reticle was three quarters of the way right and down.
+- Fix: after each request the mod reads the widget's DrawPos and scales its point until DrawPos is 960,540, so the centre is found whatever size is reported. Dev status `aim` gains `dp_x`, `dp_y`, `fixes`.
+- Confirmed on the 5120x1440 PC (the tester: "reticle shows perfectly").
+
 ### v0.9.165 (2026-11-18): developer only: robot "antics" for co-op shots (not tested in game yet)
 - The tester: co-op is hard to show on video, a second player fighting is almost indistinguishable from a pawn playing by itself; something funny or erratic is needed.
 - `{"cmd":"robot","who":"pad","secs":20,"antics":true}`: the robot runs rings round the Arisen at 3 m and jumps every 0.9 s. New shot `10b-coop-antics` in the showcase shot list.

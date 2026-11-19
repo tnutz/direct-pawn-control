@@ -1,0 +1,38 @@
+{
+ "id": "archer-chord-2",
+ "title": "Archer pawn: skills from the hip (0.9.167)",
+ "intro": "Take over the second Archer pawn (the Archer) and stand near an enemy. Do NOT hold R1 in this test. Press End (or click both sticks) to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.167"
+ },
+ "steps": [
+  {
+   "text": "FROM THE HIP (don't hold R1): Spiral Arrow and Heavenly Shot a few times each. Hold the chord like you normally would.",
+   "secs": 25
+  },
+  {
+   "text": "Now WITH R1 held: the same skills a couple of times, to check aiming still works.",
+   "secs": 15
+  },
+  {
+   "text": "Done. Tell Claude what you saw.",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 15,
+  "out": "test_guide/result_archer-chord-2.json",
+  "show": [
+   "up",
+   "hip"
+  ],
+  "probes": {
+   "up": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return '-' end; local fsm=ch:call('get_ActionManager'):get_field('Fsm'); return tostring(fsm:call('getCurrentNodeName(System.UInt32)',1)):gsub('^Combat%.',''):gsub('Job02_SkillAttack%.','')",
+   "cam": "local mcc=sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController',0); return mcc:get_field('_CurrentCameraController'):get_type_definition():get_name()",
+   "hold": "local d=_G.DPC_dbg; return d and d.R and d.R.aim_hold and true or false",
+   "skill": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; return ch and ch:call('get_Human'):call('get_CustomSkillState') or 0",
+   "shot": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return false end; local n=tostring(ch:call('get_ActionManager'):get_field('Fsm'):call('getCurrentNodeName(System.UInt32)',1)); return n:find('Shoot',1,true)~=nil or n:find('Release',1,true)~=nil",
+   "hip": "local d=_G.DPC_dbg; return d and d.R and d.R.hip_aim and true or false"
+  }
+ }
+}
