@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.167"
+local VERSION = "0.9.168"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -204,6 +204,7 @@ local cfg = {
     arisen_brain_lock = true,
     possess_no_climb_cam = true,      -- v0.9.143: the Arisen's climbing camera is not switched to while a pawn is played
     possess_no_cinematic_cam = true,  -- v0.9.139: the game's cinematic action camera is not started while a pawn is played
+    arisen_own_lockon = true,         -- v0.9.168: while a pawn is played the Arisen gets a lock-on of his own; the game's one is the played pawn's alone
     arisen_lock_guard = true,         -- v0.9.138: the Arisen's own input step never touches the played pawn's lock-on target
     arisen_brain_puppeteer = false,      -- run the brain while the pawn uses the Mode 2 puppeteer (crashed twice)
     arisen_brain_lock_puppeteer = false,
@@ -2223,7 +2224,92 @@ end
 
 local SET_TARGET_SIG = "setTarget(app.LockOnTargetWork, System.Boolean, System.Boolean)"
 local REMOVE_TARGET_SIG = "removeTarget(app.LockOnTargetWork)"
+
+-- v0.9.168 the Arisen gets his own lock-on while a pawn is played. Until now the game's lock-on controller (the
+-- one app.Player keeps updating, the one that finds what a shot "from the hip" homes in on) was shared: rebound to
+-- the played pawn, and lent to the Arisen for his input step every frame (his brain's target set on it, or, with
+-- no target, the 0.9.138 guard swap). Measured (archer-loose-2 / -3, Archer pawn, hip shots at ~13 - 25 m): with
+-- the lending on, her lock held in 3 of ~150 shooting frames and she turned away from the monster; with it off,
+-- 122 of 142. Even a lend that changed nothing broke it (archer-loose-3: guard kept the target 951 times, fixed 0,
+-- lock still gone). Shots only worked once the Arisen engaged the SAME monster, because his target was written in.
+-- Now: the played pawn keeps the game's controller untouched (she is the player), and the Arisen's input processor
+-- gets a controller of its own (Param.LockOnCtrl), which DPC fills with the brain's target. Nothing updates it but
+-- DPC: the same arrangement co-op has used for player 2's pawn since 0.9.12 (no finder runs on it). Off: the old
+-- sharing (cfg.arisen_own_lockon).
+R.ar_lock_want = function()
+    return cfg.arisen_own_lockon and state.active and not coop.active and cfg.control_mode == 2 and brain.ar ~= nil
+end
+R.ar_lock_remove = function(why)
+    if not R.ar_lock then return end
+    local param, shared = R.ar_lock_param, R.ar_lock_shared
+    pcall(function()
+        if param and shared then param:set_field("LockOnCtrl", shared) end
+    end)
+    pcall(function() R.ar_lock:call("clearLockOn") end)
+    R.ar_lock, R.ar_lock_param, R.ar_lock_shared = nil, nil, nil
+    R.ar_lock_removed = (R.ar_lock_removed or 0) + 1
+    if why then log_msg("Arisen's own lock-on removed (" .. tostring(why) .. ")") end
+end
+R.ar_lock_get = function()
+    if not R.ar_lock_want() or R.ar_lock_failed then
+        if R.ar_lock then R.ar_lock_remove("not wanted") end
+        return nil
+    end
+    if R.ar_lock then
+        -- keep it in place: if anything put the game's controller back into his processor, put his own back
+        local okc, cur = pcall(R.ar_lock_param.get_field, R.ar_lock_param, "LockOnCtrl")
+        if okc and not same_obj(cur, R.ar_lock) then
+            pcall(R.ar_lock_param.set_field, R.ar_lock_param, "LockOnCtrl", R.ar_lock)
+            R.ar_lock_resets = (R.ar_lock_resets or 0) + 1
+        end
+        return R.ar_lock
+    end
+    local ok, err = pcall(function()
+        local pip = call(brain.ar, "get_InputProcessor")
+        local param = pip and pip:get_field("Param")
+        if not param then error("no input processor") end
+        if not same_obj(param:get_field("Chara"), brain.ar) then error("processor is not the Arisen's") end
+        local shared = param:get_field("LockOnCtrl")
+        if not shared then error("no lock-on in his processor") end
+        local own = sdk.create_instance("app.LockOnController"):add_ref()
+        own:call("setup", brain.ar, shared:get_field("<ParamList>k__BackingField"))
+        param:set_field("LockOnCtrl", own)
+        R.ar_lock, R.ar_lock_param, R.ar_lock_shared = own, param, shared
+    end)
+    if not ok then
+        R.ar_lock_failed = true
+        log_msg("Arisen's own lock-on could not be set up (" .. tostring(err) .. "); sharing the game's as before")
+        return nil
+    end
+    R.ar_lock_made = (R.ar_lock_made or 0) + 1
+    log_msg("Arisen has his own lock-on while the pawn is played")
+    return R.ar_lock
+end
+R.ar_lock_apply = function(own)
+    -- the brain's target (or the Remedy Arrow's downed pawn); none: an empty lock-on
+    local rw = brain.fjob == 8 and brain.ma_r and os.clock() < (brain.ma_r.lock_until or 0) and brain.ma_r.work or nil
+    local work = rw
+    if not work and cfg.arisen_brain_lock and brain.lock_work and brain.target then
+        local m = brain.mode or ""
+        if m == "engage" or m:find("^turn") or m:find("^skill") then work = brain.lock_work end
+    end
+    pcall(function()
+        if work then
+            own:call(SET_TARGET_SIG, work, false, false)
+            if rw then own:call("setAimTargetInfoToCharacter") end
+            brain.lock_sets = (brain.lock_sets or 0) + 1
+        elseif own:call("get_Target") ~= nil then
+            own:call("clearLockOn")
+        end
+    end)
+end
 local function brain_lock_apply()
+    if cfg.arisen_own_lockon then -- v0.9.168
+        local own = R.ar_lock_get()
+        if own then R.ar_lock_apply(own); return end
+    elseif R.ar_lock then
+        R.ar_lock_remove("switched off")
+    end
     -- v0.9.105 Remedy Arrow: the lock-on goes to the downed pawn while he shoots it (in or out of a fight)
     local rw = brain.fjob == 8 and brain.ma_r and os.clock() < (brain.ma_r.lock_until or 0) and brain.ma_r.work or nil
     if rw and state.active and ((not brain.pawn_native and not cfg.arisen_brain_lock_puppeteer)
@@ -2306,11 +2392,29 @@ local function brain_lock_restore()
     pcall(function()
         if brain.lock_guard then
             -- guard swap: nothing of ours was set; drop whatever his step locked on to
-            if lk:call("get_Target") ~= nil then lk:call("clearLockOn") end
+            -- v0.9.168: but only if his step changed it. Measured (archer-loose-2, Archer pawn, shots from the hip at
+            -- 22 m): clearing and re-setting her target on every frame left her lock-on in place in 3 of ~150
+            -- shooting frames (the game locks her on for one frame, then she turned away and shot at nothing); with
+            -- the guard off it held in 122 of 142. When the target is still hers, leave it alone.
+            local cur = lk:call("get_Target")
+            local sv = brain.saved_tgt
+            local same = (cur == nil and sv == nil)
+            if cur ~= nil and sv ~= nil then
+                local oka, a1 = pcall(cur.get_address, cur)
+                local okb, a2 = pcall(sv.get_address, sv)
+                same = oka and okb and a1 == a2
+            end
+            if same then
+                brain.lock_guard_kept = (brain.lock_guard_kept or 0) + 1
+            else
+                brain.lock_guard_fixed = (brain.lock_guard_fixed or 0) + 1
+                if cur ~= nil then lk:call("clearLockOn") end
+                if sv then lk:call(SET_TARGET_SIG, sv, false, false) end
+            end
         else
             lk:call(REMOVE_TARGET_SIG, brain.lock_used or brain.lock_work)
+            if brain.saved_tgt then lk:call(SET_TARGET_SIG, brain.saved_tgt, false, false) end
         end
-        if brain.saved_tgt then lk:call(SET_TARGET_SIG, brain.saved_tgt, false, false) end
     end)
     brain.lock_guard = false
     -- v0.9.95: while a pawn is played (not co-op) the shared lock-on belongs to that pawn, whatever was saved
@@ -3905,6 +4009,8 @@ local function release_possession(reason)
     log_msg("Releasing possession (" .. tostring(reason or "manual") .. ") -> Returning to Arisen")
     R.note = { text = "Back to the Arisen", t_end = os.clock() + 3.0 }
     if R.aim_stop then pcall(R.aim_stop) end -- v0.9.29: hand the aim camera back
+    if R.ar_lock then pcall(R.ar_lock_remove, "release") end -- v0.9.168: the Arisen takes the game's lock-on back
+    R.ar_lock_failed = nil
     -- v0.9.81: the brain sprints (a toggle) when its target is far. Handing the Arisen back with the sprint state
     -- still set left him unable to regain stamina until he ran dry (the tester, 2026-11-16). Clear it.
     pcall(function()
@@ -5356,13 +5462,26 @@ R.aim_setup = function(mcc)
             end
         end
         R.aim_pick, R.aim_set = s, "index " .. idx
+        R.aim_asset_addr = asset:get_address()
         -- the controller asks AimCameraSetting.evaluate(player) for its setting; answer for the pawn while he aims
+        -- v0.9.168 crash fix (AptPupil 2026-11-19, DD2.exe+0x52590e4 inside setupAim during switchCamera: the engine
+        -- read the header of an already freed object, 0x700000000). The answer was a bare pointer with no reference
+        -- of its own; the game keeps and later releases what evaluate returns, so each answer cost the setting one
+        -- reference until it was freed under the camera. Now each answer carries its own reference (a small, harmless
+        -- leak on an asset that lives all session), only the live asset is answered for, and the cache is dropped
+        -- when the world loads.
         if not R.aim_eval_hooked then
             R.aim_eval_hooked = true
-            sdk.hook(asset:get_type_definition():get_method("evaluate"), function(args) end, function(retval)
-                if R.aim_hold and R.aim_pick and os.clock() < (R.aim_until or 0) then
-                    R.aim_evals = (R.aim_evals or 0) + 1
-                    return sdk.to_ptr(R.aim_pick:get_address())
+            sdk.hook(asset:get_type_definition():get_method("evaluate"), function(args)
+                R.aim_eval_this = sdk.to_int64(args[2])
+            end, function(retval)
+                local pick = R.aim_pick
+                if R.aim_hold and pick and R.aim_eval_this == R.aim_asset_addr and os.clock() < (R.aim_until or 0) then
+                    local okr = pcall(pick.add_ref, pick)
+                    if okr then
+                        R.aim_evals = (R.aim_evals or 0) + 1
+                        return sdk.to_ptr(pick:get_address())
+                    end
                 end
                 return retval
             end)
@@ -6839,7 +6958,7 @@ R.ar_calc = function()
     end)
 end
 R.stam_cb_ok = pcall(re.on_pre_application_entry, "LockScene", function() R.stam_calc(); R.ar_calc() end)
-if R.dev then _G.DPC_dbg = { native = native, state = state, R = R } end -- dev only: lets TestGuide plans read the pawn's processor
+if R.dev then _G.DPC_dbg = { native = native, state = state, R = R, brain = brain, cfg = cfg } end -- dev only: lets TestGuide plans read the pawn's processor
 if cfg.pawn_aim_camera then pcall(R.aim_install) end -- at load, so the Arisen's own aim teaches the transitions and reticle point
 
 local function dbg_event(kind, detail)
@@ -8413,6 +8532,7 @@ R.world_check = function()
             brain.target, brain.lock, brain.lock_work = nil, nil, nil
             coop.tgt, coop.tgt_work = nil, nil
             quick.rows, quick.defs, quick.packs, quick.rows_try_t = nil, nil, {}, nil -- v0.9.115: game objects, read again later
+            R.aim_pick, R.aim_pick_idx, R.aim_asset_addr = nil, nil, nil -- v0.9.168: aim setting, read again later
             log_msg("World is loading: the mod pauses until it is back")
         end
         R.world, R.world_back_t = false, nil
@@ -9512,6 +9632,8 @@ re.on_frame(function()
         local c7
         c7, cfg.arisen_brain_stuck_s = imgui.slider_float("Sidestep after no damage for (s, 0 = never)", cfg.arisen_brain_stuck_s, 0.0, 20.0)
         if c1 or c2 or c3 or c4 or c5 or c6 or c7 then save_cfg() end
+        chg, cfg.arisen_own_lockon = imgui.checkbox("Give the Arisen his own lock-on while a pawn is played", cfg.arisen_own_lockon)
+        if chg then save_cfg() end
         chg, cfg.arisen_brain_lock = imgui.checkbox("Lock his lock-on onto the brain's target (needed for hits and skills)", cfg.arisen_brain_lock)
         if chg then save_cfg() end
         chg, cfg.arisen_brain_keep_hud_redirect = imgui.checkbox("Keep HUD job/skill redirect while the brain runs (may break his archery)", cfg.arisen_brain_keep_hud_redirect)

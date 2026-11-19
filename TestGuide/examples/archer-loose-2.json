@@ -1,0 +1,76 @@
+{
+ "id": "archer-loose-2",
+ "title": "Archer pawn: hip shots turning away, A/B (0.9.168)",
+ "intro": "Same as before: take over the second Archer pawn, stand behind and a bit far from the enemy, no R1. Press End (or click both sticks) to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.168"
+ },
+ "steps": [
+  {
+   "text": "PART A: hip shots (normal + Spiral Arrow / Heavenly Shot) from behind and a bit far, like last time.",
+   "secs": 15
+  },
+  {
+   "text": "PART B: the same again, same spot. (Claude switched one setting off for this part.)",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_lock_guard",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_lock",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "Done (settings restored). Tell Claude: did shots turn away in part A, part B, both?",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_lock_guard",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_lock",
+     "value": true
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_archer-loose-2.json",
+  "show": [
+   "up",
+   "guard_on",
+   "ltgt",
+   "bmode"
+  ],
+  "probes": {
+   "up": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return '-' end; local fsm=ch:call('get_ActionManager'):get_field('Fsm'); return (tostring(fsm:call('getCurrentNodeName(System.UInt32)',1)):gsub('^Combat%.',''):gsub('Job02_SkillAttack%.',''))",
+   "face": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return '-' end; local tr=ch:call('get_GameObject'):call('get_Transform'); local p=tr:call('get_Position'); local function yaw(x,z) return math.floor(math.deg(math.atan(x,z))+0.5) end; local f=tr:call('get_WorldMatrix')[2]; return yaw(f.x,f.z)",
+   "camyaw": "local function yaw(x,z) return math.floor(math.deg(math.atan(x,z))+0.5) end; local f=sdk.get_primary_camera():call('get_GameObject'):call('get_Transform'):call('get_WorldMatrix')[2]; return yaw(-f.x,-f.z)",
+   "aimchr": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return '-' end; local c=ch:call('get_AimCharacter'); if not c then return '-' end; return tostring(c:call('get_GameObject'):call('get_Name'))",
+   "aimchr_yaw": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return '-' end; local tr=ch:call('get_GameObject'):call('get_Transform'); local p=tr:call('get_Position'); local function yaw(x,z) return math.floor(math.deg(math.atan(x,z))+0.5) end; local c=ch:call('get_AimCharacter'); if not c then return '-' end; local q=c:call('get_GameObject'):call('get_Transform'):call('get_Position'); return yaw(q.x-p.x,q.z-p.z)",
+   "aimpos_yaw": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return '-' end; local tr=ch:call('get_GameObject'):call('get_Transform'); local p=tr:call('get_Position'); local function yaw(x,z) return math.floor(math.deg(math.atan(x,z))+0.5) end; local v=ch:call('get_AimTargetPosition'); if not v or v:read_byte(0)==0 then return '-' end; local x,y,z=v:read_float(16),v:read_float(20),v:read_float(24); return yaw(x-p.x,z-p.z)..'/'..math.floor(math.sqrt((x-p.x)^2+(z-p.z)^2)+0.5)..'m/dy'..math.floor(y-p.y+0.5)",
+   "aimfront": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return '-' end; local v=ch:call('get_AimTargetFrontAngleDeg'); if not v or v:read_byte(0)==0 then return '-' end; return math.floor(v:read_float(4)+0.5)",
+   "shot": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; if not ch then return '-' end; local n=tostring(ch:call('get_ActionManager'):get_field('Fsm'):call('getCurrentNodeName(System.UInt32)',1)); return n:find('Shoot',1,true)~=nil or n:find('Release',1,true)~=nil",
+   "bmode": "local d=_G.DPC_dbg; local b=d and d.brain; if not b then return '-' end; return tostring(b.mode)",
+   "guards": "local d=_G.DPC_dbg; local b=d and d.brain; if not b then return '-' end; return b.lock_guards or 0",
+   "sets": "local d=_G.DPC_dbg; local b=d and d.brain; if not b then return '-' end; return b.lock_sets or 0",
+   "swapped": "local d=_G.DPC_dbg; local b=d and d.brain; if not b then return '-' end; return b.lock_swapped and true or false",
+   "ltgt": "local d=_G.DPC_dbg; local b=d and d.brain; if not b then return '-' end; local lk=b.lock; if not lk then return '-' end; local t=lk:call('get_Target'); if not t then return 'none' end; local c; pcall(function() c=t:get_field('Chara') or t:call('get_Chara') end); if c then return tostring(c:call('get_GameObject'):call('get_Name')) end; return 'set'",
+   "lchara": "local d=_G.DPC_dbg; local b=d and d.brain; if not b then return '-' end; local lk=b.lock; if not lk then return '-' end; local c=lk:get_field('Chara'); return c and tostring(c:call('get_GameObject'):call('get_Name')) or '-'",
+   "btgt": "local d=_G.DPC_dbg; local b=d and d.brain; if not b then return '-' end; local t=b.target; if not t then return '-' end; return tostring(t:call('get_GameObject'):call('get_Name'))",
+   "guard_on": "local d=_G.DPC_dbg; return d and d.cfg and (d.cfg.arisen_lock_guard and 'G' or 'g')..(d.cfg.arisen_brain_lock and 'L' or 'l') or '-'",
+   "ar_yaw": "local d=_G.DPC_dbg; local ch=d and d.state and d.state.pawn_chara; local ar=d and d.state and d.state.arisen_chara; if not (ch and ar) then return '-' end; local p=ch:call('get_GameObject'):call('get_Transform'):call('get_Position'); local q=ar:call('get_GameObject'):call('get_Transform'):call('get_Position'); return math.floor(math.deg(math.atan(q.x-p.x,q.z-p.z))+0.5)..'/'..math.floor(math.sqrt((q.x-p.x)^2+(q.z-p.z)^2)+0.5)..'m'",
+   "ar_aimchr": "local d=_G.DPC_dbg; local ar=d and d.state and d.state.arisen_chara; if not ar then return '-' end; local c=ar:call('get_AimCharacter'); return c and tostring(c:call('get_GameObject'):call('get_Name')) or '-'"
+  }
+ }
+}

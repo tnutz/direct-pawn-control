@@ -40,7 +40,7 @@ Open the REFramework menu (Insert) and look for **Direct Pawn Control** to chang
 ## What your pawn can do while you play it
 - Loot corpses, open chests, gather and pick things up: press interact when the mod's `[Interact]` prompt shows over the object. Items go to the pawn's inventory.
 - Wake a sleeping companion, and revive a downed pawn by holding interact (a ring fills, as for the Arisen).
-- An Archer pawn gets the bow aim camera and reticle while you hold aim, turns with the camera and shoots at the reticle. On a controller, the aim button + a skill button fires the aimed form of that skill. Skills used from the hip fire as they do for the Arisen.
+- An Archer pawn gets the bow aim camera and reticle while you hold aim, turns with the camera and shoots at the reticle. On a controller, the aim button + a skill button fires the aimed form of that skill. Skills used from the hip fire as they do for the Arisen. Shots from the hip home in on what you look at, like the Arisen's; the Arisen keeps a lock-on of his own while he fights by himself.
 - If the pawn was leading the way to a quest when you took it over, the guiding stops so it does not pull against you.
 
 ## What the Arisen does while you play a pawn
