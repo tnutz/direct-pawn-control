@@ -1,0 +1,70 @@
+{
+ "id": "justguard-1",
+ "title": "Perfect block slow motion: Arisen vs played Fighter pawn (watch only)",
+ "intro": "BEFORE YOU PRESS END: open ground. The goblins in this test cannot die. Nothing is changed in the game; it only records what the perfect block does. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev5"
+ },
+ "steps": [
+  {
+   "text": "GET READY (no timer): press End to spawn unkillable goblins.",
+   "wait": true,
+   "each_frame": "if not G_jg then\n  G_jg = { stage = \"-\", by = {} }\n  local function bump(k) local b = G_jg.by[G_jg.stage .. \" | \" .. k] or 0; G_jg.by[G_jg.stage .. \" | \" .. k] = b + 1 end\n  local function goname(c) local n; pcall(function() n = c:call(\"get_GameObject\"):call(\"get_Name\") end); return n or \"?\" end\n  local td = sdk.find_type_definition(\"app.JustGuardHitSlow\")\n  local m = td and td:get_method(\"start\")\n  if m then\n    sdk.hook(m, function(args)\n      thread.get_hook_storage().jg = args[2]\n    end, function(r)\n      local st = thread.get_hook_storage(); local p = st.jg; st.jg = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local wr = a:get_field(\"CharaWorkRate\")\n        local who = wr and goname(wr) or \"?\"\n        bump(\"JustGuardHitSlow \" .. who .. (a:get_field(\"IsJustGuard\") and \" (perfect)\" or \" (not perfect)\"))\n      end)\n      return r\n    end)\n  end\n  local sa = sdk.find_type_definition(\"app.SlowAction\")\n  local m2 = sa and sa:get_method(\"start\")\n  if m2 then\n    sdk.hook(m2, function(args) thread.get_hook_storage().sa = args[2] end, function(r)\n      local st = thread.get_hook_storage(); local p = st.sa; st.sa = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local ch = a:get_field(\"<CachedCharacter>k__BackingField\")\n        bump(\"SlowAction \" .. (ch and goname(ch) or \"?\") .. (a:get_field(\"PlayerOnly\") and \" playeronly\" or \"\") .. (a:get_field(\"EnableRequestSlow\") and \" ON\" or \" off\"))\n      end)\n      return r\n    end)\n  end\n  local wt = sdk.find_type_definition(\"app.WorkRate\")\n  local m3 = wt and wt:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m3 then sdk.hook(m3, function(args) bump(\"setHitStop\") end, function(r) return r end) end\nend\nG_jg.stage = \"-\"\n"
+  },
+  {
+   "text": "AS THE ARISEN, only if he is a Fighter: block and try for a few perfect blocks (block just as a hit lands). Did it slow down? Press End when done, or right away if he isn't a Fighter.",
+   "wait": true,
+   "each_frame": "if not G_jg then\n  G_jg = { stage = \"-\", by = {} }\n  local function bump(k) local b = G_jg.by[G_jg.stage .. \" | \" .. k] or 0; G_jg.by[G_jg.stage .. \" | \" .. k] = b + 1 end\n  local function goname(c) local n; pcall(function() n = c:call(\"get_GameObject\"):call(\"get_Name\") end); return n or \"?\" end\n  local td = sdk.find_type_definition(\"app.JustGuardHitSlow\")\n  local m = td and td:get_method(\"start\")\n  if m then\n    sdk.hook(m, function(args)\n      thread.get_hook_storage().jg = args[2]\n    end, function(r)\n      local st = thread.get_hook_storage(); local p = st.jg; st.jg = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local wr = a:get_field(\"CharaWorkRate\")\n        local who = wr and goname(wr) or \"?\"\n        bump(\"JustGuardHitSlow \" .. who .. (a:get_field(\"IsJustGuard\") and \" (perfect)\" or \" (not perfect)\"))\n      end)\n      return r\n    end)\n  end\n  local sa = sdk.find_type_definition(\"app.SlowAction\")\n  local m2 = sa and sa:get_method(\"start\")\n  if m2 then\n    sdk.hook(m2, function(args) thread.get_hook_storage().sa = args[2] end, function(r)\n      local st = thread.get_hook_storage(); local p = st.sa; st.sa = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local ch = a:get_field(\"<CachedCharacter>k__BackingField\")\n        bump(\"SlowAction \" .. (ch and goname(ch) or \"?\") .. (a:get_field(\"PlayerOnly\") and \" playeronly\" or \"\") .. (a:get_field(\"EnableRequestSlow\") and \" ON\" or \" off\"))\n      end)\n      return r\n    end)\n  end\n  local wt = sdk.find_type_definition(\"app.WorkRate\")\n  local m3 = wt and wt:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m3 then sdk.hook(m3, function(args) bump(\"setHitStop\") end, function(r) return r end) end\nend\nG_jg.stage = \"1 Arisen\"\n",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 6.0,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    }
+   ]
+  },
+  {
+   "text": "Taking over your Fighter main pawn.",
+   "secs": 4,
+   "each_frame": "if not G_jg then\n  G_jg = { stage = \"-\", by = {} }\n  local function bump(k) local b = G_jg.by[G_jg.stage .. \" | \" .. k] or 0; G_jg.by[G_jg.stage .. \" | \" .. k] = b + 1 end\n  local function goname(c) local n; pcall(function() n = c:call(\"get_GameObject\"):call(\"get_Name\") end); return n or \"?\" end\n  local td = sdk.find_type_definition(\"app.JustGuardHitSlow\")\n  local m = td and td:get_method(\"start\")\n  if m then\n    sdk.hook(m, function(args)\n      thread.get_hook_storage().jg = args[2]\n    end, function(r)\n      local st = thread.get_hook_storage(); local p = st.jg; st.jg = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local wr = a:get_field(\"CharaWorkRate\")\n        local who = wr and goname(wr) or \"?\"\n        bump(\"JustGuardHitSlow \" .. who .. (a:get_field(\"IsJustGuard\") and \" (perfect)\" or \" (not perfect)\"))\n      end)\n      return r\n    end)\n  end\n  local sa = sdk.find_type_definition(\"app.SlowAction\")\n  local m2 = sa and sa:get_method(\"start\")\n  if m2 then\n    sdk.hook(m2, function(args) thread.get_hook_storage().sa = args[2] end, function(r)\n      local st = thread.get_hook_storage(); local p = st.sa; st.sa = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local ch = a:get_field(\"<CachedCharacter>k__BackingField\")\n        bump(\"SlowAction \" .. (ch and goname(ch) or \"?\") .. (a:get_field(\"PlayerOnly\") and \" playeronly\" or \"\") .. (a:get_field(\"EnableRequestSlow\") and \" ON\" or \" off\"))\n      end)\n      return r\n    end)\n  end\n  local wt = sdk.find_type_definition(\"app.WorkRate\")\n  local m3 = wt and wt:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m3 then sdk.hook(m3, function(args) bump(\"setHitStop\") end, function(r) return r end) end\nend\nG_jg.stage = \"-\"\n",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "AS THE FIGHTER PAWN: try for several perfect blocks. Does the world slow down on a perfect one? Press End when you've landed a few.",
+   "wait": true,
+   "each_frame": "if not G_jg then\n  G_jg = { stage = \"-\", by = {} }\n  local function bump(k) local b = G_jg.by[G_jg.stage .. \" | \" .. k] or 0; G_jg.by[G_jg.stage .. \" | \" .. k] = b + 1 end\n  local function goname(c) local n; pcall(function() n = c:call(\"get_GameObject\"):call(\"get_Name\") end); return n or \"?\" end\n  local td = sdk.find_type_definition(\"app.JustGuardHitSlow\")\n  local m = td and td:get_method(\"start\")\n  if m then\n    sdk.hook(m, function(args)\n      thread.get_hook_storage().jg = args[2]\n    end, function(r)\n      local st = thread.get_hook_storage(); local p = st.jg; st.jg = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local wr = a:get_field(\"CharaWorkRate\")\n        local who = wr and goname(wr) or \"?\"\n        bump(\"JustGuardHitSlow \" .. who .. (a:get_field(\"IsJustGuard\") and \" (perfect)\" or \" (not perfect)\"))\n      end)\n      return r\n    end)\n  end\n  local sa = sdk.find_type_definition(\"app.SlowAction\")\n  local m2 = sa and sa:get_method(\"start\")\n  if m2 then\n    sdk.hook(m2, function(args) thread.get_hook_storage().sa = args[2] end, function(r)\n      local st = thread.get_hook_storage(); local p = st.sa; st.sa = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local ch = a:get_field(\"<CachedCharacter>k__BackingField\")\n        bump(\"SlowAction \" .. (ch and goname(ch) or \"?\") .. (a:get_field(\"PlayerOnly\") and \" playeronly\" or \"\") .. (a:get_field(\"EnableRequestSlow\") and \" ON\" or \" off\"))\n      end)\n      return r\n    end)\n  end\n  local wt = sdk.find_type_definition(\"app.WorkRate\")\n  local m3 = wt and wt:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m3 then sdk.hook(m3, function(args) bump(\"setHitStop\") end, function(r) return r end) end\nend\nG_jg.stage = \"2 pawn\"\n"
+  },
+  {
+   "text": "Done: goblins gone, back to the Arisen. Tell Claude whether you saw a slow-down as either.",
+   "secs": 5,
+   "each_frame": "if not G_jg then\n  G_jg = { stage = \"-\", by = {} }\n  local function bump(k) local b = G_jg.by[G_jg.stage .. \" | \" .. k] or 0; G_jg.by[G_jg.stage .. \" | \" .. k] = b + 1 end\n  local function goname(c) local n; pcall(function() n = c:call(\"get_GameObject\"):call(\"get_Name\") end); return n or \"?\" end\n  local td = sdk.find_type_definition(\"app.JustGuardHitSlow\")\n  local m = td and td:get_method(\"start\")\n  if m then\n    sdk.hook(m, function(args)\n      thread.get_hook_storage().jg = args[2]\n    end, function(r)\n      local st = thread.get_hook_storage(); local p = st.jg; st.jg = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local wr = a:get_field(\"CharaWorkRate\")\n        local who = wr and goname(wr) or \"?\"\n        bump(\"JustGuardHitSlow \" .. who .. (a:get_field(\"IsJustGuard\") and \" (perfect)\" or \" (not perfect)\"))\n      end)\n      return r\n    end)\n  end\n  local sa = sdk.find_type_definition(\"app.SlowAction\")\n  local m2 = sa and sa:get_method(\"start\")\n  if m2 then\n    sdk.hook(m2, function(args) thread.get_hook_storage().sa = args[2] end, function(r)\n      local st = thread.get_hook_storage(); local p = st.sa; st.sa = nil\n      pcall(function()\n        local a = sdk.to_managed_object(p)\n        local ch = a:get_field(\"<CachedCharacter>k__BackingField\")\n        bump(\"SlowAction \" .. (ch and goname(ch) or \"?\") .. (a:get_field(\"PlayerOnly\") and \" playeronly\" or \"\") .. (a:get_field(\"EnableRequestSlow\") and \" ON\" or \" off\"))\n      end)\n      return r\n    end)\n  end\n  local wt = sdk.find_type_definition(\"app.WorkRate\")\n  local m3 = wt and wt:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m3 then sdk.hook(m3, function(args) bump(\"setHitStop\") end, function(r) return r end) end\nend\nG_jg.stage = \"-\"\n",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_justguard-1.json",
+  "show": [
+   "jg"
+  ],
+  "probes": {
+   "jg": "if not G_jg then return \"-\" end\nlocal o = {}\nfor k, n in pairs(G_jg.by) do o[#o + 1] = k .. \" = \" .. n end\ntable.sort(o)\nreturn table.concat(o, \" || \")"
+  }
+ }
+}

@@ -41,7 +41,7 @@
 -- Commands are DirectPawnControl's command file (developer mode): possess, release, coop, spawn, despawn, heal,
 -- quick, robot, set, down.
 
-local VERSION = "1.2"
+local VERSION = "1.4"
 local DIR = "capture/"
 local SHOTS_FILE, LOG_FILE = DIR .. "shots.json", DIR .. "log.json"
 local VK_END, VK_HOME, VK_PGUP, VK_PGDN, VK_CTRL, VK_SHIFT, VK_DEL = 0x23, 0x24, 0x21, 0x22, 0x11, 0x10, 0x2E
@@ -71,7 +71,36 @@ local function pressed(vk)
     return hit
 end
 
-local function save_log() pcall(json.dump_file, LOG_FILE, cg.log, 1) end
+-- v1.4: takes the capture desk set aside ("Drop takes with no video": capture/drops.json, serial + start time)
+-- become practice takes, so their shot counts as not shot yet.
+local function apply_drops()
+    local ok, d = pcall(json.load_file, DIR .. "drops.json")
+    if not ok or type(d) ~= "table" then return end
+    for _, x in ipairs(d) do
+        if type(x) == "table" then
+            for _, t in ipairs(cg.log.takes) do
+                if t.serial == x.serial and t.wall0 == x.wall0 and t.verdict ~= "practice" then t.verdict = "practice" end
+            end
+        end
+    end
+end
+local function save_log() pcall(apply_drops); pcall(json.dump_file, LOG_FILE, cg.log, 1) end
+
+-- v1.3: is OBS recording? The capture desk watches its folder for a growing recording file and writes
+-- capture/recording.json { wall, recording, file } every 2 s. "on" / "off" while that is fresh, else "unknown"
+-- (desk closed, or an older desk).
+local rec = { next = 0, state = "unknown", file = nil }
+local function rec_tick()
+    if os.clock() < rec.next then return end
+    rec.next = os.clock() + 1.0
+    local ok, r = pcall(json.load_file, DIR .. "recording.json")
+    if ok and type(r) == "table" and type(r.wall) == "number" and math.abs(os.time() - r.wall) < 8 then
+        rec.state = r.recording and "on" or "off"
+        rec.file = r.file
+    else
+        rec.state = "unknown"
+    end
+end
 
 local function load_files()
     local ok, l = pcall(json.load_file, SHOTS_FILE)
@@ -91,6 +120,7 @@ local function load_files()
     end -- else: the file could not be read just now; keep what is in memory instead of starting an empty log
     cg.log_loaded = true
     cg.log.list = l.id
+    pcall(apply_drops)
     return true
 end
 
@@ -104,7 +134,7 @@ local function kept(shot_id)
 end
 local function takes_of(shot_id)
     local n = 0
-    for _, t in ipairs(cg.log.takes) do if t.shot == shot_id then n = n + 1 end end
+    for _, t in ipairs(cg.log.takes) do if t.shot == shot_id and t.verdict ~= "practice" then n = n + 1 end end
     return n
 end
 local function first_open()
@@ -409,7 +439,7 @@ local function begin_take(now)
     local serial = cg.log.next_serial
     cg.log.next_serial = (serial % 255) + 1
     cg.take = { serial = serial, shot = s.id, list = cg.list.id, take = takes_of(s.id) + 1, t0 = now, wall0 = os.date("%Y-%m-%d %H:%M:%S"),
-                verdict = "pending", secs = tonumber(s.secs), events = {} }
+                verdict = "pending", secs = tonumber(s.secs), events = {}, rec = rec.state }
     cg.log.takes[#cg.log.takes + 1] = cg.take
     save_log()
     cg.acts = {}
@@ -429,6 +459,7 @@ end
 local function end_take(now, verdict)
     local s = shot()
     cg.take.t1 = now
+    if rec.state == "off" then cg.take.rec = "off" end
     cg.take.len = math.floor((now - cg.take.t0) * 100 + 0.5) / 100
     if verdict then cg.take.verdict = verdict end
     cg.take.t0 = nil   -- clock values mean nothing in the file; events carry times from the take's start
@@ -442,6 +473,8 @@ local function end_take(now, verdict)
 end
 
 local function tick(now)
+    pcall(rec_tick)
+    if cg.st == "take" and cg.take and rec.state == "off" then cg.take.rec = "off" end
     local ctrl, shift = reframework:is_key_down(VK_CTRL), reframework:is_key_down(VK_SHIFT)
     local k_end, k_home, k_up, k_dn = pressed(VK_END), pressed(VK_HOME), pressed(VK_PGUP), pressed(VK_PGDN)
     if k_end and ctrl then
@@ -502,7 +535,12 @@ local function tick(now)
         elseif k_end and el > 0.5 then end_take(now) end
     elseif cg.st == "endmark" then
         if cg.mark_left <= 0 then
-            if cg.take.verdict == "retake" then go("card", now) else go("review", now) end
+            if cg.take.rec == "off" and cg.take.verdict ~= "retake" then
+                -- v1.4: nothing was recording: a practice take, never kept
+                cg.take.verdict = "practice"; save_log()
+                cg.note = "Practice take (OBS was not recording): not kept"
+                go("card", now)
+            elseif cg.take.verdict == "retake" then go("card", now) else go("review", now) end
         end
     elseif cg.st == "review" then
         if k_end then
@@ -609,7 +647,26 @@ local function draw_card(now)
             text(font_big, C_TEXT, "END = keep it      HOME = shoot it again")
         end
     end
+    if rec.state == "off" then
+        text(font_big, C_WARN, "PRACTICE: OBS IS NOT RECORDING")
+        text(font_mid, C_WARN, "Takes now are practice and are not kept. Start OBS (recording into the capture desk's folder) for real takes.")
+    elseif rec.state == "on" then
+        text(nil, C_OK, "Recording: " .. tostring(rec.file or "yes"))
+    else
+        text(nil, C_DIM, "Recording: can't tell (open the capture desk to get a warning when OBS is not recording)")
+    end
     if cg.note then text(nil, C_WARN, cg.note) end
+    imgui.end_window()
+end
+
+-- During a take the screen is clear; if nothing is recording that does not matter, so say it in the corner.
+local function draw_rec_take()
+    if rec.state ~= "off" or not (cg.st == "take" or cg.st == "endmark") then return end
+    imgui.set_next_window_pos(Vector2f.new(40, 120), 1 << 3)
+    pcall(imgui.set_next_window_bg_alpha, 0.85)
+    imgui.begin_window("Not recording##CaptureGuide", nil, (1 << 6) | (1 << 0))
+    text(font_big, C_WARN, "PRACTICE: not recording")
+    text(font_mid, C_WARN, "this take will not be kept")
     imgui.end_window()
 end
 
@@ -622,6 +679,8 @@ re.on_frame(function()
     if not okm then err("mark", em) end
     local okd, ed = pcall(draw_card, now)
     if not okd then err("card", ed) end
+    local okr, er = pcall(draw_rec_take)
+    if not okr then err("rec", er) end
 end)
 
 re.on_script_reset(function() _G.CAPTURE_GUIDE_ACTIVE = nil end)

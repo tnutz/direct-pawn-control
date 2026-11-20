@@ -43,9 +43,15 @@
 --   Flight recorder: the last 30 s of key state at 10 Hz, kept all the time. Home (or Create/Share + L3 on the pad)
 --       saves it to test_guide/flight_<n>.json. For "that looked wrong" moments outside a test.
 --
+-- v2.4 unattended runs (the test bench, tools/capture/bench.py): while test_guide/auto.json says
+--   { "on": true, "until": <os.time()>, "run": "<id>" } (the bench renews it), a waiting plan starts by itself once
+--   its requirements are met and the Arisen has been in the world for 3 s; a "wait" step moves on after its
+--   "auto_secs" (default 3); a finished plan clears after 3 s. status.json also carries wall = os.time() and auto.
+--   Plans written for the bench should not need a person (no "wait" steps that need a real action).
+--
 -- Each recorded row gets t (seconds since start), step (1-based) and every probe value (errors -> "ERR: ...").
 
-local VERSION = "2.3"
+local VERSION = "2.4.1"
 local DIR = "test_guide/"
 local PLAN_FILE, STATUS_FILE = DIR .. "plan.json", DIR .. "status.json"
 local KEY_READY, KEY_SHIFT = 0x23, 0x10           -- End, Shift
@@ -125,6 +131,7 @@ local function write_status()
         elapsed = (gs.state == "running") and (os.clock() - gs.t0) or nil,
         rows = #gs.rows, msg = gs.msg, finished = gs.finished, t = os.clock(),
         verdicts = gs.verdicts, unmet = gs.unmet, queue_file = gs.queue_file,
+        wall = os.time(), auto = gs.auto and gs.auto_run or nil, -- v2.4
     })
 end
 
@@ -351,12 +358,25 @@ local function tick()
     if _G.CAPTURE_GUIDE_ACTIVE then gs.key_prev, gs.pad_prev = true, true; return end
     if now >= gs.next_poll then
         gs.next_poll = now + 1.0
+        -- v2.4: unattended mode, renewed by the test bench (expires on its own if the bench stops)
+        local oka, a = pcall(json.load_file, DIR .. "auto.json")
+        gs.auto = oka and type(a) == "table" and a.on == true and type(a["until"]) == "number" and a["until"] > os.time()
+        gs.auto_run = gs.auto and tostring(a.run or "") or nil
+        if gs.auto then
+            local okw, inw = pcall(function()
+                local mf = sdk.get_managed_singleton("app.MainFlowManager")
+                local cm = sdk.get_managed_singleton("app.CharacterManager")
+                return mf ~= nil and mf:call("get_IsInGamePhase") == true and cm ~= nil and cm:call("get_ManualPlayer") ~= nil
+            end)
+            if okw and inw then gs.world_t = gs.world_t or now else gs.world_t = nil end
+        end
         if gs.state ~= "running" and gs.state ~= "countdown" then
             local ok, p = pcall(json.load_file, PLAN_FILE)
             if ok then load_plan(p) end
             -- v1.5 queue: with nothing waiting, take the first plan in test_guide/queue/ (by file name) whose
             -- id has not run yet. Lets several tests be lined up and run back to back.
-            if gs.state == "idle" and fs and fs.glob then
+            -- (v2.4: not while the bench runs; it hands over its plans one at a time through plan.json)
+            if gs.state == "idle" and not gs.auto and fs and fs.glob then
                 local okg, files = pcall(fs.glob, [[test_guide\\queue\\.*\.json]])
                 if okg and type(files) == "table" then
                     table.sort(files)
@@ -386,7 +406,8 @@ local function tick()
         local changed = (unmet and table.concat(unmet, "|") or "") ~= (gs.unmet and table.concat(gs.unmet, "|") or "")
         gs.unmet = unmet
         if changed then write_status() end
-        if pressed and not gs.unmet then gs.state, gs.t0 = "countdown", now + 3.0; write_status() end
+        local auto_go = gs.auto and gs.world_t ~= nil and now - gs.world_t >= 3.0 -- v2.4
+        if (pressed or auto_go) and not gs.unmet then gs.state, gs.t0 = "countdown", now + 3.0; write_status() end
     elseif gs.state == "countdown" then
         if pressed and shift then finish("aborted", "aborted during countdown") return end
         if now >= gs.t0 then gs.state = "running"; start_step(1, now) end
@@ -401,6 +422,7 @@ local function tick()
         local advance
         if st.wait then
             advance = pressed and not shift and (now - gs.step_t0) > 0.3
+            if gs.auto and now - gs.step_t0 >= (tonumber(st.auto_secs) or 3) then advance = true end -- v2.4
         else
             advance = now - gs.step_t0 >= (tonumber(st.secs) or 5)
         end
@@ -410,7 +432,7 @@ local function tick()
             else finish("done", "finished") end
         end
     elseif (gs.state == "done" or gs.state == "aborted")
-           and (now - gs.done_t > ((#gs.verdicts > 0) and 30 or 8) or (pressed and now - gs.done_t > 0.5)) then
+           and (now - gs.done_t > ((gs.auto and 3) or ((#gs.verdicts > 0) and 30 or 8)) or (pressed and now - gs.done_t > 0.5)) then
         gs.state, gs.plan = "idle", nil
         write_status()
     end
@@ -643,4 +665,10 @@ do
     end
 end
 write_status()
+-- v2.4.1: REFramework logs an error for every read of a missing file; without the bench there is no auto.json, and
+-- the once-a-second check filled the log. Make an "off" one once (one logged miss, at load).
+do
+    local ok, a = pcall(json.load_file, DIR .. "auto.json")
+    if not ok or type(a) ~= "table" then pcall(json.dump_file, DIR .. "auto.json", { on = false }) end
+end
 log.info("[TestGuide] v" .. VERSION .. " loaded: drop a plan in reframework/data/test_guide/plan.json")

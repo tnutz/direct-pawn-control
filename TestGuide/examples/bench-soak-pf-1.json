@@ -1,0 +1,167 @@
+{
+ "id": "bench-soak-pf-1",
+ "title": "Crash soak: every 'playing as the player' switch on while the robot fights (unattended)",
+ "intro": "Runs by itself on the test bench. If you are here: just watch.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "Switches on, taking over the main pawn.",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 2
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "pf_hitstop",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "pf_world_slow",
+     "value": true
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Robot fights goblins as the pawn (hit-stop, kills, sound swaps all on).",
+   "secs": 35,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 8.0,
+     "angle": 0,
+     "still": false,
+     "tough": false
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 33,
+     "fight": true
+    }
+   ]
+  },
+  {
+   "text": "Back to the Arisen and over again (restore paths).",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "Take over again; robot fights a second wave.",
+   "secs": 38,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    },
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 8.0,
+     "angle": 0,
+     "still": false,
+     "tough": false
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 33,
+     "fight": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mp_ok",
+     "agg": "frac",
+     "label": "the game's player is the Arisen between calls",
+     "min_frac": 0.95
+    }
+   ]
+  },
+  {
+   "text": "All off, back to the Arisen.",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 0
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_hitstop",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_world_slow",
+     "value": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mp_ok",
+     "agg": "all",
+     "label": "the Arisen is the game's player at the end"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 4,
+  "out": "test_guide/result_bench-soak-pf-1.json",
+  "show": [
+   "pf"
+  ],
+  "probes": {
+   "pf": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R or not R.pf then return \"no DPC dev\" end\nlocal parts = {}\nfor k, n in pairs(R.pf.n) do parts[#parts + 1] = k .. \"=\" .. n end\ntable.sort(parts)\nreturn table.concat(parts, \" \") .. (R.pf.voice_err and (\" ERR \" .. R.pf.voice_err) or \"\") .. (R.pf.listener_err and (\" ERR \" .. R.pf.listener_err) or \"\")",
+   "mp_ok": "local d = _G.DPC_dbg\nif not (d and d.R) then return \"no DPC dev\" end\nlocal R = d.R\nlocal cm = sdk.get_managed_singleton(\"app.CharacterManager\")\nlocal mp = cm and cm:call(\"get_ManualPlayer\")\nlocal ar = d.state.arisen_chara or mp\nreturn R.mp_swapped == nil and mp ~= nil and ar ~= nil and mp:get_address() == ar:get_address()",
+   "active": "local d = _G.DPC_dbg; return d and d.state.active"
+  }
+ }
+}

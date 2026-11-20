@@ -1,0 +1,44 @@
+{
+ "id": "sound-swap-1",
+ "title": "Sound as the player: four stages (A/B/C/D)",
+ "intro": "Take over your main pawn first, then walk ~15 m away from the Arisen (near a wall, cave or building is ideal). Headphones help. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.169"
+ },
+ "steps": [
+  {
+   "text": "A (normal): sprint until out of breath, swing, jump, walk near the wall. Listen: whose breathing / steps sound close? Does the place sound right?",
+   "secs": 15
+  },
+  {
+   "text": "B: the pawn now has the player's sound settings, the Arisen a pawn's. Same actions. Different?",
+   "secs": 15,
+   "each_frame": "\nlocal d = _G.DPC_dbg; local s = d and d.state\nif not (s and s.active and s.pawn_chara and s.arisen_chara) then return end\nlocal function wc(ch) local go = ch:call(\"get_GameObject\"); return go:call(\"getComponent(System.Type)\", sdk.typeof(\"app.WwiseCharacter\")) end\nlocal wa, wp = wc(s.arisen_chara), wc(s.pawn_chara)\nif not (wa and wp) then return end\nif not G_snd then\n  G_snd = { a = { wa:call(\"get_CharacterCategory\"), wa:call(\"get_CharacterRTPC\"), wa:call(\"get_IsRTPCTreatedAsPlayer\") },\n            p = { wp:call(\"get_CharacterCategory\"), wp:call(\"get_CharacterRTPC\"), wp:call(\"get_IsRTPCTreatedAsPlayer\") }, wa = wa, wp = wp }\nend\nwp:call(\"set_CharacterCategory\", G_snd.a[1]); wp:call(\"set_CharacterRTPC\", G_snd.a[2]); wp:call(\"set_IsRTPCTreatedAsPlayer\", G_snd.a[3])\nwa:call(\"set_CharacterCategory\", G_snd.p[1]); wa:call(\"set_CharacterRTPC\", G_snd.p[2]); wa:call(\"set_IsRTPCTreatedAsPlayer\", G_snd.p[3])\n"
+  },
+  {
+   "text": "B + C: loudness is now worked out from the camera, not from the Arisen. Different?",
+   "secs": 15,
+   "each_frame": "\nlocal d = _G.DPC_dbg; local s = d and d.state\nif not (s and s.active and s.pawn_chara and s.arisen_chara) then return end\nlocal function wc(ch) local go = ch:call(\"get_GameObject\"); return go:call(\"getComponent(System.Type)\", sdk.typeof(\"app.WwiseCharacter\")) end\nlocal wa, wp = wc(s.arisen_chara), wc(s.pawn_chara)\nif not (wa and wp) then return end\nif not G_snd then\n  G_snd = { a = { wa:call(\"get_CharacterCategory\"), wa:call(\"get_CharacterRTPC\"), wa:call(\"get_IsRTPCTreatedAsPlayer\") },\n            p = { wp:call(\"get_CharacterCategory\"), wp:call(\"get_CharacterRTPC\"), wp:call(\"get_IsRTPCTreatedAsPlayer\") }, wa = wa, wp = wp }\nend\nwp:call(\"set_CharacterCategory\", G_snd.a[1]); wp:call(\"set_CharacterRTPC\", G_snd.a[2]); wp:call(\"set_IsRTPCTreatedAsPlayer\", G_snd.a[3])\nwa:call(\"set_CharacterCategory\", G_snd.p[1]); wa:call(\"set_CharacterRTPC\", G_snd.p[2]); wa:call(\"set_IsRTPCTreatedAsPlayer\", G_snd.p[3])\n\nlocal drv = sdk.find_type_definition(\"via.simplewwise.Driver\")\nif G_dec_old == nil then G_dec_old = drv:get_method(\"get_CalcDistanceDecayAtPlayerPos\"):call(nil) end\ndrv:get_method(\"set_CalcDistanceDecayAtPlayerPos(System.Boolean)\"):call(nil, false)\n"
+  },
+  {
+   "text": "B + C + D: the place's acoustics (reverb, ambience) now follow the pawn too. Different?",
+   "secs": 15,
+   "each_frame": "\nlocal d = _G.DPC_dbg; local s = d and d.state\nif not (s and s.active and s.pawn_chara and s.arisen_chara) then return end\nlocal function wc(ch) local go = ch:call(\"get_GameObject\"); return go:call(\"getComponent(System.Type)\", sdk.typeof(\"app.WwiseCharacter\")) end\nlocal wa, wp = wc(s.arisen_chara), wc(s.pawn_chara)\nif not (wa and wp) then return end\nif not G_snd then\n  G_snd = { a = { wa:call(\"get_CharacterCategory\"), wa:call(\"get_CharacterRTPC\"), wa:call(\"get_IsRTPCTreatedAsPlayer\") },\n            p = { wp:call(\"get_CharacterCategory\"), wp:call(\"get_CharacterRTPC\"), wp:call(\"get_IsRTPCTreatedAsPlayer\") }, wa = wa, wp = wp }\nend\nwp:call(\"set_CharacterCategory\", G_snd.a[1]); wp:call(\"set_CharacterRTPC\", G_snd.a[2]); wp:call(\"set_IsRTPCTreatedAsPlayer\", G_snd.a[3])\nwa:call(\"set_CharacterCategory\", G_snd.p[1]); wa:call(\"set_CharacterRTPC\", G_snd.p[2]); wa:call(\"set_IsRTPCTreatedAsPlayer\", G_snd.p[3])\n\nlocal drv = sdk.find_type_definition(\"via.simplewwise.Driver\")\nif G_dec_old == nil then G_dec_old = drv:get_method(\"get_CalcDistanceDecayAtPlayerPos\"):call(nil) end\ndrv:get_method(\"set_CalcDistanceDecayAtPlayerPos(System.Boolean)\"):call(nil, false)\n\nG_sd_on = true\nif not G_sd_hooked then\n  G_sd_hooked = true\n  local function pawn() local d = _G.DPC_dbg; local s = d and d.state; return s and s.active and s.pawn_chara end\n  local t = sdk.find_type_definition(\"app.SoundSpaceManager\")\n  for _, n in ipairs({ \"updateFieldAIArea\", \"updateSemiEnvPhase1\", \"<updateGlobalParam>g__updatePlayerPosY|259_0\" }) do\n    local m = t:get_method(n)\n    if m then\n      sdk.hook(m, function(args)\n        local st = thread.get_hook_storage(); st.sd = nil\n        local p = G_sd_on and pawn()\n        if not p then return end\n        local cm = sdk.get_managed_singleton(\"app.CharacterManager\")\n        st.sd = { cm = cm, old = cm:get_field(\"<ManualPlayer>k__BackingField\") }\n        cm:set_field(\"<ManualPlayer>k__BackingField\", p)\n      end, function(r)\n        local st = thread.get_hook_storage()\n        if st.sd then pcall(st.sd.cm.set_field, st.sd.cm, \"<ManualPlayer>k__BackingField\", st.sd.old); st.sd = nil end\n        return r\n      end)\n    end\n  end\nend\n"
+  },
+  {
+   "text": "Back to normal (all restored). Tell Claude which stage sounded most like playing the pawn yourself, and anything odd.",
+   "secs": 4,
+   "each_frame": "\nif not G_snd_done then\n  G_snd_done = true\n  G_sd_on = false\n  if G_snd then\n    pcall(function() G_snd.wa:call(\"set_CharacterCategory\", G_snd.a[1]); G_snd.wa:call(\"set_CharacterRTPC\", G_snd.a[2]); G_snd.wa:call(\"set_IsRTPCTreatedAsPlayer\", G_snd.a[3]) end)\n    pcall(function() G_snd.wp:call(\"set_CharacterCategory\", G_snd.p[1]); G_snd.wp:call(\"set_CharacterRTPC\", G_snd.p[2]); G_snd.wp:call(\"set_IsRTPCTreatedAsPlayer\", G_snd.p[3]) end)\n  end\n  if G_dec_old ~= nil then pcall(function() sdk.find_type_definition(\"via.simplewwise.Driver\"):get_method(\"set_CalcDistanceDecayAtPlayerPos(System.Boolean)\"):call(nil, G_dec_old) end) end\nend\n"
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_sound-swap-1.json",
+  "show": [
+   "sound"
+  ],
+  "probes": {
+   "sound": "local out = {}\nlocal function wc(ch)\n  local go = ch and ch:call(\"get_GameObject\")\n  return go and go:call(\"getComponent(System.Type)\", sdk.typeof(\"app.WwiseCharacter\")), go and tostring(go:call(\"get_Name\"))\nend\nlocal list = {}\npcall(function() list[#list + 1] = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\") end)\npcall(function() local l = sdk.get_managed_singleton(\"app.PawnManager\"):call(\"get_PawnCharacterList\"); for i = 0, l:call(\"get_Count\") - 1 do list[#list + 1] = l:call(\"get_Item\", i) end end)\nfor _, ch in ipairs(list) do\n  local w, nm = wc(ch)\n  if w then out[#out + 1] = nm .. \":\" .. tostring(w:call(\"get_CharacterCategory\")) .. \"/\" .. string.format(\"%.2f\", w:call(\"get_CharacterRTPC\") or -1) .. \"/\" .. tostring(w:call(\"get_IsRTPCTreatedAsPlayer\")) end\nend\npcall(function() out[#out + 1] = \"decayAtPlayer=\" .. tostring(sdk.find_type_definition(\"via.simplewwise.Driver\"):get_method(\"get_CalcDistanceDecayAtPlayerPos\"):call(nil)) end)\nreturn table.concat(out, \" \")\n"
+  }
+ }
+}

@@ -1,0 +1,113 @@
+{
+ "id": "cam-299-1",
+ "title": "Camera Distance 2.9.9: co-op look-ahead pull-back, marker hidden over menus",
+ "intro": "Needs Camera Distance 2.9.9 with Couch Co-op Framing on, DPC 0.9.170-dev14. Co-op off, playing the Arisen, open flat ground with room ahead, no enemies. The robot plays player 2. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev14",
+  "CameraDistance": "2.9.9"
+ },
+ "steps": [
+  {
+   "text": "Get ready: open flat ground with lots of room in front of the camera. Press End to start.",
+   "wait": true
+  },
+  {
+   "text": "Starting co-op on the main pawn (the robot is player 2). Stand still as the Arisen.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_start_bring",
+     "value": true
+    },
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Look-ahead OFF: the robot runs player 2 straight ahead. Watch how far the camera pulls back.",
+   "secs": 7,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 6,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "text": "Bringing player 2 back.",
+   "secs": 7,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 6,
+     "stick": [
+      0,
+      -1
+     ]
+    }
+   ]
+  },
+  {
+   "text": "Now open the REFramework menu (Insert) > Camera Distance > 'Couch co-op fine tuning' and set 'Fit: pull back per metre player 2 is ahead' to 0.35. Close the menu, then press End.",
+   "wait": true
+  },
+  {
+   "text": "Look-ahead ON: the same run. Does the camera pull back sooner / more?",
+   "secs": 7,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 6,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "text": "If the edge marker for player 2 shows (or once player 2 is off screen), press Esc to open the menu: the marker should vanish while the menu is open. Close the menu again. Press End when done.",
+   "wait": true
+  },
+  {
+   "text": "Co-op off. Set the look-ahead slider back to 0 (same place) if you don't want it. Press End when done.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_start_bring",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: did look-ahead pull back more, and did the marker hide over the menu?",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_cam-299-1.json",
+  "show": [
+   "cam"
+  ],
+  "probes": {
+   "cam": "local o = {}\npcall(function() o[#o+1] = string.format(\"off=%.2f\", sdk.get_managed_singleton(\"app.CameraManager\"):call(\"get_DistanceOffset\") or -1) end)\npcall(function()\n  local st = _G.DPC_dbg.state\n  local function pos(c) local p = c:call(\"get_GameObject\"):call(\"get_Transform\"):call(\"get_Position\"); return p end\n  local a, b = pos(st.arisen_chara), pos(st.pawn_chara)\n  o[#o+1] = string.format(\"dist=%.1f\", math.sqrt((a.x-b.x)^2 + (a.z-b.z)^2))\nend)\npcall(function() o[#o+1] = \"paused=\" .. tostring(sdk.get_managed_singleton(\"app.GuiManager\"):call(\"isPausedGUI\")) end)\nreturn table.concat(o, \" \")"
+  }
+ }
+}

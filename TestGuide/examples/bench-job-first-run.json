@@ -1,0 +1,17 @@
+{
+ "id": "first-run",
+ "title": "First unattended run on the main save (backed up before the job): crash soak of 0.9.170-dev1's player-feel switches",
+ "plans": [
+  "bench_plans/bench-soak-pf-1.json"
+ ],
+ "slot": null,
+ "autoload": "observe",
+ "use_running_game": true,
+ "max_crashes": 3,
+ "retry_after_crash": true,
+ "video": false,
+ "quit_at_end": false,
+ "save_block": "flag",
+ "revert": false,
+ "scene": true
+}

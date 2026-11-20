@@ -1,0 +1,29 @@
+{
+ "id": "pads-recover-2",
+ "title": "Controllers: where the controller's input stops on the way to the Arisen (watch only)",
+ "intro": "Game window in front, no co-op, not playing a pawn. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev10"
+ },
+ "steps": [
+  {
+   "text": "Controller A: hold the left stick forward, then press Cross a few times.",
+   "secs": 10,
+   "each_frame": "if not G_pb then\n  G_pb = { n = 0, nz = 0, last = 0, kb = 0 }\n  local td = sdk.find_type_definition(\"app.UserInput\")\n  local m = td and td:get_method(\"processButton\")\n  if m then sdk.hook(m, function(args)\n      G_pb.n = G_pb.n + 1\n      local ok, v = pcall(sdk.to_int64, args[4])\n      if ok and v and v ~= 0 then G_pb.nz = G_pb.nz + 1; G_pb.last = v end\n    end, function(r) return r end) end\n  local m2 = td and td:get_method(\"processKeyboardMouse\")\n  if m2 then sdk.hook(m2, function(args) G_pb.kb = G_pb.kb + 1 end, function(r) return r end) end\nend\n"
+  },
+  {
+   "text": "Keyboard: W and Space.",
+   "secs": 6
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_pads-recover-2.json",
+  "show": [
+   "pads"
+  ],
+  "probes": {
+   "pads": "local o = {}\npcall(function() o[#o + 1] = \"mode=\" .. tostring(sdk.get_managed_singleton(\"app.UserInputManager\"):call(\"get_HIDInputMode\")) end)\npcall(function()\n  local inp = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\"):call(\"get_Input\")\n  o[#o + 1] = string.format(\"arisen=%X mag=%.2f\", inp:get_field(\"ButtonOnFlags\") or 0, inp:call(\"get_AxisMagnitudeL\") or 0)\nend)\npcall(function()\n  local gp = sdk.get_native_singleton(\"via.hid.GamePad\"); local td = sdk.find_type_definition(\"via.hid.GamePad\")\n  local arr = sdk.call_native_func(gp, td, \"get_ConnectingDevices\")\n  for i = 0, arr:call(\"get_Count\") - 1 do local dv = arr:call(\"get_Item\", i); o[#o + 1] = string.format(\"d%d=%X\", i, dv:call(\"get_Button\") or 0) end\nend)\nlocal R = _G.DPC_dbg and _G.DPC_dbg.R\nif R then o[#o + 1] = \"fixes=\" .. tostring(R.tp.pm_fixes or 0) .. \" coop=\" .. tostring(R.api_table.state().coop.active) end\nif G_pb then o[#o + 1] = string.format(\"pb=%d nonzero=%d last=%X kbm=%d\", G_pb.n, G_pb.nz, G_pb.last, G_pb.kb) end\nreturn table.concat(o, \" \")"
+  }
+ }
+}

@@ -1,0 +1,23 @@
+{
+ "id": "title-crash-hunt",
+ "title": "Quit-to-title crash hunt: each variant twice, the game quits to title after every plan and loads again",
+ "plans": [
+  "bench_plans/title-loop-A.json",
+  "bench_plans/title-loop-A.json",
+  "bench_plans/title-loop-A.json",
+  "bench_plans/title-loop-B.json",
+  "bench_plans/title-loop-B.json",
+  "bench_plans/title-loop-D.json",
+  "bench_plans/title-loop-D.json",
+  "bench_plans/title-loop-E.json",
+  "bench_plans/title-loop-E.json"
+ ],
+ "slot": 0,
+ "autoload": "call",
+ "use_running_game": false,
+ "title_between": true,
+ "max_crashes": 6,
+ "retry_after_crash": false,
+ "save_block": "flag",
+ "quit_at_end": true
+}

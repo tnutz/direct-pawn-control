@@ -1,0 +1,71 @@
+{
+ "id": "api-1",
+ "title": "Mod API: the example mod sees DPC (queries, events, claims, overrides, a broken mod)",
+ "intro": "Needs DPC_API_Example.lua in autorun (it is). Start as the Arisen. Press End to start; this one mostly runs itself.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "Example mod reads DPC's state.",
+   "secs": 3
+  },
+  {
+   "text": "Taking over the main pawn (watch for possess and transition events).",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "The example mod now claims the camera transition. Back to the Arisen: there should be NO camera transition.",
+   "secs": 5,
+   "each_frame": "if not G_api1 then G_api1 = true; _G.DPC_API_EXAMPLE.set_claim('camera.transition', true) end",
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "Claim given back, and slow motion overridden to off for this session. Taking over: transition again but at full speed.",
+   "secs": 5,
+   "each_frame": "if not G_api2 then G_api2 = true; _G.DPC_API_EXAMPLE.set_claim('camera.transition', false); _G.DPC_API_EXAMPLE.set_override('switch_cine_slowmo', 1.0) end",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Override cleared. A broken handler is added: switching back and forth 6 times; DPC should switch it off after 5 errors (a note appears).",
+   "secs": 12,
+   "each_frame": "if not G_api3 then G_api3 = { n = 0, t = 0 }; _G.DPC_API_EXAMPLE.set_override('switch_cine_slowmo', nil); _G.DPC_API_EXAMPLE.set_bad(true) end\nlocal now = os.clock()\nif G_api3.n < 12 and now > G_api3.t then G_api3.t = now + 0.9; G_api3.n = G_api3.n + 1\n  local d = _G.DPC_dbg\n  json.dump_file('DPC_cmd.json', { id = 'api1_' .. G_api3.n .. '_' .. math.floor(now * 1000), cmd = (G_api3.n % 2 == 1) and 'release' or 'possess', idx = 0 })\nend"
+  },
+  {
+   "text": "Done. Check DPC's settings > Connected mods: dpc_api_example_bad should show OFF (errors). Back to the Arisen.",
+   "secs": 6,
+   "each_frame": "if not G_api4 then G_api4 = true; _G.DPC_API_EXAMPLE.set_bad(false) end",
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_api-1.json",
+  "show": [
+   "api"
+  ],
+  "probes": {
+   "api": "local ex = _G.DPC_API_EXAMPLE\nif not ex then return \"example mod not loaded\" end\nreturn ex.snapshot() .. \" | \" .. tostring(ex.log[#ex.log])",
+   "regs": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R then return '-' end\nlocal o = {}\nfor _, r in ipairs(R.api.regs) do if r.off or r.err then o[#o + 1] = r.mod .. ':' .. r.what .. (r.off and ' OFF' or '') end end\nreturn #R.api.regs .. ' regs ' .. table.concat(o, ', ')"
+  }
+ }
+}

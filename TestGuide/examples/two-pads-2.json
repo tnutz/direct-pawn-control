@@ -1,0 +1,181 @@
+{
+ "id": "two-pads-2",
+ "title": "Two controllers + joseau11's aiming, rumble and auto-resume",
+ "intro": "Needs TWO controllers and a second person. Start as the Arisen, no co-op running. Press End (keyboard) to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev3"
+ },
+ "steps": [
+  {
+   "text": "Turning on two controllers, aiming, rumble and auto-resume; starting co-op with your main pawn.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_buttons",
+     "value": 1
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_cam",
+     "value": 1
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_p2_rumble",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_auto_resume",
+     "value": true
+    },
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: hold L1 + L3 on your controller until it says it is set, then let go. Press End when done.",
+   "wait": true
+  },
+  {
+   "text": "Sticks: each player moves on their own stick. Does each stick move only its own character?",
+   "secs": 20
+  },
+  {
+   "text": "Buttons: both attack, jump, sprint. Each controller only works its own character?",
+   "secs": 20
+  },
+  {
+   "text": "PLAYER 2's controller should rumble now (test pulse).",
+   "secs": 4,
+   "each_frame": "if not G_rb1 then G_rb1 = true; local R = _G.DPC_dbg.R; if R.rb_dev() then R.rb_pulse(0.8, 0.5) end end"
+  },
+  {
+   "text": "AIMING (unkillable goblins): markers over each player's target? P2: tap R3 = keep / free, flick right stick = next enemy, hold R3 = P1's target. P1: R3 = enemy nearest the screen centre.",
+   "secs": 40,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 10.0,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    }
+   ]
+  },
+  {
+   "text": "RUMBLE: player 2 hits and gets hit, uses a skill, runs out of stamina. Does it rumble for each?",
+   "secs": 25
+  },
+  {
+   "text": "MENUS: player 1 opens the pause menu, then the map. Do DPC's markers and bars disappear while a menu is up?",
+   "secs": 20
+  },
+  {
+   "text": "AUTO-RESUME: player 2's pawn is downed now. A red Revive marker? Player 1 revives them; co-op should come back by itself with the same controllers. Press End once it has (or to move on).",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "down",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Buttons mode 2 (leave the Arisen's buttons to the game, joseau11's way). Same button check: any difference?",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_buttons",
+     "value": 2
+    }
+   ]
+  },
+  {
+   "text": "Camera mode 2 (holds still while player 2 moves their right stick). Compare with before.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_buttons",
+     "value": 1
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_cam",
+     "value": 2
+    }
+   ]
+  },
+  {
+   "text": "Ending co-op, everything off. Tell Claude what worked and what didn't.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_cam",
+     "value": 1
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_auto_resume",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_p2_rumble",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": false
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 4,
+  "out": "test_guide/result_two-pads-2.json",
+  "show": [
+   "pads",
+   "coop"
+  ],
+  "probes": {
+   "pads": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R or not R.tp then return \"no DPC dev\" end\nlocal t = R.tp\nreturn string.format(\"pads=%d p1=%X p2=%X wait=%s on=%s p1b=%X p2b=%X game_b=%X masked=%d stick=%d cam=%d%s\", t.n or 0, t.p1 or 0, t.p2 or 0,\n  tostring(t.wait_release), tostring(R.tp_on()), (t.p1v and t.p1v.b) or 0, (t.p2v and t.p2v.b) or 0, t.game_b or 0,\n  t.masked or 0, t.stick_fixes or 0, t.cam_fixes or 0, t.err and (\" ERR \" .. t.err) or \"\")",
+   "coop": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R then return '-' end\nreturn string.format('aim=%s rumble=%s resume=%s', tostring(R.ta_dbg), tostring(R.rb.shape or R.rb.err), tostring(R.cr.want and R.cr.reason or 'no'))"
+  }
+ }
+}

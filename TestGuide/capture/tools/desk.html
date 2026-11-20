@@ -89,6 +89,20 @@ kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font: 1
     <div class="tools" style="margin:0"><button id="ainew" type="button">Draft a new shot</button><button id="airev" type="button">Change the selected shot</button></div>
     <p class="sub" style="margin:6px 0 0">Uses the Claude Code program on this PC (your own sign-in). The draft is put in the list for you to check; nothing runs in the game until you shoot or stage it.</p>
   </details>
+  <details class="ai" id="benchbox"><summary>Test bench: run tests with nobody at the PC</summary>
+    <div class="tools" style="margin:6px 0 0"><button class="go" id="bstart" type="button">Start the bench</button><button id="bstop" type="button">Stop after this plan</button></div>
+    <div class="job" id="bstate" style="max-height:none"></div>
+    <label class="f">Test plans to run (one per line, from the game's test_guide folder)
+      <textarea id="bplans" rows="4">queue/61_sound-swap-1.json
+queue/62_hitstop-as-player-1.json
+queue/63_api-1.json</textarea></label>
+    <div class="row"><label>Save slot <input type="number" id="bslot" value="" min="0" max="9" placeholder="any" title="Empty: whichever save gets loaded (the main save)"></label>
+      <label>Load the save <select id="bauto"><option value="observe">by hand (I load it)</option><option value="call">bench asks the game (untested)</option><option value="keys">bench presses keys</option></select></label>
+      <label><input type="checkbox" id="bvideo"> video</label><label><input type="checkbox" id="bquit"> close the game at the end</label></div>
+    <div class="tools" style="margin:6px 0 0"><button id="bqueue" type="button">Queue this job</button></div>
+    <div id="bruns"></div>
+    <p class="sub" style="margin:6px 0 0">The bench starts the game if it is not running, restarts it after a crash and keeps a crash report for each. It never closes a game it did not start. Results: the game's reframework\data\bench\runs folder.</p>
+  </details>
   <div class="job" id="job"></div>
   <div id="shots"></div>
   <p class="sub">In the game: <kbd>Ctrl</kbd>+<kbd>End</kbd> arms the capture guide. It reads the shot list again each time it is armed and starts at the first shot that still needs a take.</p>
@@ -145,7 +159,7 @@ const fmt = s => { s = Math.max(0, s); return Math.floor(s / 60) + ":" + (s % 60
 
 // ---- data -----------------------------------------------------------------------------------------------------
 const shotDef = id => L.shots.find(x => x.id === id);
-const takesOf = id => S.takes.filter(t => t.shot === id);
+const takesOf = id => S.takes.filter(t => t.shot === id && t.verdict !== "practice"); // practice takes (no recording) are left out
 function ch(id) { if (!C.shots[id]) C.shots[id] = { auto: true, take_index: null, skip: false, trims: {} }; return C.shots[id]; }
 function autoTake(id) { // the newest kept take that is in the recordings, else the newest take that is
   const ts = takesOf(id).filter(t => t.parts);
@@ -338,6 +352,8 @@ function render() {
   if (S.unscanned.length) h.push(`${S.unscanned.length} recording${S.unscanned.length > 1 ? "s" : ""} not fetched yet`);
   if (S.game_takes !== null && S.game_takes > S.takes.length) h.push(`${S.game_takes - S.takes.length} new take${S.game_takes - S.takes.length > 1 ? "s" : ""} in the game's log`);
   if (!S.game_ok) h.push("the game folder was not found: " + S.game);
+  const noFoot = S.takes.filter(t => !t.parts && t.rec === "off" && t.verdict === "keep").length; // (CaptureGuide 1.3 only; 1.4 keeps them as practice)
+  if (noFoot) h.push(`${noFoot} kept take${noFoot > 1 ? "s were" : " was"} shot while OBS was not recording`);
   $("hint").textContent = h.length ? h.join("; ") + (S.game_ok || S.unscanned.length ? ". Press Get new footage." : "") : "";
 }
 function field(label, value, on, opt) {
@@ -359,7 +375,7 @@ function editor(id, n) {
     const o = document.createElement("option"); o.value = t.index; o.disabled = !t.parts;
     const len = t.parts ? t.parts.reduce((a, x) => a + x.t1 - x.t0, 0) : t.len || 0;
     const wc = wantCheck(sh, t), got = wc.filter(c => c.got >= c.need).length;
-    o.textContent = `take ${t.take}: ${t.verdict}, ${len.toFixed(1)} s` + (wc.length ? `, has ${got} of ${wc.length}` : "") + (t.parts ? (t.parts.length > 1 ? ", runs over two recording files" : "") : ", not in the recordings");
+    o.textContent = `take ${t.take}: ${t.verdict}, ${len.toFixed(1)} s` + (wc.length ? `, has ${got} of ${wc.length}` : "") + (t.parts ? (t.parts.length > 1 ? ", runs over two recording files" : "") : (t.rec === "off" ? ", taken while OBS was not recording: shoot again" : ", not in the recordings"));
     sel.appendChild(o);
   }
   sel.value = c.auto !== false || c.take_index === null ? "auto" : String(c.take_index);
@@ -382,6 +398,9 @@ function editor(id, n) {
   else if (has) r3.appendChild(mk("Don't shoot again", "The take you have is enough", () => { delete sh.fresh_after; saveShots(); render(); }));
   r3.appendChild(mk("Shoot this next", "The guide opens on this shot the next time you arm it with Ctrl+End", async () => {
     try { await api("/api/next", { shot: id }); note("The guide will open on this shot next time you arm it (Ctrl+End).", "ok"); } catch (e) { note("Not set: " + e.message, "bad"); } }));
+  const noVid = takesOf(id).filter(t => !t.parts).length;
+  if (noVid) r3.appendChild(mk(`Drop ${noVid} take${noVid > 1 ? "s" : ""} with no video`, "Sets them aside as practice takes, so the guide offers this shot again; they stay in the log", async () => {
+    try { const r = await api("/api/drop", { shot: id }); note(`${r.dropped} take${r.dropped === 1 ? "" : "s"} set aside.`, "ok"); await reload(); } catch (e) { note("Not dropped: " + e.message, "bad"); } }));
   r3.append(mk("Duplicate", "A new shot with the same setup", () => addShot(sh)), mk("Remove", "Takes it off the list; its takes stay in the log and recordings", () => removeShot(id)));
   const det = document.createElement("details"); det.open = open; det.ontoggle = () => { open = det.open; };
   const sm = document.createElement("summary"); sm.textContent = "What the guide shows and does for this shot"; det.appendChild(sm);
@@ -701,4 +720,29 @@ function render0() { const y = document.querySelector("aside").scrollTop; if (!d
     const j = await api("/api/status"); if (j.running) watch();
   } catch (e) { note("The desk is not answering: " + e.message, "bad"); }
 })();
+
+// ---- test bench panel (tools/bench.py) ----
+const esc = t => String(t == null ? "" : t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+async function benchPoll() {
+  if (!$("benchbox").open) return;
+  let j;
+  try { j = await api("/api/bench"); } catch (e) { $("bstate").textContent = "Bench: " + e.message; return; }
+  if (j.error) { $("bstate").textContent = j.error; return; }
+  const st = j.state || {}, hb = j.heartbeat;
+  const game = !hb ? "no heartbeat from the game (DevBench.lua)" : hb.age > 15 ? `game silent for ${Math.round(hb.age)} s` :
+    hb.in_game ? `game: in the world, slot ${hb.slot}` : hb.title ? "game: title menu" : "game: loading";
+  $("bstate").textContent = `${j.thread ? "Bench running" : "Bench stopped"}: ${st.phase || "idle"}${st.plan ? " (" + st.plan + ")" : ""}\n${game}\nJobs waiting: ${(j.jobs || []).join(", ") || "none"}\n` + (st.lines || []).slice(-8).join("\n");
+  $("bruns").innerHTML = (j.runs || []).slice(0, 8).map(r => `<div class="shot"><div class="top"><span class="ttl">${esc(r.run)}</span><span class="chip ${r.state === "done" ? "" : "none"}">${esc(r.state)}${r.crashes ? ", " + r.crashes + " crash" : ""}</span></div>` +
+    r.plans.map(p => `<div class="sub" style="margin:2px 0 0">${esc(p.plan)} (try ${p.attempt || 1}): ${esc(p.state)}${p.at_step ? " at step " + p.at_step : ""}${p.crash && p.crash.where ? " &middot; " + esc(p.crash.where) : ""}${p.why ? " &middot; " + esc(p.why) : ""}</div>`).join("") + "</div>").join("");
+}
+$("benchbox").ontoggle = benchPoll;
+setInterval(benchPoll, 4000);
+$("bstart").onclick = async () => { try { await api("/api/bench/start", {}); note("Test bench started"); benchPoll(); } catch (e) { note(e.message, "bad"); } };
+$("bstop").onclick = async () => { try { await api("/api/bench/stop", {}); note("The bench stops after the current plan"); } catch (e) { note(e.message, "bad"); } };
+$("bqueue").onclick = async () => {
+  const plans = $("bplans").value.split("\n").map(x => x.trim()).filter(Boolean);
+  if (!plans.length) return note("No plans listed", "bad");
+  const job = { id: "desk", plans, slot: $("bslot").value === "" ? null : Number($("bslot").value), autoload: $("bauto").value, video: $("bvideo").checked, quit_at_end: $("bquit").checked };
+  try { const r = await api("/api/bench/job", job); note("Queued " + r.queued + ". Start the bench if it is not running."); benchPoll(); } catch (e) { note(e.message, "bad"); }
+};
 </script></body></html>

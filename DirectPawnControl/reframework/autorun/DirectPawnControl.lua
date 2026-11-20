@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.169"
+local VERSION = "0.9.170"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -215,6 +215,18 @@ local cfg = {
     switch_cine_slowmo = 0.40,        -- game speed during the transition (1.0 = no slow-down); eases back to normal while gliding
     switch_glow = "RimLightPawnLift", -- v0.9.169: the game's own rim light on who you take over ("" = none). Pawn lift reads best in every light (the tester)
     switch_cine_glow_s = 1.4,         -- seconds the glow stays on
+    -- v0.9.170 (dev, untested): whoever you play is treated as the player. Each part is its own switch so a test can
+    -- turn them on one at a time; all off = exactly as 0.9.169. Only while one player plays a pawn alone (not co-op).
+    -- dev4: the three sound parts are on by default (tested 2026-11-19, sound-as-player-2/-3: B sounded right, the
+    -- ambience followed the pawn; camera vs pawn distance could not be told apart, so the simpler camera one).
+    pf_sound_voice = true,            -- the played pawn gets the player's sound settings (Wwise category / RTPC), the Arisen a pawn's
+    pf_sound_listener = 1,            -- loudness by distance from: 0 the Arisen (game), 1 the camera, 2 the played pawn
+    pf_sound_space = true,            -- the place's acoustics (reverb, ambience zone) follow the played pawn
+    pf_defaults_v = 0,                -- (which of these defaults a saved config has been brought up to)
+    pf_hitstop = false,               -- hit-stop (the short freeze on a hit) as if the played pawn were the player
+    pf_world_slow = false,            -- the slow-motion on a big kill as if the played pawn were the player
+    pf_skill_slow = true,             -- dev5: skills' own slow motion (e.g. Riotous Fury) for the played pawn, not the Arisen (see R.pf_slow_hook)
+    pf_scope_log = true,              -- count how often each of these runs (shown in the settings, written to the session log)
     possess_no_climb_cam = true,      -- v0.9.143: the Arisen's climbing camera is not switched to while a pawn is played
     possess_no_cinematic_cam = true,  -- v0.9.139: the game's cinematic action camera is not started while a pawn is played
     arisen_own_lockon = true,         -- v0.9.168: while a pawn is played the Arisen gets a lock-on of his own; the game's one is the played pawn's alone
@@ -237,8 +249,33 @@ local cfg = {
     arisen_brain_telemetry = true,  -- data/DPC_arisen_brain.json, twice a second
     -- v0.9 couch co-op: player 2 drives a pawn with a controller while player 1 plays the Arisen on mouse+keyboard
     coop_pad_deadzone = 0.15,
+    -- v0.9.170-dev3: joseau11's co-op additions (credit in the MODLOG), all off by default
+    coop_auto_resume = false,         -- co-op starts again by itself after cutscenes, loading or a downed pawn
+    coop_start_bring = false,         -- dev7: when co-op starts, player 2's pawn is brought next to the Arisen if it is more than 6 m away
+    coop_p2_rumble = false,           -- player 2's controller rumbles (two controllers only)
+    coop_p2_rumble = false,
+    coop_p2_rumble_power = 1.0,
+    coop_rb_dealt = true,
+    coop_rb_skill = true,
+    coop_rb_status = true,
+    coop_aim = false,                 -- target markers for both players; player 2 R3 keep / free, right stick flick, hold R3 = player 1's
+    coop_aim_markers = true,
+    coop_aim_p1 = true,
+    coop_aim_p1_assist = true,
+    coop_aim_p1_color = 1,
+    coop_aim_p2_color = 2,
+    coop_aim_size = 1.0,
     coop_zero_pad_for_arisen = true,  -- feed the Arisen's processButton an empty pad (auto-off if it kills the keyboard)
     coop_mask_p2_flags = false,       -- v0.9.5: also strip player 2's actions from the Arisen's buttons (blocks shared actions)
+    -- v0.9.170 (dev, untested): two controllers, after joseau11's 0.9.165 changes (credit in the MODLOG). Player 2 holds
+    -- L1 + L3 on their controller to claim it; the other controller is player 1's and drives the Arisen.
+    coop_two_pads = false,
+    coop_pad_join = true,
+    robot_frees_pad = true,           -- dev14 (developer): with the robot as player 2 in co-op, the controller plays the Arisen
+    pad_active_follow = true,         -- dev13: the controller in use drives the Arisen (the game keeps one "active" controller and does not switch by itself)
+    pad_mode_fix = false,             -- dev10 (off in dev11: it switched the mode but the Arisen still got nothing, so not the cause): if a controller is used but the game stays in keyboard/mouse mode (the Arisen gets nothing), switch it back             -- dev9: a second controller starts co-op by holding L3 + R3 (both stick clicks) for 1.5 s; held 3 s in co-op, it ends it
+    coop_two_pads_buttons = 1,        -- the Arisen's buttons: 1 take out only what player 2 presses, 2 leave them to the game (joseau11), 3 player 1's pad only (opened the menu for joseau11)
+    coop_two_pads_cam = 1,            -- while player 2 moves their right stick: 1 the camera follows player 1's right stick, 2 the camera holds still (as with keyboard)
     coop_block_p2_stick = true,       -- v0.9.2: player 2's left stick doesn't walk the Arisen (his WASD still does)
     coop_block_p2_camera = true,      -- v0.9.2: player 2's right stick doesn't turn player 1's camera
     coop_stamina_bar = true,          -- v0.9.42: thin yellow stamina bar under player 2's pawn's health bar
@@ -371,7 +408,15 @@ local function save_cfg()
             cur = {}
             for k, v in pairs(coop_saved_for_cfg) do cur[k] = cfg[k]; cfg[k] = v end
         end
+        local ov = {} -- v0.9.170: settings another mod overrides for this session (DPC_API.override) are not saved
+        if dev.api_overrides then -- (R is declared below this function; the API puts its table here)
+            for k, reg in pairs(dev.api_overrides) do
+                if cfg[k] ~= reg.value then reg.saved, reg.value = cfg[k], cfg[k] end -- the player changed it since
+                ov[k] = cfg[k]; cfg[k] = reg.saved
+            end
+        end
         local oks, res = pcall(json.dump_file, CONFIG_PATH, cfg, 2)
+        for k, v in pairs(ov) do cfg[k] = v end
         dev.save_ok = oks and res ~= false
         if not dev.save_ok then dev_error("save_cfg", res) end
         if cur then for k, v in pairs(cur) do cfg[k] = v end end
@@ -395,10 +440,17 @@ local function load_cfg()
     end
 end
 load_cfg()
+if (cfg.pf_defaults_v or 0) < 1 then -- dev4: a config saved before the sound defaults changed gets them once
+    cfg.pf_sound_voice, cfg.pf_sound_listener, cfg.pf_sound_space, cfg.pf_defaults_v = true, 1, true, 1
+    save_cfg()
+end
 -- v0.9.16 release hygiene: the developer tooling (command file, robot player, test spawner commands, telemetry
 -- files written every second) only runs when data/DPC_dev.json exists with {"dev": true}. A released copy
 -- writes nothing but its config and the small session file below.
 local R = { dev = false, note = nil } -- one table: the main chunk is at Lua's 200-local limit
+R.cr = { want = false }
+R.CR_USER = { ["co-op off"] = true, ["UI button"] = true, ["hotkey toggle"] = true, ["cmd file"] = true,
+              ["mode change"] = true, ["script reset"] = true, ["starting co-op"] = true }
 do
     local ok, d = pcall(json.load_file, "DPC_dev.json")
     R.dev = ok and type(d) == "table" and d.dev == true
@@ -2607,8 +2659,16 @@ local function install_hooks()
         local pb = ui_td and ui_td:get_method("processButton")
         if pb then
             sdk.hook(pb, function(args)
+                if coop.active and coop.ar_input_addr ~= 0 and arg_addr(args[2]) == coop.ar_input_addr
+                   and R.tp_on and R.tp_on() then
+                    -- v0.9.170 (dev): two controllers. Player 1's pad drives the Arisen; only player 2's buttons
+                    -- are taken out (see R.tp_arisen_buttons for the three ways tried).
+                    local okb, v = pcall(R.tp_arisen_buttons, args[4])
+                    if okb and v ~= nil then args[4] = sdk.to_ptr(v) end
+                    return
+                end
                 if coop.active and cfg.coop_zero_pad_for_arisen and not coop.zero_off and coop.ar_input_addr ~= 0
-                   and arg_addr(args[2]) == coop.ar_input_addr then
+                   and arg_addr(args[2]) == coop.ar_input_addr and not (R.robot_p2 and R.robot_p2()) then
                     args[4] = sdk.to_ptr(0)
                     coop.pb_zeroed = coop.pb_zeroed + 1
                 end
@@ -2893,6 +2953,7 @@ end
 -- ----------------------------------------------------------------------------
 local function attach_camera_to(go)
     if not go then return false end
+    if R.api_claimed and R.api_claimed("camera.follow") then return true end -- v0.9.170: another mod places the views
     local cam_mgr = sdk.get_managed_singleton("app.CameraManager")
     if not cam_mgr then return false end
     local mcc = call(cam_mgr, "getMainCameraController", 0)
@@ -3268,12 +3329,248 @@ R.lock_range_now = function()
     return r
 end
 
+R.ta_colors = { { "Gold", 0x20B0FF }, { "Cyan", 0xFFD040 }, { "Green", 0x50E050 }, { "Magenta", 0xF050E0 },
+                 { "Red", 0x4040FF }, { "White", 0xF0F0F0 } }
+R.ta = { pin = nil, r3_t = nil, flick = 0, req = nil }
+R.ta_note = function(text) R.note = { text = text, t_end = os.clock() + 1.5 } end
+R.ta_p1_target = function()
+    local c = nil
+    pcall(function()
+        local t = state.arisen_lockon_ctrl and state.arisen_lockon_ctrl:call("get_Target")
+        c = t and t:call("get_Character")
+    end)
+    if c and brain_alive(c) then return c end
+    return nil
+end
+R.ta_p2_input = function(btn, pv)
+    local a = R.ta
+    local r3 = pv.RStickPush or 0x2000
+    local now = os.clock()
+    if (btn & r3) ~= 0 then
+        if not a.r3_t then a.r3_t, a.r3_long = now, false end
+        if not a.r3_long and now - a.r3_t >= 0.6 then a.r3_long = true; a.req = "p1" end
+    elseif a.r3_t then
+        if not a.r3_long then a.req = "toggle" end
+        a.r3_t = nil
+    end
+    local rx, ry = pad_stick_rx or 0.0, pad_stick_ry or 0.0
+    if a.flick == 0 then
+        if not state.is_aiming and math.abs(rx) > 0.7 and math.abs(rx) > math.abs(ry) * 1.2 then
+            a.flick = rx > 0 and 1 or -1
+            a.req = a.flick > 0 and "right" or "left"
+        end
+    elseif math.abs(rx) < 0.3 then
+        a.flick = 0
+    end
+    return btn & ~r3
+end
+R.ta_sx = function(c)
+    local ok, sp = pcall(draw.world_to_screen, Vector3f.new(c.x, c.y + 1.2, c.z))
+    if ok and sp then return sp.x end
+    return nil
+end
+R.ta_resolve = function(req, best, bd, cands)
+    local a = R.ta
+    local function find(ch)
+        for _, c in ipairs(cands) do if same_obj(c.e, ch) then return c end end
+        return nil
+    end
+    if req == "toggle" then
+        if a.pin then
+            a.pin = nil
+            R.ta_note("Player 2: automatic target")
+        else
+            a.pin = coop.tgt or best
+            if a.pin then R.ta_note("Player 2: target kept") end
+        end
+    elseif req == "p1" then
+        local t = R.ta.p1 or R.ta_p1_target()
+        if t and find(t) then
+            a.pin = t
+            R.ta_note("Player 2: same target as player 1")
+        else
+            R.ta_note("Player 1 has no target in range")
+        end
+    elseif req == "left" or req == "right" then
+        local cur = find(a.pin or coop.tgt)
+        local ds = imgui.get_display_size()
+        local cx = (cur and R.ta_sx(cur)) or (ds and ds.x * 0.5) or 960
+        local pick, gap = nil, nil
+        for _, c in ipairs(cands) do
+            if not (cur and same_obj(c.e, cur.e)) then
+                local sx = R.ta_sx(c)
+                if sx then
+                    local dx = sx - cx
+                    if (req == "right" and dx > 1) or (req == "left" and dx < -1) then
+                        if not gap or math.abs(dx) < gap then pick, gap = c, math.abs(dx) end
+                    end
+                end
+            end
+        end
+        if pick then a.pin = pick.e end
+    end
+    if a.pin then
+        local c = find(a.pin)
+        if c and brain_alive(a.pin) then return a.pin, c.d end
+        a.pin = nil
+    end
+    return best, bd
+end
+R.ta_bones = { "Spine_2", "Spine_1", "Spine_0", "Hip" }
+R.ta_joints, R.ta_last = {}, {}
+R.ta_screen = function(ch)
+    local okad, a = pcall(ch.get_address, ch)
+    if not okad then return nil end
+    local now = os.clock()
+    local x, y
+    pcall(function()
+        local tf = ch:call("get_Transform")
+        local body = tf:call("get_Position")
+        if not body then return end
+        local j = R.ta_joints[a]
+        if j == nil then
+            j = false
+            for _, bn in ipairs(R.ta_bones) do
+                local okj, jj = pcall(tf.call, tf, "getJointByName(System.String)", bn)
+                if okj and jj then j = jj; break end
+            end
+            R.ta_joints[a] = j
+        end
+        local px, py, pz = body.x, body.y + 1.2, body.z
+        if j then
+            local okp, jp = pcall(j.call, j, "get_Position")
+            if okp and jp then
+                local dx, dy, dz = jp.x - body.x, jp.y - body.y, jp.z - body.z
+                if dx * dx + dy * dy + dz * dz < 144 then px, py, pz = jp.x, jp.y, jp.z else R.ta_joints[a] = nil end
+            end
+        end
+        local sp = draw.world_to_screen(Vector3f.new(px, py, pz))
+        if sp then x, y = sp.x, sp.y end
+    end)
+    if x then
+        R.ta_last[a] = { x = x, y = y, t = now }
+        return x, y
+    end
+    local l = R.ta_last[a]
+    if l and now - l.t < 0.4 then return l.x, l.y end
+    return nil
+end
+R.ta_calc = function() end
+R.ta_draw = function(hh)
+    R.ta_dbg = nil
+    if not (cfg.coop_aim and cfg.coop_aim_markers and coop.active and state.active) then return end
+    local t1 = R.ta.p1 or R.ta_p1_target()
+    local t2 = coop.tgt
+    if t2 and not brain_alive(t2) then t2 = nil end
+    local same = t1 and t2 and same_obj(t1, t2)
+    local k = hh / 2160.0 * (cfg.coop_aim_size or 1.0)
+    local r = 13.0 * k
+    local drawn = 0
+    local function dot(ch, colix, dx, pin)
+        local x, y = R.ta_screen(ch)
+        if not x then return end
+        local c = (R.ta_colors[colix or 1] or R.ta_colors[1])[2]
+        x, y = x + dx * k, y - 70.0 * k
+        draw.filled_circle(x, y, r + 3.0 * k, 0xD0000000, 20)
+        draw.filled_circle(x, y, r, 0xF0000000 | c, 20)
+        draw.filled_circle(x, y, r * 0.35, 0xF0FFFFFF, 12)
+        if pin then
+            draw.outline_circle(x, y, r + 7.0 * k, 0xD0000000, 24)
+            draw.outline_circle(x, y, r + 6.0 * k, 0xF0000000 | c, 24)
+        end
+        drawn = drawn + 1
+    end
+    if t1 then dot(t1, cfg.coop_aim_p1_color, same and -18 or 0, false) end
+    if t2 then dot(t2, cfg.coop_aim_p2_color, same and 18 or 0, R.ta.pin ~= nil) end
+    R.ta_dbg = string.format("aim: P1 %s | P2 %s%s | dots %d", t1 and "locked" or "none",
+        t2 and tostring(coop.tgt_name or "?") or "none", R.ta.pin and " (kept)" or "", drawn)
+end
+
+R.ta_p1_pick = function()
+    local ds = imgui.get_display_size()
+    local cx, cy = (ds and ds.x or 1920) * 0.5, (ds and ds.y or 1080) * 0.5
+    local ax, _, az = brain_pos(state.arisen_chara)
+    if not ax then return nil end
+    local best, bs = nil, nil
+    local em = sdk.get_managed_singleton("app.EnemyManager")
+    local arr = em and call(em, "getAllEnemies")
+    local n = arr and call(arr, "get_Count") or 0
+    for i = 0, n - 1 do
+        local ok, e = pcall(function() return arr[i]:get_field("_Chara") end)
+        if ok and e and brain_alive(e) then
+            local ex, ey, ez = brain_pos(e)
+            if ex and (ex - ax) ^ 2 + (ez - az) ^ 2 <= 45.0 ^ 2 then
+                local oks, sp = pcall(draw.world_to_screen, Vector3f.new(ex, ey + 1.2, ez))
+                if oks and sp and sp.x > 0 and sp.y > 0 and sp.x < cx * 2 and sp.y < cy * 2 then
+                    local sc = (sp.x - cx) ^ 2 + (sp.y - cy) ^ 2
+                    if not bs or sc < bs then best, bs = e, sc end
+                end
+            end
+        end
+    end
+    return best
+end
+R.ta_p1_release = function()
+    local t = R.ta
+    if t.p1_set and state.arisen_lockon_ctrl then
+        pcall(function()
+            if t.p1_work then state.arisen_lockon_ctrl:call(REMOVE_TARGET_SIG, t.p1_work) end
+            state.arisen_lockon_ctrl:call("clearLockOn")
+        end)
+    end
+    t.p1, t.p1_work, t.p1_set = nil, nil, false
+end
+R.ta_p1_tick = function()
+    local t = R.ta
+    if not (coop.active and cfg.coop_aim and cfg.coop_aim_p1 and state.arisen_chara) then
+        if t.p1 or t.p1_set then R.ta_p1_release() end
+        return
+    end
+    if t.p1_frame == os.clock() then return end
+    t.p1_frame = os.clock()
+    local pv = (R.pad_values and R.pad_values() or {})
+    local r3 = pv.RStickPush or 0x2000
+    local down = R.tp_on() and (R.tp_p1().b & r3) ~= 0 or false
+    if not down then down = is_key_down_safe(0x04) == true end
+    local edge = down and not t.p1_was
+    t.p1_was = down
+    if t.p1 and not brain_alive(t.p1) then R.ta_p1_release() end
+    if t.p1 then
+        local ax, _, az = brain_pos(state.arisen_chara)
+        local ex, _, ez = brain_pos(t.p1)
+        if not (ax and ex) or (ex - ax) ^ 2 + (ez - az) ^ 2 > 60.0 ^ 2 then R.ta_p1_release() end
+    end
+    if edge then
+        local pick = R.ta_p1_pick()
+        if not pick or (t.p1 and same_obj(pick, t.p1)) then
+            local had = t.p1 ~= nil
+            R.ta_p1_release()
+            if had then R.ta_note("Player 1: target released") end
+        else
+            R.ta_p1_release()
+            t.p1 = pick
+            pcall(function() t.p1_work = pick:call("get_LockOnTarget"):call("get_work") end)
+            R.ta_note("Player 1: target")
+        end
+    end
+    if t.p1 and t.p1_work and cfg.coop_aim_p1_assist and state.arisen_lockon_ctrl then
+        local ok = pcall(function()
+            state.arisen_lockon_ctrl:call(SET_TARGET_SIG, t.p1_work, false, false)
+            state.arisen_lockon_ctrl:call("setAimTargetInfoToCharacter")
+        end)
+        t.p1_set = ok
+    end
+end
+
 coop_target_tick = function()
+    pcall(R.ta_p1_tick)
     if not (coop.active and cfg.coop_auto_target and native.lock and state.pawn_chara) then return end
     if state.pawn_job == 4 and not cfg.coop_target_thief then return end
     local lk, pw = native.lock, state.pawn_chara
     if state.arisen_lockon_ctrl and same_obj(lk, state.arisen_lockon_ctrl) then return end -- never player 1's
     local now = os.clock()
+    local areq = cfg.coop_aim and R.ta.req
+    if areq then R.ta.req = nil; coop.tgt_next = 0 end
     if now >= (coop.tgt_next or 0) then
         coop.tgt_next = now + 0.1
         local px, _, pz = brain_pos(pw)
@@ -3283,15 +3580,17 @@ coop_target_tick = function()
         if cfg.coop_target_game_ranges then r = R.lock_range_now() or r end
         coop.tgt_range = r
         local best, bs, bd = nil, nil, nil
+        local cands = {}
         local em = sdk.get_managed_singleton("app.EnemyManager")
         local arr = em and call(em, "getAllEnemies")
         local n = arr and call(arr, "get_Count") or 0
         for i = 0, n - 1 do
             local ok, e = pcall(function() return arr[i]:get_field("_Chara") end)
             if ok and e and brain_alive(e) then
-                local ex, _, ez = brain_pos(e)
+                local ex, ey, ez = brain_pos(e)
                 if ex then
                     local d = math.sqrt((ex - px) ^ 2 + (ez - pz) ^ 2)
+                    if d <= r * 1.5 then cands[#cands + 1] = { e = e, x = ex, y = ey, z = ez, d = d } end
                     local off = math.abs(brain_angdiff(math.atan(ex - px, ez - pz), face))
                     local keep = same_obj(e, coop.tgt) and 0.7 or 1.0 -- stickiness: don't flick between two enemies
                     if d <= r and (off <= cone or d <= 5.0) then
@@ -3301,6 +3600,7 @@ coop_target_tick = function()
                 end
             end
         end
+        if cfg.coop_aim then best, bd = R.ta_resolve(areq, best, bd, cands) end
         if not same_obj(best, coop.tgt) then
             coop.tgt, coop.tgt_work = best, nil
             if best then pcall(function() coop.tgt_work = best:call("get_LockOnTarget"):call("get_work") end) end
@@ -4160,12 +4460,14 @@ R.cine_glow_off = function()
     if g then R.cine_glowing = nil; R.cine_glow(g.chara, g.name, false) end
 end
 R.cine_stop = function(why)
+    if R.cine and R.api_fire then pcall(R.api_fire, "transition_end", { to_name = state.active and state.pawn_name or "Arisen" }) end
     R.cine = nil
     R.cine_timescale(nil)
     if why ~= "keep glow" then R.cine_glow_off() end
 end
 R.cine_begin = function(chara)
     if coop.active or not chara then return end
+    if R.api_claimed and R.api_claimed("camera.transition") then return end -- v0.9.170: another mod does the transition
     if not cfg.switch_cine or (cfg.switch_cine_profile or 2) == 1 then -- no camera move; the glow still plays
         if cfg.switch_glow and cfg.switch_glow ~= "" then
             R.cine_glow_off()
@@ -4182,6 +4484,11 @@ R.cine_begin = function(chara)
         local p, r = joint:call("get_Position"), joint:call("get_Rotation")
         R.cine_install()
         R.cine_glow_off()
+        if R.api_fire then
+            -- dev6: a switch during a running transition ends that one first (api-1: starts without ends)
+            if R.cine then pcall(R.api_fire, "transition_end", { to_name = state.active and state.pawn_name or "Arisen", interrupted = true }) end
+            pcall(R.api_fire, "transition_start", { style = cfg.switch_cine_profile, chara = chara })
+        end
         R.cine = { t0 = os.clock(), chara = chara, p0 = { p.x, p.y, p.z }, q0 = { r.x, r.y, r.z, r.w }, P = P }
         -- pull-out point: back and up from the midpoint between who the camera follows now and who comes next
         pcall(function()
@@ -4314,6 +4621,13 @@ local function release_possession(reason)
     end)
 
     local teardown = type(reason) == "string" and reason:find("^teardown") ~= nil
+    if R.pf_restore_all then pcall(R.pf_restore_all, reason) end -- v0.9.170: sound settings etc. back to the Arisen
+    if R.api_fire then -- v0.9.170 mod API
+        local was_coop = coop.active
+        pcall(R.api_fire, "release", { player = was_coop and 2 or 1, name = state.pawn_name, reason = tostring(reason or "manual") })
+        if reason == "switching pawn" then R.api_switch_from = state.pawn_name end
+        if was_coop and reason ~= "switching pawn" then R.api_coop_stop = true end
+    end
     if coop.active and reason ~= "switching pawn" and coop.on_release then pcall(coop.on_release, reason) end
     if not brain.solo then brain.on = false; brain.target = nil end -- v0.8: hand the Arisen's input back now
     brain.pawn_native = false -- v0.8.10: never carry the previous pawn's control path into the next possession
@@ -4363,6 +4677,7 @@ local function release_possession(reason)
 
     state.active = false
     R.session_write(false)
+    if R.api_coop_stop then R.api_coop_stop = nil; pcall(R.api_fire, "coop_stop", {}) end
     state.frames_since_start = 0
     state.arisen_chara_addr = 0
     state.arisen_skill_ctx_addr = 0
@@ -4579,6 +4894,11 @@ local function start_possession(target_pawn_idx)
     state.last_action_str = "Possessed " .. entry.name .. " (" .. entry.job_name .. ")"
     log_msg(string.format("NOW CONTROLLING: %s (%s) [Mode %d]", entry.name, entry.job_name, cfg.control_mode))
     R.note = { text = "Playing as " .. tostring(entry.name), t_end = os.clock() + 3.0 }
+    if R.api_fire then -- v0.9.170 mod API
+        pcall(R.api_fire, "possess", { player = coop.active and 2 or 1, name = entry.name, job = entry.job, chara = pawn_chara, from_name = R.api_switch_from })
+        if R.api_switch_from then pcall(R.api_fire, "switch", { player = coop.active and 2 or 1, from_name = R.api_switch_from, to_name = entry.name }) end
+        R.api_switch_from = nil
+    end
     write_trace("start_possession complete")
     return true
 end
@@ -4633,6 +4953,7 @@ local function coop_pad_values()
     if by_name and next(by_name) then coop_pad_cache = by_name end
     return by_name or {}
 end
+R.pad_values = coop_pad_values
 
 -- Try the game's own assignment: UserInput.getButton(actionFlag) -> pad button(s) bound to that action.
 local function coop_build_game_map()
@@ -4739,6 +5060,7 @@ coop.pad_input = function()
     local btn = pad_buttons or 0
     coop.last_btn = btn
     local pv = coop_pad_values()
+    if cfg.coop_aim and cfg.coop_auto_target then btn = R.ta_p2_input(btn, pv) end
     -- v0.9.124: the shift buttons come from the game's assignment (Shift1; and Shift1OnlySpecificJob, the vocation
     -- action button, which the game treats as a skill shift for the bow vocations only: see the 0.9.87 note)
     local l1, l2 = pv[COOP_SHIFT_L1] or 0x100, pv[COOP_SHIFT_L2] or 0x400
@@ -4870,10 +5192,17 @@ end
 coop.filter = function()
     local inp = state.arisen_input
     if not inp then return end
+    if R.robot_p2 and R.robot_p2() then return end -- dev14: robot is player 2; the controller is player 1's
     -- camera: the camera reads this input's AxisR after this point. v0.9.2: KeyboardMouseAxisR is only filled on
     -- some frames, so copying it (v0.9.0) froze the camera; now AxisR is only cleared on frames where player 2's
     -- right stick is pushed and the mouse did not move.
-    if cfg.coop_block_p2_camera and math.abs(pad_stick_rx) + math.abs(pad_stick_ry) > 0.25 then
+    local two = R.tp_on()
+    if two and math.abs(pad_stick_rx) + math.abs(pad_stick_ry) > 0.25 and (cfg.coop_two_pads_cam or 1) == 1 then
+        -- v0.9.170 (dev): two controllers. The game's camera input mixes both right sticks; player 1's alone instead.
+        local p1 = R.tp_p1()
+        local okr = pcall(inp.set_field, inp, "<AxisR>k__BackingField", Vector2f.new(p1.rx + 0.0, p1.ry + 0.0))
+        if okr then R.tp.cam_fixes = (R.tp.cam_fixes or 0) + 1 else cfg.coop_two_pads_cam = 2; coop_event("two controllers: camera write failed -> hold still") end
+    elseif cfg.coop_block_p2_camera and math.abs(pad_stick_rx) + math.abs(pad_stick_ry) > 0.25 then
         local okr = pcall(function()
             if not inp:get_field("<IsMouseMovedInFrame>k__BackingField") then
                 inp:set_field("<AxisR>k__BackingField", Vector2f.new(0.0, 0.0))
@@ -4898,7 +5227,7 @@ coop.filter = function()
     -- REFramework window (mouse held, the game sees no buttons), and player 2's L2 then aimed the Arisen's bow. Now it
     -- only runs in the first 20 s of a co-op session, never while the REFramework UI is open, and only switches the
     -- zeroing off for that session (the setting itself is not touched).
-    if cfg.coop_zero_pad_for_arisen and not coop.zero_off and os.clock() - (coop.t_start or 0) < 20.0 then
+    if not two and cfg.coop_zero_pad_for_arisen and not coop.zero_off and os.clock() - (coop.t_start or 0) < 20.0 then
         local ui_open = false
         pcall(function() ui_open = reframework:is_drawing_ui() == true end)
         local p1_btn = not ui_open and (is_key_down_safe(0x01) or is_key_down_safe(0x02) or is_key_down_safe(0x20))
@@ -4912,7 +5241,23 @@ coop.filter = function()
     -- stick (v0.9.2): only acts on frames where player 2's left stick is pushed, since otherwise the game's own
     -- input is untouched. v0.9.0 copied KeyboardMouseAxisL every frame, but that field is zero on most frames, so
     -- the Arisen crawled at ~0.5 m/s. Now player 1's direction comes straight from WASD (zero -> stand still).
-    if cfg.coop_block_p2_stick and pad_stick_x * pad_stick_x + pad_stick_y * pad_stick_y > 0.04 then
+    if two and pad_stick_x * pad_stick_x + pad_stick_y * pad_stick_y > 0.04 then
+        -- v0.9.170 (dev): two controllers. Player 2's stick is pushed; give the Arisen player 1's stick (plus WASD).
+        local p1 = R.tp_p1()
+        local kx, ky = p1.lx or 0.0, p1.ly or 0.0
+        if R.key_held("MoveForward", 0x57) then ky = ky + 1.0 end
+        if R.key_held("MoveBackward", 0x53) then ky = ky - 1.0 end
+        if R.key_held("MoveRightward", 0x44) then kx = kx + 1.0 end
+        if R.key_held("MoveLeftward", 0x41) then kx = kx - 1.0 end
+        local km = math.sqrt(kx * kx + ky * ky)
+        if km < (cfg.coop_pad_deadzone or 0.15) then kx, ky, km = 0.0, 0.0, 0.0 end
+        if km > 1.0 then kx, ky, km = kx / km, ky / km, 1.0 end
+        local ok = pcall(function()
+            inp:call("setAxisL(System.Single, System.Single)", kx + 0.0, ky + 0.0)
+            inp:call("set_AxisMagnitudeL(System.Single)", km + 0.0)
+        end)
+        if ok then R.tp.stick_fixes = (R.tp.stick_fixes or 0) + 1 end
+    elseif cfg.coop_block_p2_stick and pad_stick_x * pad_stick_x + pad_stick_y * pad_stick_y > 0.04 then
         local kx, ky = 0.0, 0.0
         -- v0.9.124: the keys the game has the four directions on (default W / S / D / A)
         if R.key_held("MoveForward", 0x57) then ky = ky + 1.0 end
@@ -4971,6 +5316,16 @@ end
 
 -- called from release_possession (unless it is a pawn switch inside co-op)
 coop.on_release = function(reason)
+    pcall(function() local d = R.rb_dev(); if d and R.rb.power > 0 then R.rb_set(d, 0.0) end; R.rb.power = 0 end)
+    local c = R.cr
+    if cfg.coop_auto_resume and not R.CR_USER[tostring(reason)] then
+        c.want, c.name, c.idx, c.reason = true, state.pawn_name, state.pawn_idx or coop.pawn_idx, tostring(reason)
+        c.p1, c.p2 = R.tp and R.tp.p1, R.tp and R.tp.p2
+        c.ok_since, c.tries, c.next, c.noted = nil, 0, os.clock() + 1.0, false
+        c.down = tostring(reason):find("downed", 1, true) and state.pawn_chara or nil
+    else
+        c.want, c.down = false, nil
+    end
     coop.active = false
     coop_restore_overrides()
     coop_event("co-op ended (" .. tostring(reason) .. ")")
@@ -4988,7 +5343,7 @@ local function coop_install_glyph_hook()
     local m = td and td:get_method("switchingGamePadKeyboardMouse")
     if not m then coop_event("glyph hook: method not found"); return end
     local ok, err = pcall(sdk.hook, m, function(args)
-        if not (coop.active and cfg.coop_kbm_glyphs) then return end
+        if not (coop.active and cfg.coop_kbm_glyphs) or cfg.coop_two_pads then return end
         local okm = pcall(function()
             local mgr = sdk.to_managed_object(args[2])
             if mgr and mgr:call("get_HIDInputMode") ~= 1 then mgr:call("set_HIDInputMode", 1) end
@@ -5001,7 +5356,7 @@ local function coop_install_glyph_hook()
 end
 
 local function coop_force_kbm_glyphs()
-    if not cfg.coop_kbm_glyphs then return end
+    if not cfg.coop_kbm_glyphs or cfg.coop_two_pads then return end -- v0.9.170: with two controllers player 1 uses a pad
     pcall(function()
         local mgr = sdk.get_managed_singleton("app.UserInputManager")
         if mgr and mgr:call("get_HIDInputMode") ~= 1 then
@@ -5018,7 +5373,32 @@ local function coop_start(idx)
     coop.active, coop.pawn_idx = true, idx or cfg.selected_pawn_idx or 0
     coop.map, coop.prev_on, coop.kb_dead, coop.axis_dead, coop.err = nil, 0, 0, 0, nil
     coop.zero_off, coop.t_start = false, os.clock()
+    R.ta.pin, R.ta.req, R.ta.r3_t = nil, nil, nil
     coop.ar_input_addr = 0
+    if cfg.coop_start_bring then -- dev7 (the tester): start player 2 right next to player 1's character
+        pcall(function()
+            local ar = quick_arisen()
+            local apos = ar and ar:call("get_Transform"):call("get_Position")
+            if not apos then return end
+            for _, e in ipairs(get_party()) do
+                if e.idx == coop.pawn_idx and e.chara then
+                    local p = e.chara:call("get_Transform"):call("get_Position")
+                    local dx, dz = p.x - apos.x, p.z - apos.z
+                    if dx * dx + dz * dz > 36 then
+                        local fwd = ar:call("get_Transform"):call("get_AxisZ") -- (the Arisen's right side: across his facing)
+                        local rx, rz = 1.8, 0.0
+                        if fwd then
+                            local l = math.sqrt(fwd.x * fwd.x + fwd.z * fwd.z)
+                            if l > 0.01 then rx, rz = fwd.z / l * 1.8, -fwd.x / l * 1.8 end
+                        end
+                        e.chara:call("warp(via.vec3, app.CharacterWarpOption)", Vector3f.new(apos.x + rx, apos.y + 0.3, apos.z + rz), nil)
+                        log_msg(string.format("Co-op: brought %s over (%.0f m away)", tostring(e.name), math.sqrt(dx * dx + dz * dz)))
+                    end
+                    break
+                end
+            end
+        end)
+    end
     local ok = start_possession(coop.pawn_idx)
     if ok == false or not state.active then
         coop.active = false
@@ -5036,6 +5416,7 @@ local function coop_start(idx)
     log_msg("CO-OP: player 2 (controller) plays " .. tostring(state.pawn_name) .. "; player 1 keeps the Arisen")
     R.note = { text = "Co-op: player 2 plays " .. tostring(state.pawn_name), t_end = os.clock() + 4.0 }
     coop_write_status()
+    if R.api_fire then pcall(R.api_fire, "coop_start", { players = { [1] = "Arisen", [2] = state.pawn_name } }) end -- v0.9.170
     return true
 end
 
@@ -5045,6 +5426,229 @@ end
 
 local function coop_toggle()
     if coop.active then coop_stop() else coop_start(cfg.selected_pawn_idx) end
+end
+
+R.cr_ok = function(ch)
+    if not ch then return false end
+    local ok, good = pcall(function()
+        if ch:call("get_IsDead") == true then return false end
+        if ch:call("get_IsCutSceneMode") == true then return false end
+        if ch:call("get_IsDown") == true and (ch:call("get_Hp") or 1) <= 0 then return false end
+        return (ch:call("get_Hp") or 1) > 0
+    end)
+    return ok and good == true
+end
+R.rb = { until_t = 0, power = 0, last_hp = nil, beat_t = 0, shape = nil, err = nil }
+R.rb_dev = function()
+    if not (R.tp_on and R.tp_on()) then return nil end
+    for _, d in ipairs(R.tp_devs()) do
+        if d:get_address() == R.tp.p2 then return d end
+    end
+    return nil
+end
+R.rb_set = function(d, power)
+    local r = R.rb
+    local p = math.max(0.0, math.min(1.0, power)) + 0.0
+    local function try(shape)
+        if shape == "two" then
+            d:call("setMotorPower", 0, p)
+            d:call("setMotorPower", 1, p)
+        else
+            d:call("setMotorPower", p)
+        end
+    end
+    if r.shape then
+        local ok = pcall(try, r.shape)
+        if not ok then r.shape = nil end
+        return ok
+    end
+    for _, shape in ipairs({ "two", "one" }) do
+        local ok, err = pcall(try, shape)
+        if ok then r.shape = shape; r.err = nil; return true end
+        r.err = tostring(err)
+    end
+    return false
+end
+R.rb_pulse = function(power, dur)
+    local r = R.rb
+    local now = os.clock()
+    power = power * (cfg.coop_p2_rumble_power or 1.0)
+    if now < r.until_t and power <= r.power then return end
+    r.power, r.until_t = power, now + dur
+    local d = R.rb_dev()
+    if d then R.rb_set(d, power) end
+end
+R.rb_tick = function()
+    local r = R.rb
+    local now = os.clock()
+    if r.power > 0 and now >= r.until_t then
+        r.power = 0
+        local d = R.rb_dev()
+        if d then R.rb_set(d, 0.0) end
+    end
+    if not (cfg.coop_p2_rumble and coop.active and state.pawn_chara and R.tp_on and R.tp_on()) then
+        r.last_hp = nil
+        return
+    end
+    local hp, mx = nil, nil
+    pcall(function()
+        local hit = state.pawn_chara:call("get_Hit")
+        mx = hit and hit:call("get_OriginalMaxHp") or nil
+        hp = hit and hit:call("get_Hp") or nil
+    end)
+    if not (hp and mx and mx > 0) then return end
+    local ratio = hp / mx
+    if r.last_hp and hp < r.last_hp - 0.5 then
+        local bite = (r.last_hp - hp) / mx
+        if hp <= 0 then
+            R.rb_pulse(1.0, 0.7)
+        else
+            R.rb_pulse(math.min(1.0, 0.35 + bite * 4.0), math.min(0.45, 0.12 + bite * 1.5))
+        end
+    end
+    if cfg.coop_rb_status and r.last_hp and hp > r.last_hp + mx * 0.08 then
+        R.rb_pulse(r.last_hp <= 0 and 0.5 or 0.2, r.last_hp <= 0 and 0.35 or 0.15)
+    end
+    r.last_hp = hp
+    if ratio > 0 and ratio < 0.25 and now >= r.beat_t then
+        r.beat_t = now + 1.1
+        R.rb_pulse(0.25, 0.08)
+        r.beat2 = now + 0.18
+    elseif r.beat2 and now >= r.beat2 then
+        r.beat2 = nil
+        R.rb_pulse(0.18, 0.06)
+    end
+    if cfg.coop_rb_status then
+        local st = nil
+        pcall(function()
+            local sm = state.pawn_chara:call("get_StaminaManager")
+            local smx = sm and sm:call("get_MaxValue") or 0
+            if smx > 0 then st = (sm:call("get_RemainingAmount") or 0) / smx end
+        end)
+        if st then
+            if st <= 0.01 and (r.last_st or 1) > 0.01 then R.rb_pulse(0.35, 0.12); r.beat2 = now + 0.2 end
+            r.last_st = st
+        end
+    end
+    if (cfg.coop_rb_skill or cfg.coop_rb_status) and R.node_names then
+        local okn, n0, n1 = pcall(R.node_names, state.pawn_chara)
+        if okn then
+            local nodes = tostring(n0) .. "|" .. tostring(n1)
+            if nodes ~= r.last_nodes then
+                local prev = r.last_nodes or ""
+                r.last_nodes = nodes
+                local function has(str, w) return str:find(w, 1, true) ~= nil end
+                local skill = has(nodes, "Skill") and not has(nodes, "Cancel")
+                local knocked = (has(nodes, "Blown") or has(nodes, "Down") or has(nodes, "Knock")) and not has(nodes, "Cancel")
+                local was_skill = has(prev, "Skill") and not has(prev, "Cancel")
+                local was_knocked = has(prev, "Blown") or has(prev, "Down") or has(prev, "Knock")
+                if cfg.coop_rb_skill and skill and not was_skill then R.rb_pulse(0.22, 0.07) end
+                if cfg.coop_rb_status and knocked and not was_knocked then R.rb_pulse(0.6, 0.3) end
+                r.nodes_seen = nodes
+            end
+        end
+    end
+end
+
+R.rb_hook = function()
+    local td = sdk.find_type_definition("app.HitController")
+    local m = td and td:get_method("updateDamage")
+    if not m then return end
+    sdk.hook(m, function(args)
+        local st = thread.get_hook_storage()
+        st.dpc_rb_di, st.dpc_rb_hc = nil, nil
+        if cfg.coop_p2_rumble and coop.active and state.pawn_chara and R.tp_on and R.tp_on() then
+            st.dpc_rb_di, st.dpc_rb_hc = args[3], args[2]
+        end
+    end, function(retval)
+        local st = thread.get_hook_storage()
+        local p, hcp = st.dpc_rb_di, st.dpc_rb_hc
+        st.dpc_rb_di, st.dpc_rb_hc = nil, nil
+        if p then
+            pcall(function()
+                local di = sdk.to_managed_object(p)
+                local dmg = di and di.Damage
+                if not dmg then return end
+                local pgo = state.pawn_chara:call("get_GameObject")
+                if not pgo then return end
+                local pa = pgo:get_address()
+                local owner = di["<AttackOwnerObject>k__BackingField"]
+                local hc = hcp and sdk.to_managed_object(hcp)
+                local tgo = hc and hc:call("get_GameObject")
+                if cfg.coop_rb_dealt and owner and owner:get_address() == pa and tgo and tgo:get_address() ~= pa and dmg > 0 then
+                    local mx = hc:call("get_OriginalMaxHp") or 0
+                    local hpn = hc:call("get_Hp") or 1
+                    if hpn <= 0 then
+                        R.rb_pulse(0.85, 0.25)
+                    else
+                        local frac = mx > 0 and dmg / mx or 0.02
+                        R.rb_pulse(math.min(0.75, 0.28 + frac * 6.0), math.min(0.18, 0.06 + frac * 2.0))
+                    end
+                elseif cfg.coop_rb_status and tgo and tgo:get_address() == pa and dmg <= 0 and owner and owner:get_address() ~= pa then
+                    R.rb_pulse(0.4, 0.1)
+                end
+            end)
+        end
+        return retval
+    end)
+end
+pcall(R.rb_hook)
+
+R.cr_tick = function()
+    local c = R.cr
+    if not c.want then return end
+    if coop.active or not cfg.coop_auto_resume then c.want, c.down = false, nil; return end
+    local now = os.clock()
+    if now < (c.next or 0) then return end
+    c.next = now + 0.25
+    if R.world ~= true then c.ok_since = nil; return end
+    local ar = nil
+    pcall(function() ar = sdk.get_managed_singleton("app.CharacterManager"):call("get_ManualPlayer") end)
+    local entry = nil
+    for _, e in ipairs(get_party()) do
+        if c.name and c.name ~= "" and e.name == c.name then entry = e; break end
+    end
+    if not entry then
+        for _, e in ipairs(get_party()) do if e.idx == c.idx then entry = e; break end end
+    end
+    if entry and c.down == nil then
+        local okd, downed = pcall(function() return entry.chara:call("get_IsDown") == true and (entry.chara:call("get_Hp") or 1) <= 0 end)
+        if okd and downed then c.down = entry.chara end
+    end
+    if not (entry and R.cr_ok(ar) and R.cr_ok(entry.chara)) then
+        c.ok_since = nil
+        if not c.noted then
+            c.noted = true
+            R.note = { text = "Co-op resumes when " .. tostring(c.name or "the pawn") .. " is back", t_end = now + 3.0 }
+        end
+        return
+    end
+    c.down = nil
+    c.ok_since = c.ok_since or now
+    if now - c.ok_since < 2.0 then return end
+    c.ok_since = nil
+    local ok, started = pcall(coop_start, entry.idx)
+    if ok and started ~= false and coop.active then
+        c.want = false
+        local p1, p2 = c.p1, c.p2
+        if p1 and p2 and R.tp then
+            local have1, have2 = false, false
+            for _, d in ipairs(R.tp_devs()) do
+                local a = d:get_address()
+                if a == p1 then have1 = true elseif a == p2 then have2 = true end
+            end
+            if have1 and have2 then R.tp.p1, R.tp.p2, R.tp.wait_release, R.tp.p1v = p1, p2, nil, nil end
+        end
+        R.note = { text = "Co-op resumed: player 2 plays " .. tostring(state.pawn_name), t_end = now + 3.0 }
+        coop_event("co-op resumed (" .. tostring(c.reason) .. ")")
+    else
+        c.tries = (c.tries or 0) + 1
+        c.next = now + 5.0
+        if c.tries >= 5 then
+            c.want = false
+            R.note = { text = "Co-op could not resume - start it again (Ctrl+F6)", t_end = now + 5.0 }
+        end
+    end
 end
 
 local function toggle_possession()
@@ -5114,6 +5718,343 @@ end
 
 local gp_single, gp_td = nil, nil
 
+-- v0.9.170 (dev, untested): two controllers in couch co-op. Built on joseau11's 0.9.165 changes (R.tp_*; credit
+-- in the MODLOG): via.hid.GamePad.get_ConnectingDevices lists each controller on its own (he saw two devices next to
+-- the merged one). Player 2 claims a controller by holding L1 + L3 for half a second once co-op is on; the other one
+-- is player 1's. Player 2's pawn then reads only that controller (poll_pad); the Arisen gets player 1's buttons
+-- (R.tp_arisen_buttons, in the processButton hook) and player 1's sticks (coop.filter).
+R.tp = { n = 0, hold = {} }
+R.tp_devs = function()
+    gp_single = gp_single or sdk.get_native_singleton("via.hid.GamePad")
+    gp_td = gp_td or sdk.find_type_definition("via.hid.GamePad")
+    local out = {}
+    if not (gp_single and gp_td) then return out end
+    local ok, arr = pcall(sdk.call_native_func, gp_single, gp_td, "get_ConnectingDevices")
+    if not ok or not arr then return out end
+    local n = 0
+    pcall(function() n = arr:call("get_Count") or 0 end)
+    if n == 0 then pcall(function() n = arr:call("get_Length") or 0 end) end
+    for i = 0, n - 1 do
+        local okd, d = pcall(arr.call, arr, "get_Item", i)
+        if okd and d then out[#out + 1] = d end
+    end
+    return out
+end
+R.tp_read = function(d)
+    local v = { b = 0, lx = 0.0, ly = 0.0, rx = 0.0, ry = 0.0 }
+    if not d then return v end
+    pcall(function()
+        v.b = d:call("get_Button") or 0
+        local pad = d -- a via.hid.GamePadDevice (read only; never handed to a setter)
+        local okl, l = pcall(pad.call, pad, "get_AxisL")
+        if okl and l then v.lx, v.ly = l.x + 0.0, l.y + 0.0 end
+        local okr, r = pcall(pad.call, pad, "get_AxisR")
+        if okr and r then v.rx, v.ry = r.x + 0.0, r.y + 0.0 end
+    end)
+    return v
+end
+R.tp_on = function()
+    local t = R.tp
+    return coop.active and cfg.coop_two_pads and t.p1 ~= nil and t.p2 ~= nil and not t.wait_release
+end
+R.tp_p1 = function() return R.tp.p1v or { b = 0, lx = 0.0, ly = 0.0, rx = 0.0, ry = 0.0 } end
+R.tp_p2 = function() return R.tp.p2v or { b = 0, lx = 0.0, ly = 0.0, rx = 0.0, ry = 0.0 } end
+R.tp_reset = function()
+    local t = R.tp
+    t.p1, t.p2, t.hold, t.wait_release, t.p1v, t.p2v = nil, nil, {}, nil, nil, nil
+end
+R.tp_swap = function()
+    local t = R.tp
+    if t.p1 and t.p2 then
+        t.p1, t.p2, t.p1v, t.p2v = t.p2, t.p1, t.p2v, t.p1v
+        pcall(json.dump_file, "DPC_two_pads.json", { p1 = t.p1, p2 = t.p2 })
+    end
+end
+-- once a frame from poll_pad. Returns player 2's values, false while waiting for player 2 to claim a controller,
+-- nil when not in two-controller mode (poll_pad then reads the merged device as before).
+R.tp_tick = function()
+    local t = R.tp
+    if not (coop.active and cfg.coop_two_pads) then
+        if t.p2 then R.tp_reset() end
+        return nil
+    end
+    local devs = R.tp_devs()
+    t.n = #devs
+    if #devs < 2 then
+        if t.p2 then R.note = { text = "Co-op: a controller was disconnected", t_end = os.clock() + 4.0 } end
+        R.tp_reset()
+        if (t.warn_t or 0) + 8.0 < os.clock() then
+            t.warn_t = os.clock()
+            R.note = { text = "Co-op, two controllers: only " .. #devs .. " controller(s) found", t_end = os.clock() + 4.0 }
+        end
+        return nil
+    end
+    local p2d, p1d
+    for _, d in ipairs(devs) do
+        local a = d:get_address()
+        if a == t.p2 then p2d = d elseif a == t.p1 then p1d = d end
+    end
+    if t.p2 and not (p2d and p1d) then
+        R.note = { text = "Co-op: controllers changed - player 2, hold L3 + R3", t_end = os.clock() + 5.0 }
+        coop_event("two controllers: a controller changed, claim again")
+        R.tp_reset()
+        p2d, p1d = nil, nil
+    end
+    local now = os.clock()
+    if not t.p2 and not t.restored then
+        -- dev8: the claim survives Reset Scripts (the controllers keep their addresses while the game runs)
+        t.restored = true
+        local okf, f = pcall(json.load_file, "DPC_two_pads.json")
+        if okf and type(f) == "table" and f.p1 and f.p2 then
+            local h1, h2
+            for _, d in ipairs(devs) do
+                local a = d:get_address()
+                if a == f.p1 then h1 = d elseif a == f.p2 then h2 = d end
+            end
+            if h1 and h2 then
+                t.p1, t.p2, p1d, p2d = f.p1, f.p2, h1, h2
+                R.note = { text = "Co-op: player 2's controller is still set", t_end = now + 3.0 }
+                coop_event("two controllers: claim kept from before")
+            end
+        end
+    end
+    if not t.p2 then
+        local pv = coop_pad_values()
+        -- dev9: L3 + R3 (was L1 + L3, which is also DPC's take-control combination)
+        local combo = (pv.LStickPush or 0x1000) | (pv.RStickPush or 0x2000)
+        for _, d in ipairs(devs) do
+            local a = d:get_address()
+            local b = R.tp_read(d).b
+            if (b & combo) == combo then
+                t.hold[a] = t.hold[a] or now
+                if now - t.hold[a] >= 1.0 then
+                    t.p2, p2d = a, d
+                    p1d = R.tp_other(devs, a)
+                    t.p1 = p1d and p1d:get_address() or nil
+                    t.wait_release = true
+                    pcall(json.dump_file, "DPC_two_pads.json", { p1 = t.p1, p2 = t.p2 })
+                    R.note = { text = "Co-op: player 2's controller is set", t_end = now + 3.0 }
+                    coop_event(string.format("two controllers: player 2 = %X, player 1 = %X (%d found)", a, t.p1 or 0, #devs))
+                    break
+                end
+            else
+                t.hold[a] = nil
+            end
+        end
+        if not t.p2 then
+            if not t.hint_t or now - t.hint_t > 6.0 then
+                t.hint_t = now
+                R.note = { text = "Co-op, two controllers: player 2, hold L3 + R3 (both stick clicks) on your controller", t_end = now + 5.0 }
+            end
+            return false
+        end
+    end
+    t.p1_prevb = t.p1v and t.p1v.b or 0 -- dev12: for player 1's co-op combination (pad_combo_pressed reads player 2)
+    t.p1v, t.p2v = R.tp_read(p1d), R.tp_read(p2d)
+    if t.wait_release then
+        if t.p2v.b ~= 0 then return false end
+        t.wait_release = nil
+    end
+    return t.p2v
+end
+-- The Arisen's pad buttons (processButton's value) while two controllers are on. Which of the three is right depends
+-- on what the game hands processButton (the merged pad, or one controller), which is not known yet:
+--   1 (default) take out only the buttons player 2 holds and player 1 does not. Right in both cases.
+--   2 leave them to the game (joseau11: "the game already reads only one pad for the Arisen").
+--   3 player 1's controller only (opened the main menu again and again for joseau11; here to compare).
+R.tp_arisen_buttons = function(arg)
+    local v = sdk.to_int64(arg) or 0
+    local mode = cfg.coop_two_pads_buttons or 1
+    local p1, p2 = R.tp_p1().b or 0, R.tp_p2().b or 0
+    R.tp.game_b, R.tp.pb_in = v, v & 0xFFFFFFFF
+    R.tp.pb = (R.tp.pb or 0) + 1
+    local out = v
+    if mode == 3 then out = p1
+    elseif mode == 1 then out = v & ~(p2 & ~p1) end
+    if out ~= v and mode == 1 then R.tp.masked = (R.tp.masked or 0) + 1 end
+    -- joseau11: player 1's R3 is only the game's camera reset; with the aiming on it picks his target instead
+    if cfg.coop_aim and cfg.coop_aim_p1 then
+        local r3 = (coop_pad_values().RStickPush) or 0x2000
+        out = out & ~r3
+    end
+    if out == v then return nil end
+    return out
+end
+
+-- dev9: the second controller starts co-op itself. Every frame (cheap: two or three device reads) each controller's
+-- last activity is noted. With co-op off, a controller held at L3 + R3 for 1.5 s starts co-op as player 2 when another
+-- controller was used in the last 2 minutes (so one player on one controller never starts it by accident; the
+-- game also lists controllers nobody touches). Player 1 is the controller used most recently besides it. In co-op,
+-- player 2 holding L3 + R3 for 3 s ends it.
+R.tp_other = function(devs, not_a)
+    local t, best, bt = R.tp, nil, -1
+    for _, o in ipairs(devs) do
+        local a = o:get_address()
+        if a ~= not_a then
+            local la = (t.act and t.act[a]) or 0
+            if la > bt then best, bt = o, la end
+        end
+    end
+    return best
+end
+-- dev10: seen on Thirteen after controllers were swapped / turned off: the controllers' input reached the game
+-- (via.hid devices showed it) but the game stayed in keyboard/mouse mode (UserInputManager.HIDInputMode 1) and the
+-- Arisen got no buttons and no stick; the keyboard still worked. When a controller has been in use for 0.3 s with no
+-- co-op running, the input mode is still keyboard/mouse and the Arisen's input shows nothing, set the game's mode to
+-- controller (0), what the game does itself when a controller is touched. At most every 3 s; counted.
+R.pad_mode_tick = function(any_pad, now)
+    local t = R.tp
+    if not cfg.pad_mode_fix or coop.active or state.active then t.pm_since = nil; return end
+    if not any_pad then t.pm_since = nil; return end
+    t.pm_since = t.pm_since or now
+    if now - t.pm_since < 0.3 or now < (t.pm_next or 0) then return end
+    local mgr = sdk.get_managed_singleton("app.UserInputManager")
+    if not mgr or mgr:call("get_HIDInputMode") ~= 1 then return end
+    local cm = sdk.get_managed_singleton("app.CharacterManager")
+    local ar = cm and cm:call("get_ManualPlayer")
+    local inp = ar and ar:call("get_Input")
+    if not inp then return end
+    if (inp:get_field("ButtonOnFlags") or 0) ~= 0 or (inp:call("get_AxisMagnitudeL") or 0) > 0.05 then return end
+    t.pm_next = now + 3.0
+    mgr:call("set_HIDInputMode", 0)
+    t.pm_fixes = (t.pm_fixes or 0) + 1
+    log_msg("Controller in use but the game was in keyboard/mouse mode: switched it to controller (" .. t.pm_fixes .. ")")
+end
+-- dev13: the game feeds the Arisen from ONE controller, app.UserPadManager's active pad (mixed-pads-1: with a PS5
+-- and an Xbox pad the Arisen took only the PS5's stick, even while the Xbox was the "last input device"). It does
+-- not move to another controller that is used, so a controller that went off or a second one left the Arisen deaf
+-- to the pad in hand. pad_active_follow: when the active controller has been idle 1.5 s and another one is used,
+-- make that one active (the game's own changeActiveUserPad). Two-controller co-op: keep it on player 1's controller.
+R.pad_active_tick = function(devs, now, force)
+    if not (cfg.pad_active_follow or force) then return end
+    local t = R.tp
+    t.act = t.act or {}
+    if not force and (t.pa_next or 0) > now then return end
+    t.pa_next = now + 0.25
+    local m = sdk.get_managed_singleton("app.UserPadManager")
+    if not m then return end
+    local aa = nil
+    pcall(function()
+        local ap = m:call("get_ActiveUserPad")
+        local ad = ap and ap:call("getDevice")
+        aa = ad and ad:get_address() or nil
+    end)
+    t.pa_active = aa
+    local want = nil
+    if coop.active and cfg.coop_two_pads and t.p1 and t.p2 and not t.wait_release then
+        want = t.p1
+    else
+        local best, bt = nil, -1
+        for _, d in ipairs(devs) do
+            local a = d:get_address()
+            local at = t.act[a]
+            if at and at > bt then best, bt = a, at end
+        end
+        local idle = (not aa) or (not t.act[aa]) or (now - t.act[aa] > 1.5)
+        if best and best ~= aa and (force or (now - bt < 0.5 and idle)) then want = best end
+    end
+    if not want or want == aa then return end
+    for _, d in ipairs(devs) do
+        if d:get_address() == want then
+            local ok = pcall(m.call, m, "changeActiveUserPad", d)
+            t.pa_n = (t.pa_n or 0) + 1
+            log_msg(string.format("Controllers: the game's active controller %X -> %X (%s)", (aa or 0) & 0xFFFFFF, want & 0xFFFFFF, ok and "ok" or "failed"))
+            return
+        end
+    end
+end
+R.pad_reset = function() -- settings button: forget both controllers' roles and let the game take whatever is pressed
+    R.tp_reset()
+    R.tp.restored = true
+    pcall(json.dump_file, "DPC_two_pads.json", {})
+    R.tp.pm_next = 0
+    pcall(function()
+        local mgr = sdk.get_managed_singleton("app.UserInputManager")
+        if mgr then mgr:call("set_HIDInputMode", 0) end
+    end)
+    pcall(R.pad_active_tick, R.tp_devs(), os.clock(), true) -- dev13: the most recently used controller drives the Arisen
+    R.note = { text = "Controllers reset", t_end = os.clock() + 3.0 }
+end
+-- dev13b: "in use" = a button, or a stick pushed past half way. A resting stick that drifts (a paired PS5 nobody
+-- held read -0.25) must not count, or it takes the active controller away from the one in your hands.
+R.tp_used = function(v)
+    return v.b ~= 0 or math.max(math.abs(v.lx), math.abs(v.ly), math.abs(v.rx), math.abs(v.ry)) > 0.5
+end
+R.tp_join_tick = function()
+    local t = R.tp
+    t.act = t.act or {}
+    local now = os.clock()
+    local devs = R.tp_devs()
+    local any_pad = false
+    for _, d in ipairs(devs) do
+        local v = R.tp_read(d)
+        if v.b ~= 0 or math.abs(v.lx) + math.abs(v.ly) > 0.3 then any_pad = true end
+        if R.tp_used(v) then t.act[d:get_address()] = now end
+    end
+    pcall(R.pad_mode_tick, any_pad, now)
+    local okpa, epa = pcall(R.pad_active_tick, devs, now)
+    if not okpa then t.pa_err = tostring(epa) end
+    if #devs < 2 then return end
+    local pv = coop_pad_values()
+    local combo = (pv.LStickPush or 0x1000) | (pv.RStickPush or 0x2000)
+    t.jhold = t.jhold or {}
+    for _, d in ipairs(devs) do
+        local a = d:get_address()
+        local v = R.tp_read(d)
+        if R.tp_used(v) then t.act[a] = now end
+        if coop.active then
+            -- L3 + R3 held 3 s on either player's controller ends co-op (dev12: player 1 too)
+            if (a == t.p2 or a == t.p1) and (v.b & combo) == combo then
+                t.jhold[a] = t.jhold[a] or now
+                if now - t.jhold[a] >= 3.0 then
+                    t.jhold[a] = nil
+                    local who = (a == t.p1) and "player 1" or "player 2"
+                    R.note = { text = (a == t.p1) and "Co-op ended by player 1" or "Co-op: player 2 left", t_end = now + 3.0 }
+                    coop_event("two controllers: " .. who .. " held L3 + R3 -> co-op off")
+                    pcall(coop_stop)
+                    return
+                end
+            else
+                t.jhold[a] = nil
+            end
+        elseif cfg.coop_pad_join and (v.b & combo) == combo then
+            t.jhold[a] = t.jhold[a] or now
+            if now - t.jhold[a] >= 1.5 then
+                t.jhold[a] = nil
+                local other = R.tp_other(devs, a)
+                local oa = other and other:get_address()
+                if not (oa and t.act[oa] and now - t.act[oa] < 120.0) then
+                    if (t.join_warn_t or 0) + 5.0 < now then
+                        t.join_warn_t = now
+                        R.note = { text = "Co-op: player 1, press something on your controller first, then player 2 hold L3 + R3 again", t_end = now + 4.0 }
+                    end
+                else
+                    cfg.coop_two_pads = true
+                    save_cfg()
+                    local ok, started = pcall(coop_start, cfg.selected_pawn_idx)
+                    if ok and started ~= false and coop.active then
+                        R.tp_reset()
+                        t.p1, t.p2, t.restored, t.wait_release = oa, a, true, true
+                        pcall(json.dump_file, "DPC_two_pads.json", { p1 = oa, p2 = a })
+                        R.note = { text = "Co-op: player 2 joined on their controller", t_end = now + 4.0 }
+                        coop_event(string.format("two controllers: player 2 joined with L3 + R3 (%X), player 1 = %X", a, oa))
+                    end
+                    return
+                end
+            end
+        else
+            t.jhold[a] = nil
+        end
+    end
+end
+
+-- dev14: the robot (developer, capture shots / tests) is player 2 in one-controller co-op: then the real controller
+-- is player 1's, like a second controller. DPC ignores it for player 2 and leaves it to the Arisen (no pad zeroing,
+-- no stick / camera filter), so the Arisen can be played on the controller instead of keyboard and mouse.
+R.robot_p2 = function()
+    return cfg.robot_frees_pad ~= false and coop.active and robot.pad ~= nil and os.clock() < (robot.pad.until_t or 0)
+        and not (R.tp_on and R.tp_on())
+end
 local function poll_pad()
     pad_prev = pad_buttons
     pad_buttons = 0
@@ -5124,8 +6065,25 @@ local function poll_pad()
     if not gp_single or not gp_td then return end
     -- v0.9.1: the merged device is the property get_MergedDevice(); "getMergedDevice(0)" returned nil, so DPC never
     -- read the controller at all (pad sticks were always 0 -> no pad movement while the Arisen brain was on).
-    local ok, pad = pcall(sdk.call_native_func, gp_single, gp_td, "get_MergedDevice")
-    pad_device_ok = (ok and pad ~= nil) and true or false
+    local tpv = nil
+    if cfg.coop_pad_join or cfg.pad_mode_fix or cfg.pad_active_follow or (cfg.coop_two_pads and coop.active) then
+        local okj, ej = pcall(R.tp_join_tick)
+        if not okj then R.tp.err = "join: " .. tostring(ej) end
+    end
+    if cfg.coop_two_pads and coop.active then
+        local okt, v = pcall(R.tp_tick)
+        if okt then tpv = v else R.tp.err = tostring(v) end
+    end
+    if tpv ~= nil then -- v0.9.170 (dev): two controllers; player 2 reads only their own (nothing while claiming)
+        pad_device_ok = true
+        if tpv then
+            pad_buttons = tpv.b or 0
+            pad_stick_x, pad_stick_y, pad_stick_rx, pad_stick_ry = tpv.lx, tpv.ly, tpv.rx, tpv.ry
+        end
+    end
+    local ok, pad = false, nil
+    if tpv == nil then ok, pad = pcall(sdk.call_native_func, gp_single, gp_td, "get_MergedDevice") end
+    if tpv == nil then pad_device_ok = (ok and pad ~= nil) and true or false end
     if ok and pad then
         local b = call(pad, "get_Button")
         if type(b) == "number" then pad_buttons = b end
@@ -5146,6 +6104,9 @@ local function poll_pad()
         if os.clock() >= rp.until_t then
             robot.pad = nil
         else
+            if R.robot_p2() then -- dev14: the real controller is player 1's
+                pad_buttons, pad_stick_x, pad_stick_y, pad_stick_rx, pad_stick_ry = 0, 0.0, 0.0, 0.0, 0.0
+            end
             pad_buttons = pad_buttons | (rp.btn or 0)
             if rp.lx then pad_stick_x, pad_stick_y = rp.lx, rp.ly end
             if rp.rx then pad_stick_rx, pad_stick_ry = rp.rx, rp.ry end
@@ -5201,6 +6162,15 @@ local function poll_pad()
     end
 end
 
+-- dev12: with two controllers DPC's own combinations come from player 2's controller; player 1's controller
+-- counts only for starting / stopping co-op (each player cycles their own character).
+R.p1_combo_pressed = function(mask)
+    if not mask or mask == 0 or not R.tp_on() then return false end
+    if R.cap or os.clock() < (R.cap_quiet or 0) then return false end
+    local b = (R.tp.p1v and R.tp.p1v.b) or 0
+    local pb = R.tp.p1_prevb or 0
+    return (b & mask) == mask and (pb & mask) ~= mask
+end
 local function pad_combo_pressed(mask)
     if not mask or mask == 0 then return false end
     if R.cap or os.clock() < (R.cap_quiet or 0) then return false end
@@ -5508,6 +6478,7 @@ local function node_names(chara)
     if not fsm then return "?", "?" end
     return tostring(call(fsm, "getCurrentNodeName(System.UInt32)", 0) or ""), tostring(call(fsm, "getCurrentNodeName(System.UInt32)", 1) or "")
 end
+R.node_names = node_names
 
 -- v0.9.29 bow aim for the possessed Archer. Measured 2026-11-15 (archer-aim-1 / -2): the game enters the aim camera
 -- with MainCameraController.switchCamera(7, interp, nil, 0) and leaves with switchCamera(0, ...), but only for the
@@ -7250,7 +8221,7 @@ R.ar_calc = function()
         R.ar_ok = true
     end)
 end
-R.stam_cb_ok = pcall(re.on_pre_application_entry, "LockScene", function() R.stam_calc(); R.ar_calc() end)
+R.stam_cb_ok = pcall(re.on_pre_application_entry, "LockScene", function() R.stam_calc(); R.ar_calc(); pcall(R.ta_calc) end)
 if R.dev then _G.DPC_dbg = { native = native, state = state, R = R, brain = brain, cfg = cfg } end -- dev only: lets TestGuide plans read the pawn's processor
 if cfg.pawn_aim_camera then pcall(R.aim_install) end -- at load, so the Arisen's own aim teaches the transitions and reticle point
 
@@ -8729,6 +9700,42 @@ local function poll_cmd_file()
         -- v0.9.125: heal / revive the party (the Numpad . cheat), so a test never leaves a pawn down
         local okh, errh = pcall(party_heal)
         if not okh then res = "heal: " .. tostring(errh) end
+    elseif d.cmd == "scene" then
+        -- v0.9.170 (developer, test bench): a known start for a test. Releases any pawn, ends co-op, clears test
+        -- enemies, heals the party, turns the experimental switches off (this session only) and, with "anchor":
+        -- "set" remembers where the Arisen stands, with "anchor": "go" brings him and the party back there when he
+        -- is more than 15 m away (the game's own warp, as Warp to me does).
+        if coop.active then pcall(coop_stop) end
+        if state.active then pcall(release_possession, "scene reset") end
+        pcall(despawn_tests)
+        for _, k in ipairs({ "pf_hitstop", "pf_world_slow", "coop_two_pads" }) do cfg[k] = false end
+        cfg.pf_sound_voice, cfg.pf_sound_listener, cfg.pf_sound_space = true, 1, true -- (dev4: the defaults)
+        local ar = sdk.get_managed_singleton("app.CharacterManager")
+        ar = ar and ar:call("get_ManualPlayer")
+        local pos = ar and ar:call("get_Transform"):call("get_Position")
+        if pos and d.anchor == "set" then
+            R.scene_anchor = { pos.x, pos.y, pos.z }
+            pcall(json.dump_file, "bench/anchor.json", { pos = R.scene_anchor })
+        elseif pos and d.anchor == "go" then
+            local a = R.scene_anchor
+            if not a then
+                local oka, f = pcall(json.load_file, "bench/anchor.json")
+                a = oka and type(f) == "table" and f.pos or nil
+            end
+            if a then
+                local dx, dz = pos.x - a[1], pos.z - a[3]
+                if dx * dx + dz * dz > 225 then
+                    pcall(ar.call, ar, "warp(via.vec3, app.CharacterWarpOption)", Vector3f.new(a[1], a[2] + 0.3, a[3]), nil)
+                    R.scene_warp_t = os.clock() + 1.5 -- the party follows a moment later (see the frame callback)
+                    res = "ok (warped back)"
+                end
+            else
+                res = "ok (no anchor yet)"
+            end
+        end
+        local okh = pcall(party_heal)
+        if not okh then res = res .. ", heal failed" end
+        R.scene_t = os.clock()
     elseif d.cmd == "mark" then
         test_mark(d.label)
     elseif d.cmd == "robot" then
@@ -8827,6 +9834,8 @@ R.world_check = function()
             quick.rows, quick.defs, quick.packs, quick.rows_try_t = nil, nil, {}, nil -- v0.9.115: game objects, read again later
             R.aim_pick, R.aim_pick_idx, R.aim_asset_addr = nil, nil, nil -- v0.9.168: aim setting, read again later
             pcall(R.cine_stop) -- v0.9.169
+            if R.pf_restore_all then pcall(R.pf_restore_all, "loading") end -- v0.9.170
+            if R.api_fire then pcall(R.api_fire, "world_loading", {}) end
             log_msg("World is loading: the mod pauses until it is back")
         end
         R.world, R.world_back_t = false, nil
@@ -8836,6 +9845,7 @@ R.world_check = function()
         R.world_back_t = R.world_back_t or now
         if now - R.world_back_t < 1.0 then return false end
         log_msg("World is back: the mod resumes")
+        if R.api_fire then pcall(R.api_fire, "world_back", {}) end
     end
     R.world = true
     return true
@@ -8993,8 +10003,10 @@ re.on_pre_application_entry("UpdateBehavior", function()
     if R.hold == "down" and state.active then toggle_possession() end
     -- v0.9.150: couch co-op has its own key (Ctrl+F6 by default; with or without Ctrl, as it was chosen) and an
     -- optional controller combination. The take-control key does nothing while Ctrl is held, as before.
-    local coop_hit = R.key_hit("coop") or pad_combo_pressed(cfg.pad.coop)
-    if coop_hit then coop_toggle()
+    local coop_hit = R.key_hit("coop") or pad_combo_pressed(cfg.pad.coop) or R.p1_combo_pressed(cfg.pad.coop)
+    if not coop_hit then pcall(R.cr_tick) end
+    pcall(R.rb_tick)
+    if coop_hit then R.cr.want = false; coop_toggle()
     elseif R.key_hit("toggle_possess") or pad_combo_pressed(cfg.pad.toggle_possess) or R.hold == "up" then
         if false then
         elseif state.active and not coop.active and R.sel_kind == "pawn" and R.sel_idx ~= nil and R.sel_idx ~= state.pawn_idx then
@@ -9231,7 +10243,496 @@ re.on_pre_application_entry("UpdateBehavior", function()
 end)
 
 -- Always restore cleanly when scripts are reloaded/reset in REFramework
+-- ----------------------------------------------------------------------------
+-- v0.9.170 (dev, untested) "Whoever you play is the player": sound, hit-stop and the big-kill slow-motion.
+-- See claude/dpc-player-feel-plan.md. Approach B (per-character settings: the Wwise sound settings) and C (scoped
+-- swaps: the game's "who is the player" field, CharacterManager.<ManualPlayer>k__BackingField, is set to the played
+-- pawn only for the length of one game call, then put back; the method DD2PartySwitcher uses, reused with credit).
+-- Never the full swap (A): PartySwitcher's full swap logged 8+ crashes and DPC's own Mode 3 swap crashed.
+-- Every part is its own switch (cfg.pf_*) so a test can turn them on one at a time; all off = 0.9.169.
+-- ----------------------------------------------------------------------------
+R.pf = { n = {}, hooked = {} }
+R.pf_played = function() -- the character one player plays alone (not co-op: there player 1 still plays the Arisen)
+    if state.active and not coop.active and state.pawn_chara and state.arisen_chara then return state.pawn_chara end
+    return nil
+end
+R.pf_count = function(k)
+    if not cfg.pf_scope_log then return end
+    local n = R.pf.n
+    n[k] = (n[k] or 0) + 1
+end
+
+-- Scoped ManualPlayer swap. While one is open R.mp_swapped holds the real player; a nested call (one of these game
+-- methods calling another) does not swap again. DPC's own code that must know the real Arisen during a window
+-- calls R.real_player().
+R.MP_FIELD = "<ManualPlayer>k__BackingField"
+R.real_player = function()
+    if R.mp_swapped then return R.mp_swapped.old end
+    local cm = sdk.get_managed_singleton("app.CharacterManager")
+    return cm and cm:call("get_ManualPlayer")
+end
+R.mp_pre = function(key)
+    local st = thread.get_hook_storage()
+    st.mp = nil
+    if R.mp_swapped then return end
+    local p = R.pf_played()
+    if not p then return end
+    local cm = sdk.get_managed_singleton("app.CharacterManager")
+    if not cm then return end
+    local old = cm:get_field(R.MP_FIELD)
+    -- only when the game's player is the Arisen we know (never stack on someone else's swap)
+    if not old or old:get_address() ~= state.arisen_chara:get_address() then return end
+    cm:set_field(R.MP_FIELD, p)
+    R.mp_swapped = { cm = cm, old = old, key = key }
+    st.mp = true
+    R.pf_count(key)
+end
+R.mp_post = function(retval)
+    local st = thread.get_hook_storage()
+    if st and st.mp then
+        st.mp = nil
+        local sw = R.mp_swapped
+        R.mp_swapped = nil
+        if sw then pcall(sw.cm.set_field, sw.cm, R.MP_FIELD, sw.old) end
+    end
+    return retval
+end
+-- hooks are installed the first time their switch is on, and stay (they do nothing while it is off)
+R.pf_hook_group = function(group, list, cfg_key)
+    if R.pf.hooked[group] then return end
+    R.pf.hooked[group] = {}
+    for _, e in ipairs(list) do
+        local td = sdk.find_type_definition(e[1])
+        local m = td and td:get_method(e[2])
+        if m then
+            local key = e[1]:gsub("^app%.", "") .. "." .. e[2]:gsub("%(.*", "")
+            local ok = pcall(sdk.hook, m, function(args)
+                if cfg[cfg_key] then R.mp_pre(key) end
+            end, R.mp_post)
+            R.pf.hooked[group][#R.pf.hooked[group] + 1] = key .. (ok and "" or " (hook failed)")
+        else
+            R.pf.hooked[group][#R.pf.hooked[group] + 1] = e[1] .. "." .. e[2] .. " (not found)"
+        end
+    end
+    log_msg("Player feel: " .. group .. " hooks: " .. table.concat(R.pf.hooked[group], ", "))
+end
+R.PF_HOOKS = {
+    space = { { "app.SoundSpaceManager", "updateFieldAIArea" }, { "app.SoundSpaceManager", "updateSemiEnvPhase1" },
+              { "app.SoundSpaceManager", "<updateGlobalParam>g__updatePlayerPosY|259_0" } },
+    hitstop = { { "app.HitController", "getHitStopTime" } },
+    slow = { { "app.Ch200000", "isEnableWorldSlow" }, { "app.Ch200000", "checkDieWorldSlow" },
+             { "app.Ch200000", "requestDieWorldSlow" }, { "app.Ch261000", "isEnableWorldSlow" },
+             { "app.Ch255000", "callDieWorldSlow" } },
+}
+
+-- Sound part 1: the Wwise sound settings of a character (category Player / Pawn, its RTPC, "treated as player").
+R.pf_wc = function(chara)
+    local go = chara and chara:call("get_GameObject")
+    return go and go:call("getComponent(System.Type)", sdk.typeof("app.WwiseCharacter"))
+end
+R.pf_wc_get = function(w)
+    return { w:call("get_CharacterCategory"), w:call("get_CharacterRTPC"), w:call("get_IsRTPCTreatedAsPlayer") }
+end
+R.pf_wc_set = function(w, v)
+    w:call("set_CharacterCategory", v[1])
+    w:call("set_CharacterRTPC", v[2] + 0.0)
+    w:call("set_IsRTPCTreatedAsPlayer", v[3])
+end
+R.pf_voice_restore = function(why)
+    local v = R.pf.voice
+    if not v then return end
+    R.pf.voice = nil
+    pcall(R.pf_wc_set, v.wa, v.a)
+    pcall(R.pf_wc_set, v.wp, v.p)
+    log_msg("Player feel: sound settings back (" .. tostring(why) .. ")")
+end
+R.pf_voice_tick = function(p)
+    local v = R.pf.voice
+    if v and (not p or v.paddr ~= p:get_address()) then R.pf_voice_restore("pawn changed"); v = nil end
+    if not p then return end
+    if not v then
+        local wa, wp = R.pf_wc(state.arisen_chara), R.pf_wc(p)
+        if not (wa and wp) then R.pf.voice_err = "no WwiseCharacter"; return end
+        v = { wa = wa, wp = wp, a = R.pf_wc_get(wa), p = R.pf_wc_get(wp), paddr = p:get_address(), next_t = 0 }
+        R.pf.voice = v
+        R.pf.voice_seen = string.format("Arisen %s/%.2f/%s, pawn %s/%.2f/%s", tostring(v.a[1]), v.a[2] or -1, tostring(v.a[3]),
+            tostring(v.p[1]), v.p[2] or -1, tostring(v.p[3]))
+        log_msg("Player feel: sound settings swapped (" .. R.pf.voice_seen .. ")")
+    end
+    local now = os.clock()
+    if now < v.next_t then return end
+    v.next_t = now + 0.5
+    -- written again twice a second in case the game sets them back (counted, so a test shows whether it does)
+    local cur = R.pf_wc_get(v.wp)
+    if cur[1] ~= v.a[1] or cur[3] ~= v.a[3] then R.pf_count("sound settings rewritten") end
+    R.pf_wc_set(v.wp, v.a)
+    R.pf_wc_set(v.wa, v.p)
+end
+
+-- Sound part 2: where loudness by distance is worked out from (via.simplewwise.Driver; static).
+R.pf_drv = function()
+    R.pf.drv = R.pf.drv or sdk.find_type_definition("via.simplewwise.Driver")
+    return R.pf.drv
+end
+R.pf_listener_tick = function(p)
+    local mode = p and (cfg.pf_sound_listener or 0) or 0
+    local drv = R.pf_drv()
+    if not drv then return end
+    if mode == 0 then
+        if R.pf.dec_old ~= nil then
+            pcall(function() drv:get_method("set_CalcDistanceDecayAtPlayerPos(System.Boolean)"):call(nil, R.pf.dec_old) end)
+            R.pf.dec_old = nil
+            log_msg("Player feel: loudness by distance back to the game's")
+        end
+        return
+    end
+    if R.pf.dec_old == nil then
+        R.pf.dec_old = drv:get_method("get_CalcDistanceDecayAtPlayerPos"):call(nil) == true
+        log_msg("Player feel: loudness by distance from " .. (mode == 1 and "the camera" or "the played pawn") .. " (game had " .. tostring(R.pf.dec_old) .. ")")
+    end
+    drv:get_method("set_CalcDistanceDecayAtPlayerPos(System.Boolean)"):call(nil, mode == 2)
+    if mode == 2 then R.pf_listener_pos(p) end
+end
+R.pf_listener_pos = function(p) -- also run late in the frame (below): the game may write its own player's position
+    p = p or R.pf_played()
+    if not p or (cfg.pf_sound_listener or 0) ~= 2 then return end
+    local drv = R.pf_drv()
+    local pos = p:call("get_GameObject"):call("get_Transform"):call("get_Position")
+    drv:get_method("set_PlayerPositionForDistanceDecay(via.vec3)"):call(nil, pos)
+end
+
+-- dev5: skills with a slow-motion moment (Riotous Fury, ...). Their app.SlowAction has PlayerOnly set, and its start()
+-- checks the character's CharacterID against the Arisen's (ch000000_00, 0xac525575 at Character+0xc4c; read from
+-- the disassembly of SlowAction.start, 2026-11-19), not who the player is. So it never fires for a played pawn, and
+-- would still fire for the Arisen. For a PlayerOnly action whose character is the played pawn, PlayerOnly is off for
+-- the length of start() (the game then takes its player path); for the Arisen's while a pawn is played,
+-- EnableRequestSlow is cleared after start(). The character is cached on the action, so the very first use of a
+-- skill by a given pawn may still miss (the cache is filled inside that start()).
+R.pf_slow_hook = function()
+    if R.pf.hooked.skillslow then return end
+    R.pf.hooked.skillslow = {}
+    local td = sdk.find_type_definition("app.SlowAction")
+    local m = td and td:get_method("start")
+    if not m then R.pf.hooked.skillslow[1] = "SlowAction.start not found"; return end
+    sdk.hook(m, function(args)
+        local st = thread.get_hook_storage()
+        st.sl = nil
+        if not cfg.pf_skill_slow then return end
+        local p = R.pf_played()
+        if not p then return end
+        local a = sdk.to_managed_object(args[2])
+        if not a or a:get_field("PlayerOnly") ~= true then return end
+        local ch = a:get_field("<CachedCharacter>k__BackingField")
+        local who = ch and ch:get_address() or 0
+        if who == p:get_address() then
+            a:set_field("PlayerOnly", false)
+            st.sl = { a = a, restore = true }
+            R.pf_count("skill slow-mo for the played pawn")
+        elseif state.arisen_chara and who == state.arisen_chara:get_address() then
+            st.sl = { a = a, arisen = true }
+        elseif who == 0 then
+            st.sl = { a = a, first = true }
+        end
+    end, function(r)
+        local st = thread.get_hook_storage()
+        local s = st.sl
+        st.sl = nil
+        if s then
+            pcall(function()
+                if s.restore then s.a:set_field("PlayerOnly", true) end
+                if s.arisen then
+                    s.a:set_field("EnableRequestSlow", false)
+                    R.pf_count("skill slow-mo held back for the Arisen")
+                end
+                if s.first then -- the character was only cached inside this start(): set the flag the game would have
+                    local ch = s.a:get_field("<CachedCharacter>k__BackingField")
+                    local p = R.pf_played()
+                    local who = ch and ch:get_address() or 0
+                    if p and who == p:get_address() then
+                        s.a:set_field("EnableRequestSlow", true)
+                        R.pf_count("skill slow-mo first use (flag set)")
+                    elseif state.arisen_chara and who == state.arisen_chara:get_address() then
+                        s.a:set_field("EnableRequestSlow", false)
+                    end
+                end
+            end)
+        end
+        return r
+    end)
+    R.pf.hooked.skillslow[1] = "SlowAction.start"
+    log_msg("Player feel: skill slow-motion hook on")
+end
+
+R.pf_tick = function()
+    if R.world_now == false then return end
+    if cfg.pf_skill_slow then pcall(R.pf_slow_hook) end
+    local p = R.pf_played()
+    if cfg.pf_sound_space then R.pf_hook_group("space", R.PF_HOOKS.space, "pf_sound_space") end
+    if cfg.pf_hitstop then R.pf_hook_group("hitstop", R.PF_HOOKS.hitstop, "pf_hitstop") end
+    if cfg.pf_world_slow then R.pf_hook_group("slow", R.PF_HOOKS.slow, "pf_world_slow") end
+    local ok, err = pcall(R.pf_voice_tick, cfg.pf_sound_voice and p or nil)
+    if not ok then R.pf.voice_err = tostring(err) end
+    ok, err = pcall(R.pf_listener_tick, p)
+    if not ok then R.pf.listener_err = tostring(err) end
+end
+R.pf_restore_all = function(why)
+    pcall(R.pf_voice_restore, why)
+    pcall(R.pf_listener_tick, nil)
+    if R.mp_swapped then -- a window left open (should not happen): put the Arisen back
+        local sw = R.mp_swapped
+        R.mp_swapped = nil
+        pcall(sw.cm.set_field, sw.cm, R.MP_FIELD, sw.old)
+    end
+end
+re.on_pre_application_entry("UpdateBehavior", function() pcall(R.pf_tick) end)
+re.on_application_entry("LateUpdateBehavior", function() pcall(R.pf_listener_pos) end)
+
+-- ----------------------------------------------------------------------------
+-- v0.9.170 (dev) Mod API, layers 1, 2 and 4 (queries, events, claims, option overrides). Spec:
+-- claude/dpc-mod-api.md. Every foreign function runs in pcall; one that fails 5 times within 10 s is switched off
+-- and shown under "Connected mods". Callbacks run on the game thread (DPC fires events from there).
+-- ----------------------------------------------------------------------------
+R.api = { regs = {}, on = {}, claims = {}, overrides = {}, next_id = 1 }
+R.API_FEATURES = { events = true, claims = true, overrides = true, players = true, coop2pads = true }
+R.api_run = function(reg, ...)
+    if reg.off or reg.disabled then return false end
+    local t0 = os.clock()
+    local ok, res = pcall(reg.fn, ...)
+    local dt = os.clock() - t0
+    reg.calls = (reg.calls or 0) + 1
+    reg.cost = (reg.cost or 0) + dt
+    if not ok then
+        reg.err = tostring(res)
+        local now = os.clock()
+        reg.fails = reg.fails or {}
+        reg.fails[#reg.fails + 1] = now
+        while reg.fails[1] and now - reg.fails[1] > 10.0 do table.remove(reg.fails, 1) end
+        if #reg.fails >= 5 then
+            reg.off = true
+            log_msg(string.format("Mod API: %s's %s switched off after 5 errors in 10 s: %s", reg.mod, reg.what, reg.err))
+            R.note = { text = "A connected mod (" .. reg.mod .. ") had errors; DPC switched it off", t_end = os.clock() + 4.0 }
+            if reg.on_off then pcall(reg.on_off) end
+        end
+        return false
+    end
+    return true, res
+end
+R.api_reg = function(kind, what, fn, opts)
+    opts = type(opts) == "table" and opts or {}
+    local reg = { id = R.api.next_id, kind = kind, what = what, fn = fn, mod = tostring(opts.mod or "unnamed mod"), opts = opts }
+    R.api.next_id = R.api.next_id + 1
+    R.api.regs[#R.api.regs + 1] = reg
+    return reg
+end
+R.api_fire = function(ev, payload)
+    local list = R.api.on[ev]
+    if not list then return end
+    for _, reg in ipairs(list) do R.api_run(reg, payload or {}) end
+end
+R.api_drop = function(reg)
+    if not reg then return end
+    reg.gone = true
+    for i, r in ipairs(R.api.regs) do if r == reg then table.remove(R.api.regs, i); break end end
+    if reg.kind == "event" then
+        local list = R.api.on[reg.what] or {}
+        for i, r in ipairs(list) do if r == reg then table.remove(list, i); break end end
+    elseif reg.kind == "claim" and R.api.claims[reg.what] == reg then
+        R.api.claims[reg.what] = nil
+    elseif reg.kind == "override" and R.api.overrides[reg.what] == reg then
+        R.api.overrides[reg.what] = nil
+        if reg.saved_set then cfg[reg.what] = reg.saved end
+    end
+end
+-- true when another mod holds this resource (DPC then skips its own version of it)
+R.api_claimed = function(res)
+    local c = R.api.claims[res]
+    return c ~= nil and not c.off and not c.disabled
+end
+
+-- players: who controls whom. Single player: player 1 plays the Arisen, or the pawn while one is played.
+-- Co-op: player 1 the Arisen, player 2 the pawn.
+R.players = function()
+    local out = {}
+    if state.active and state.pawn_chara then
+        if coop.active then out[1], out[2] = state.arisen_chara, state.pawn_chara
+        else out[1] = state.pawn_chara end
+    else
+        local okc, ar = pcall(R.real_player)
+        out[1] = okc and ar or nil
+    end
+    return out
+end
+R.api_char_info = function(ch)
+    if not ch then return nil end
+    local info = { chara = ch }
+    if state.active and state.pawn_chara and ch:get_address() == state.pawn_chara:get_address() then
+        info.name, info.job, info.slot = state.pawn_name, state.pawn_job, state.pawn_idx
+        info.job_name, info.is_main_pawn, info.is_arisen = JOB_NAMES[state.pawn_job], state.pawn_idx == 0, false
+    else
+        info.is_arisen, info.name = true, "Arisen"
+        pcall(function() info.job = ch:call("get_Human"):call("get_JobContext"):get_field("CurrentJob") end)
+        info.job_name = info.job and JOB_NAMES[info.job]
+    end
+    return info
+end
+R.api_who = function() -- the payload name of the character the last event is about
+    return state.pawn_name
+end
+
+R.api_build = function()
+    local api = { version = "1.0", major = 1, minor = 0, dpc_version = VERSION }
+    api.has = function(f) return R.API_FEATURES[f] == true end
+    api.state = function()
+        local pl = R.players()
+        local ar = state.arisen_chara or R.real_player()
+        local ar_info = R.api_char_info(ar)
+        return {
+            active = state.active == true,
+            played = state.active and R.api_char_info(state.pawn_chara) or nil,
+            arisen = { name = ar_info and ar_info.name, job = ar_info and ar_info.job, chara = ar, ai_on = brain.on == true },
+            coop = { active = coop.active == true, two_pads = R.tp_on() == true,
+                     players = { [1] = R.api_char_info(pl[1]), [2] = R.api_char_info(pl[2]) } },
+            transition = { running = R.cine ~= nil, style = cfg.switch_cine_profile },
+        }
+    end
+    api.played = function(p) return R.players()[p or 1] end
+    api.player_of = function(ch)
+        if not ch then return nil end
+        local a = ch:get_address()
+        for i, c in pairs(R.players()) do if c and c:get_address() == a then return i end end
+        return nil
+    end
+    api.is_played = function(ch) return api.player_of(ch) ~= nil end
+    api.arisen_ai = function()
+        local t = brain.target
+        local tn = nil
+        pcall(function() tn = t and t:call("get_GameObject"):call("get_Name") end)
+        return { on = brain.on == true, target = t, target_name = tn, mode = cfg.control_mode }
+    end
+    api.party = function()
+        local out = {}
+        local pl = R.players()
+        local okp, party = pcall(get_party)
+        if not okp then return out end
+        for _, e in ipairs(party) do
+            local who = "ai"
+            for i, c in pairs(pl) do if c and e.chara and c:get_address() == e.chara:get_address() then who = "player" .. i end end
+            out[#out + 1] = { slot = e.idx, name = e.name, job = e.job, job_name = e.job_name, chara = e.chara, controlled_by = who }
+        end
+        return out
+    end
+    api.option = function(k)
+        local v = cfg[k]
+        if type(v) == "table" then return nil end
+        return v
+    end
+    api.on = function(ev, fn, opts)
+        if type(fn) ~= "function" then return nil end
+        local reg = R.api_reg("event", tostring(ev), fn, opts)
+        R.api.on[reg.what] = R.api.on[reg.what] or {}
+        table.insert(R.api.on[reg.what], reg)
+        return reg
+    end
+    api.off = function(h) R.api_drop(h) end
+    -- claims: one owner per resource; a higher priority takes it over (the earlier owner's on_lost runs)
+    api.claim = function(res, opts)
+        opts = type(opts) == "table" and opts or {}
+        res = tostring(res)
+        local cur = R.api.claims[res]
+        if cur and not cur.off and (cur.opts.priority or 0) >= (opts.priority or 0) then return nil, "held by " .. cur.mod end
+        if cur then
+            R.api.claims[res] = nil
+            if type(cur.opts.on_lost) == "function" then R.api_run({ fn = cur.opts.on_lost, mod = cur.mod, what = "on_lost" }) end
+            R.api_drop(cur)
+        end
+        local reg = R.api_reg("claim", res, function() end, opts)
+        R.api.claims[res] = reg
+        reg.release = function() R.api_drop(reg) end
+        log_msg("Mod API: " .. reg.mod .. " claimed " .. res)
+        if res == "camera.transition" then pcall(R.cine_stop) end
+        return reg
+    end
+    api.release = function(h) R.api_drop(h) end
+    -- a DPC setting for this session only; never saved to the player's config
+    api.override = function(key, value, opts)
+        key = tostring(key)
+        if cfg[key] == nil or type(cfg[key]) == "table" then return nil, "no such setting" end
+        local cur = R.api.overrides[key]
+        if cur then R.api_drop(cur) end
+        local reg = R.api_reg("override", key, function() end, opts)
+        reg.saved, reg.saved_set, reg.value = cfg[key], true, value
+        cfg[key] = value
+        R.api.overrides[key] = reg
+        return reg
+    end
+    api.clear_override = function(h) R.api_drop(h) end
+    R.api_table = api
+end
+R.api_build()
+
+dev.api_overrides = R.api.overrides -- save_cfg leaves these out of the saved config
+
+-- publish and run anything queued by mods that loaded before DPC (principle 5)
+_G.DPC_API = R.api_table
+R.api_drain = function()
+    local q = _G.DPC_API_QUEUE
+    _G.DPC_API_QUEUE = nil
+    if type(q) == "table" then
+        for _, fn in ipairs(q) do
+            if type(fn) == "function" then R.api_run({ fn = fn, mod = "queued mod", what = "load" }, R.api_table) end
+        end
+    end
+    -- a queue a later mod creates by mistake (DPC already loaded) is drained once a second
+    re.on_frame(function()
+        local q2 = _G.DPC_API_QUEUE
+        if type(q2) == "table" and #q2 > 0 then
+            _G.DPC_API_QUEUE = nil
+            for _, fn in ipairs(q2) do
+                if type(fn) == "function" then R.api_run({ fn = fn, mod = "queued mod", what = "load" }, R.api_table) end
+            end
+        end
+    end)
+end
+R.api_drain()
+R.api_ready_fired = false
+re.on_pre_application_entry("UpdateBehavior", function()
+    if R.scene_warp_t and os.clock() >= R.scene_warp_t then -- v0.9.170 "scene" command: the party joins the Arisen
+        R.scene_warp_t = nil
+        pcall(party_warp_to_me)
+    end
+    if not R.api_ready_fired then R.api_ready_fired = true; R.api_fire("ready", { version = "1.0" }) end
+    local t = brain.on and brain.target or nil
+    local a = 0
+    pcall(function() a = t and t:get_address() or 0 end)
+    if a ~= (R.api_ai_t or 0) then
+        R.api_ai_t = a
+        if a ~= 0 and R.api.on.arisen_ai_target then
+            local tn = nil
+            pcall(function() tn = t:call("get_GameObject"):call("get_Name") end)
+            R.api_fire("arisen_ai_target", { target = t, target_name = tn })
+        end
+    end
+end)
+
+-- "Connected mods" (settings window)
+R.api_draw = function()
+    local regs = R.api.regs
+    if #regs == 0 then
+        imgui.text("   None. Other mods can use DPC through _G.DPC_API (see API.md in the mod's source).")
+        return
+    end
+    for _, reg in ipairs(regs) do
+        local status = reg.off and "OFF (errors)" or (reg.disabled and "off" or "on")
+        local cost = (reg.calls or 0) > 0 and string.format("  %d calls, %.2f ms avg", reg.calls, 1000 * reg.cost / reg.calls) or ""
+        local label = string.format("%s: %s %s [%s]%s##api%d", reg.mod, reg.kind, reg.what, status, cost, reg.id)
+        local c, v = imgui.checkbox(label, not reg.disabled and not reg.off)
+        if c then reg.disabled = not v; if v then reg.off, reg.fails = false, {} end end
+        if reg.err then imgui.text_colored("      last error: " .. reg.err:sub(1, 160), 0xFF5555FF) end
+    end
+end
+
 re.on_script_reset(function()
+    pcall(R.pf_restore_all, "script reset") -- v0.9.170
     if state.active then
         pcall(release_possession, "script reset")
     end
@@ -9313,10 +10814,42 @@ function R.hud_rect()
     return 0, 0, W, H
 end
 
+R.hud_hide_t, R.hud_hide = 0, false
+function R.hud_hidden()
+    local now = os.clock()
+    if R.world ~= true then R.hud_hide = true; return true end
+    if now < R.hud_hide_t then return R.hud_hide end
+    R.hud_hide_t = now + 0.1
+    local hide = false
+    pcall(function()
+        local function num(v)
+            if type(v) == "userdata" then
+                local okv, x = pcall(v.get_field, v, "value__")
+                v = okv and x or nil
+            end
+            return tonumber(v)
+        end
+        local gm = sdk.get_managed_singleton("app.GuiManager")
+        if gm and gm:call("isPausedGUI") == true then hide = true; return end
+        local fm = sdk.get_managed_singleton("app.FacilityManager")
+        if fm and (num(fm:call("get_ExecFacility")) or 0) ~= 0 then hide = true; return end
+        if coop.active then
+            local cm = sdk.get_managed_singleton("app.CameraManager")
+            local mc = cm and cm:call("getMainCameraController", 0)
+            if mc and mc:call("get_CurrentPlayerCamera") == false and num(mc:call("get_CurrentControlType")) ~= 7 then
+                hide = true
+            end
+        end
+    end)
+    R.hud_hide = hide
+    return hide
+end
+
 re.on_frame(function()
     local hx, hy, hw, hh = R.hud_rect()
     local cond = 1 << 1                       -- ImGuiCond_Once
     if (R.hud_repos or 0) > 0 then R.hud_repos = R.hud_repos - 1; cond = 1 end -- Always, for a few frames
+    if not R.hud_hidden() then
     -- 1. Top-Left Status HUD Banner while possessing a Pawn
     if state.active and cfg.hud_overlay then
         imgui.set_next_window_pos(Vector2f.new(hx + 24, hy + 24), cond)
@@ -9474,6 +11007,26 @@ re.on_frame(function()
     end
 
     -- v0.9.90 selection marker: a yellow wedge and the name over the picked character for 3 s after F7
+    if R.cr.want and R.cr.down then
+        pcall(function()
+            local x, y = R.ta_screen(R.cr.down)
+            local k = hh / 2160.0
+            local pulse = 0.5 + 0.5 * math.sin(os.clock() * 6.0)
+            local txt = "Revive " .. tostring(R.cr.name or "player 2")
+            if x then
+                y = y - 90.0 * k
+                draw.filled_circle(x, y, (18.0 + 6.0 * pulse) * k, 0xC0000000, 24)
+                draw.filled_circle(x, y, (14.0 + 6.0 * pulse) * k, 0xF02020E0, 24)
+                draw.text(txt, x - 40, y - 34.0 * k - 16, 0xF0FFFFFF)
+            else
+                draw.text("Player 2 is down: " .. txt, hx + hw * 0.5 - 110, hy + hh * 0.12, 0xF04040FF)
+            end
+        end)
+    end
+    if cfg.coop_aim and coop.active then
+        local okd, errd = pcall(R.ta_draw, hh)
+        if not okd then R.ta_dbg = "aim error: " .. tostring(errd) end
+    end
     if R.ping and R.ping.pos then
         pcall(function()
             local sp = draw.world_to_screen(Vector3f.new(R.ping.pos[1], R.ping.pos[2], R.ping.pos[3]))
@@ -9569,6 +11122,7 @@ re.on_frame(function()
         imgui.text_colored(string.format(p2_pal and ("   " .. R.pad_label("[" .. voc_btn .. "]") .. "  %s") or ("   [" .. R.pad_label(voc_btn) .. "]  %s"), voc_act), voc_color)
         imgui.end_window()
     end
+    end
 
     if not cfg.window_open then return end
     -- v0.9.114: the settings window belongs to the REFramework menu; it never sits over the game on its own
@@ -9628,6 +11182,26 @@ re.on_frame(function()
         imgui.same_line()
         imgui.text(string.format("pad 0x%X -> 0x%X", coop.last_btn or 0, coop.last_flags or 0))
         if coop.err then imgui.text_colored("co-op error: " .. tostring(coop.err), RED) end
+        if R.ta_dbg then imgui.text(R.ta_dbg) end
+        if cfg.coop_two_pads and (R.tp.n or 0) >= 2 then
+            if R.tp_on() then
+                imgui.text_colored("Two controllers: player 1 = Arisen, player 2 = pawn", GREEN)
+                if imgui.button("Swap controllers") then R.tp_swap() end
+                imgui.same_line()
+                if imgui.button("Choose again (player 2 holds L3 + R3)") then R.tp_reset(); pcall(json.dump_file, "DPC_two_pads.json", {}) end
+                local t = R.tp
+                local p2v = { b = 0 }
+                for _, d in ipairs(R.tp_devs()) do if d:get_address() == t.p2 then p2v = R.tp_read(d) end end
+                local ai = state.arisen_input
+                local aon = 0
+                pcall(function() aon = ai and (ai:get_field("ButtonOnFlags") or 0) or 0 end)
+                imgui.text(string.format("P1 pad 0x%X   P2 pad 0x%X   game -> Arisen 0x%X   Arisen actions 0x%X",
+                    R.tp_p1().b or 0, p2v.b or 0, t.pb_in or 0, aon))
+                imgui.text(string.format("processButton: %d calls, %d this frame, arg 0x%X", t.pb or 0, t.pb_same or 0, t.pb_a3 or 0))
+            else
+                imgui.text_colored("Two controllers: player 2, hold L3 + R3 on your controller", YELLOW or GREEN)
+            end
+        end
     else
         local sel_name = "selected pawn"
         for _, e in ipairs(party) do if e.idx == cfg.selected_pawn_idx then sel_name = e.name end end
@@ -9669,8 +11243,61 @@ re.on_frame(function()
     imgui.text_colored("Couch co-op (player 2 on a controller)", BLUE)
     cb("Health and stamina bars for player 2", "coop_stamina_bar")
     cb("Skill list for player 2", "coop_skill_palette")
+    cb("Resume co-op by itself after cutscenes, loading or a downed pawn", "coop_auto_resume")
+    cb("When co-op starts, bring player 2's pawn next to the Arisen (if it is far away)", "coop_start_bring")
+    cb("Player 2's controller rumbles (hits, downed, low health; two controllers)", "coop_p2_rumble")
+    if cfg.coop_p2_rumble then
+        local c4
+        c4, cfg.coop_p2_rumble_power = imgui.slider_float("Player 2 rumble strength", cfg.coop_p2_rumble_power or 1.0, 0.1, 1.0)
+        if c4 then save_cfg() end
+        cb("   on player 2's hits (stronger for big hits and kills)", "coop_rb_dealt")
+        cb("   when a skill starts", "coop_rb_skill")
+        cb("   knocked down, out of stamina, healed / revived, blocked hits", "coop_rb_status")
+        if imgui.button("Test player 2 rumble") then
+            if R.rb_dev() then R.rb_pulse(0.8, 0.5) else R.note = { text = "Two controllers: player 2 has no controller set yet", t_end = os.clock() + 3.0 } end
+        end
+        imgui.same_line()
+        imgui.text(R.rb.shape and ("works (" .. R.rb.shape .. ")") or (R.rb.err and ("failed: " .. tostring(R.rb.err):sub(1, 60):gsub("%%", "%%%%")) or "not tried yet"))
+        if R.rb.nodes_seen then imgui.text("   player 2's action: " .. tostring(R.rb.nodes_seen):gsub("%%", "%%%%")) end
+    end
+    if R.cr.want then
+        imgui.text_colored("Co-op resumes when " .. tostring(R.cr.name or "the pawn") .. " is back (" .. tostring(R.cr.reason) .. ")", YELLOW)
+        imgui.same_line()
+        if imgui.button("Don't resume") then R.cr.want, R.cr.down = false, nil end
+    end
+    cb("Aiming for both players (player 2: R3 keep / free, right stick change, hold R3 = player 1's target)", "coop_aim")
+    if cfg.coop_aim then
+        cb("   Target markers", "coop_aim_markers")
+        cb("   Player 1: R3 (middle mouse) keeps the enemy nearest the screen centre", "coop_aim_p1")
+        if cfg.coop_aim_p1 then cb("      and the Arisen's attacks aim at it", "coop_aim_p1_assist") end
+        local names = {}
+        for i, c in ipairs(R.ta_colors) do names[i] = c[1] end
+        local c1, c2, c3
+        c1, cfg.coop_aim_p1_color = imgui.combo("Player 1 colour", cfg.coop_aim_p1_color or 1, names)
+        c2, cfg.coop_aim_p2_color = imgui.combo("Player 2 colour", cfg.coop_aim_p2_color or 2, names)
+        c3, cfg.coop_aim_size = imgui.slider_float("Marker size", cfg.coop_aim_size or 1.0, 0.5, 2.0)
+        if c1 or c2 or c3 then save_cfg() end
+    end
     chg, cfg.coop_pad_names = imgui.combo("Button names in the skill list", cfg.coop_pad_names or 1, { "Auto (from the controller)", "PlayStation", "Xbox" })
     if chg then save_cfg() end
+    cb("Two controllers (experimental): player 1 plays the Arisen on one too", "coop_two_pads") -- v0.9.170
+    cb("   A second controller starts co-op by holding L3 + R3 (either player ends it holding them 3 s)", "coop_pad_join")
+    cb("The controller you use drives the Arisen (switches the game's active controller)", "pad_active_follow")
+    if imgui.button("   Reset controllers (if a controller stops working)") then R.pad_reset() end
+    if cfg.coop_two_pads then
+        local t = R.tp
+        imgui.text(string.format("      %d controller(s) found. %s", t.n or 0,
+            (t.p2 and not t.wait_release) and "Player 2's controller is set." or "Player 2: hold L3 + R3 on your controller (also starts co-op)."))
+        if t.p2 and imgui.button("   Swap the two controllers") then R.tp_swap() end
+        if t.p2 then imgui.same_line(); if imgui.button("Claim again") then R.tp_reset(); pcall(json.dump_file, "DPC_two_pads.json", {}) end end
+        local c1, v1 = imgui.combo("      The Arisen's buttons", cfg.coop_two_pads_buttons or 1,
+            { "Take out only player 2's (try first)", "Leave them to the game", "Player 1's controller only" })
+        if c1 then cfg.coop_two_pads_buttons = v1; save_cfg() end
+        local c2, v2 = imgui.combo("      Camera while player 2 moves their right stick", cfg.coop_two_pads_cam or 1,
+            { "Player 1's right stick", "Holds still" })
+        if c2 then cfg.coop_two_pads_cam = v2; save_cfg() end
+        if t.err then imgui.text_colored("      error: " .. tostring(t.err), 0xFF5555FF) end
+    end
 
     imgui.text_colored("Screen", BLUE)
     cb("Status panel while playing a pawn (top left; detailed, for troubleshooting)", "hud_overlay")
@@ -9717,12 +11344,38 @@ re.on_frame(function()
         if (cfg.switch_glow or "") ~= "" then sl("   Glow (s)", "switch_cine_glow_s", 0.2, 4.0) end
     end
 
+    imgui.text_colored("Playing as the player (experimental)", BLUE) -- v0.9.170
+    imgui.text("   The game treats the Arisen as the player. These treat whoever you play as the player instead.")
+    cb("Sounds: the pawn you play sounds like the player (breathing, steps, voice)", "pf_sound_voice")
+    do
+        local c, v = imgui.combo("   Loudness by distance from", (cfg.pf_sound_listener or 0) + 1,
+            { "The Arisen (game)", "The camera", "The pawn you play" })
+        if c then cfg.pf_sound_listener = v - 1; save_cfg() end
+    end
+    cb("   The place's echo and ambience follow the pawn you play", "pf_sound_space")
+    cb("Hit-stop (the short freeze on a hit) as if the pawn you play were the player", "pf_hitstop")
+    cb("Big-kill slow motion as if the pawn you play were the player", "pf_world_slow")
+    cb("Skills' own slow motion (Riotous Fury, ...) for the pawn you play", "pf_skill_slow")
+    do
+        local parts = {}
+        for k, n in pairs(R.pf.n) do parts[#parts + 1] = k .. " " .. n end
+        table.sort(parts)
+        if #parts > 0 then imgui.text("   Ran: " .. table.concat(parts, ", ")) end
+        if R.pf.voice_seen then imgui.text("   Sound settings: " .. R.pf.voice_seen) end
+        if R.pf.voice_err then imgui.text_colored("   sound error: " .. R.pf.voice_err, 0xFF5555FF) end
+        if R.pf.listener_err then imgui.text_colored("   distance error: " .. R.pf.listener_err, 0xFF5555FF) end
+    end
+
     imgui.text_colored("Cheats", BLUE)
     cb("Numpad . heals and revives the party", "party_heal_key")
     cb("Special arrows are never used up by your pawns, played or not (the Arisen's own only while a pawn is played)", "cheat_free_arrows")
     if cfg.party_heal_key then cb("   ... and the Arisen", "party_heal_arisen") end
 
     imgui.separator()
+    if group("Connected mods (" .. #R.api.regs .. ")##dpcapi") then -- v0.9.170 mod API
+        R.api_draw()
+        imgui.tree_pop()
+    end
     if group("Positions and sizes") then
         sl("Player 2's bars: left / right", "coop_stamina_hud_x", 0.05, 0.95)
         sl("Player 2's bars: up / down", "coop_stamina_hud_y", 0.05, 0.98)

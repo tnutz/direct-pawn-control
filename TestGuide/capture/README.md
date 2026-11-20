@@ -18,6 +18,14 @@ key press, and a second video is a second shot list.
   starts in one file and ends in the next is joined by the cutter (give `find_marks.py` the files in order).
 - Start the recording once, then leave it running through the whole session. Bad takes stay in the file and
   are simply not used.
+- **Set OBS's recording path to this folder** (Settings > Output > Recording Path). With the capture desk open,
+  the desk sees the recording file grow and tells the game. While nothing records, CaptureGuide 1.4 is in
+  **practice mode**: the card and the corner of the screen say "PRACTICE: OBS IS NOT RECORDING", and takes are
+  logged as practice, never kept, so the shot stays open. With the desk closed the guide says it can't tell and
+  takes work as before.
+- **Takes with no video** (for example shot before 1.4 with OBS off): the shot's panel in the desk has "Drop N
+  takes with no video". They become practice takes (listed in the game's `capture/drops.json`; they stay in
+  the log), and the guide offers the shot again.
 
 ## Shooting
 1. Start recording. Press **Ctrl+End**: the first shot's card appears (title, what the viewer should see,
@@ -102,3 +110,30 @@ number in binary (white = 1, black = 0). The clips are cut between the two marks
 The desk edits it; by hand, see the header of `CaptureGuide.lua`. In short: every shot has an `id`, a `title`, a `caption`, a `brief`, an
 optional `you` (omit it when the robot does everything), `setup` and `cleanup` commands, either `secs` or
 nothing (until End), and `actions`: commands at a time into the take, which is how the robot player is driven.
+
+## The test bench (tests with nobody at the PC)
+`bench.bat` (or the "Test bench" panel on the capture desk) watches the game's `reframework\data\bench\jobs\`
+folder. A job is a list of TestGuide plans plus a few settings (see the top of `tools\bench.py`). For each plan the
+bench makes sure the game is running and the Arisen is in the world, hands the plan to TestGuide (2.4 starts it by
+itself while the bench runs), waits for it to finish, and copies the results, the REFramework log tail and DPC's
+own files into `bench\runs\<run>\`. If the game crashes or hangs (no heartbeat for 90 s), it reads the crash dump
+Windows wrote (fault address and the game code on the stack), restarts the game and tries the plan once more.
+
+- Needs `DevBench.lua` and `TestGuide.lua` 2.4 in `reframework\autorun`, and DirectPawnControl in developer mode.
+- **Never closes a game it did not start.** A job with `"use_running_game": true` uses the game you have open.
+- Backs up the saves folder before each job (`bench\save_backups\`, the last 10 zips).
+- **The save:** tests run on whichever save is loaded (for now the main save; the backups above are the safety net). A separate test slot works too. Loading it from the title menu, three ways:
+  `observe` (someone loads it; meanwhile `DevBench.lua` writes the game's own calls to `bench\flow_log.json`),
+  `call` (DevBench asks the game for the slot: a guess until the flow log confirms it), `keys` (the bench presses
+  the keys listed in the job, as real key presses, after bringing the game to the front).
+- **Known start and no saving:** each plan starts with DPC's `scene` command (pawn released, co-op off, test enemies
+  gone, party healed, experimental switches off, the party back where the job started). While a job runs the game
+  does not save (`"save_block": "flag"`: the game's own save switch; `"skip"`: save requests dropped), and the bench
+  compares the save files before and after each plan, so a run says whether it changed the save. With the block
+  holding, `"revert": "job_end"` (or `"each_plan"`) just restarts the game to be back at the save; Steam Cloud
+  stays untouched. Revert only ever restarts a game the bench started.
+- **Quit to title between plans** (`"title_between": true`): for crashes that happen when the world unloads. DevBench
+  1.2 asks the game's own menu screen to return to the title (untested), then `"title_keys"` as key presses; the game
+  then loads the save again (`"autoload": "call"`). A crash on the way to the title is reported like any other.
+- `bench\stop.json` with `{"stop": true}` stops it after the current plan.
+- `python tools\bench.py --dump <file.dmp>` reads any crash dump.

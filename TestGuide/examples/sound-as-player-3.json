@@ -1,0 +1,166 @@
+{
+ "id": "sound-as-player-3",
+ "title": "Sound from who you play, round 2: the Arisen stays back, a cave or wall to listen by",
+ "intro": "BEFORE YOU PRESS END: no enemies around, headphones on, and know where a cave mouth, wall or building is (within a short walk). Nothing is timed until you say you are ready. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "Taking over your main pawn. The Arisen now STAYS where he is (follow off for this test).",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 0
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_follow",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_auto_follow",
+     "value": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "GET READY (no timer): walk the pawn about 20 m from the Arisen, next to your cave / wall. Press End when you are there.",
+   "wait": true
+  },
+  {
+   "text": "A (game as it is): sprint until out of breath, swing, jump. Whose breathing and steps sound close? Does the Arisen sound far away?",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 0
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "B: the pawn you play has the player's sound settings. Same actions. (Last time: sounded good.)",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "B + C1: loudness by distance from the CAMERA. Turn and walk around: does the Arisen (20 m off) and the world sound right?",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "text": "B + C2: loudness by distance from the PAWN you play. Better or worse than C1?",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 2
+    }
+   ]
+  },
+  {
+   "text": "B + C2 + D: echo and ambience follow the pawn. Walk into the cave / along the wall, then back out.",
+   "secs": 25,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "Back to the Arisen with all of it on (it should go back to normal by itself). Does he sound like himself? Follow is back on.",
+   "secs": 8,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain_follow",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_auto_follow",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "All off. Tell Claude: B / C1 / C2 / D, which was best, anything odd.",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 0
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": false
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_sound-as-player-3.json",
+  "show": [
+   "sound",
+   "pf"
+  ],
+  "probes": {
+   "sound": "local out = {}\nlocal function wc(ch)\n  local go = ch and ch:call(\"get_GameObject\")\n  return go and go:call(\"getComponent(System.Type)\", sdk.typeof(\"app.WwiseCharacter\")), go and tostring(go:call(\"get_Name\"))\nend\nlocal list = {}\npcall(function() list[#list + 1] = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\") end)\npcall(function() local l = sdk.get_managed_singleton(\"app.PawnManager\"):call(\"get_PawnCharacterList\"); for i = 0, l:call(\"get_Count\") - 1 do list[#list + 1] = l:call(\"get_Item\", i) end end)\nfor _, ch in ipairs(list) do\n  local w, nm = wc(ch)\n  if w then out[#out + 1] = nm .. \":\" .. tostring(w:call(\"get_CharacterCategory\")) .. \"/\" .. string.format(\"%.2f\", w:call(\"get_CharacterRTPC\") or -1) .. \"/\" .. tostring(w:call(\"get_IsRTPCTreatedAsPlayer\")) end\nend\npcall(function() out[#out + 1] = \"decayAtPlayer=\" .. tostring(sdk.find_type_definition(\"via.simplewwise.Driver\"):get_method(\"get_CalcDistanceDecayAtPlayerPos\"):call(nil)) end)\nreturn table.concat(out, \" \")\n",
+   "pf": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R or not R.pf then return \"no DPC dev\" end\nlocal parts = {}\nfor k, n in pairs(R.pf.n) do parts[#parts + 1] = k .. \"=\" .. n end\ntable.sort(parts)\nreturn table.concat(parts, \" \") .. (R.pf.voice_err and (\" ERR \" .. R.pf.voice_err) or \"\") .. (R.pf.listener_err and (\" ERR \" .. R.pf.listener_err) or \"\")"
+  }
+ }
+}

@@ -1,6 +1,6 @@
 # Direct Pawn Control - Play as Any Pawn. Includes Couch Co-op (Dragon's Dogma 2)
 
-Take direct control of your pawns. Possess your main pawn or a hired pawn and play it with the game's own player controls, camera and HUD, while the Arisen fights on beside you. Or hand a second player a controller and play couch co-op: player 1 on the Arisen, player 2 on a pawn.
+Take direct control of your pawns. Possess your main pawn or a hired pawn and play it with the game's own player controls, camera and HUD, while the Arisen fights on beside you. Or hand a second player a controller and play couch co-op: player 1 on the Arisen (keyboard and mouse, or a second controller), player 2 on a pawn.
 
 **Status: beta (0.9.x).** Playable from start to finish of a fight with every pawn vocation. See "Known limits".
 
@@ -21,12 +21,16 @@ Take direct control of your pawns. Possess your main pawn or a hired pawn and pl
 | | **Hold D-pad down** while playing a pawn | Back to the Arisen |
 | **F8** | | Warp the Arisen to the pawn you are playing |
 | **Ctrl+F6** | | Start / stop couch co-op (player 2's controller drives the selected pawn) |
+| | **Hold L3 + R3** (both stick clicks) on a second controller | Start couch co-op with that controller as player 2's (1.5 s). In co-op, either player holding L3 + R3 for 3 s ends it |
 | **Numpad 1-6** | | The selected character uses skill slot 1-6 (the Arisen by default while you play a pawn; never the one you are playing) |
 | **Numpad 7** | | Warp all pawns to you |
 | **Numpad .** | | Heal / revive all pawns and the Arisen. A cheat, **off by default**: tick it under Cheats in the settings |
 
 - Another cheat, **off by default** (Cheats in the settings): special arrows (Explosive, Blighting, Tarring, Drenching) are never used up by your pawns, whether you play them or they fight on their own, so there is always something to fire when you take one over. A pawn still needs at least one of the arrow in the bag.
 - In couch co-op, player 2 changes to the next pawn with the same take-control combination (L1 + left stick click). It goes round the pawns only; the Arisen stays player 1's.
+- **Two controllers:** player 1 can play the Arisen on a controller too. With co-op off, player 2 holds L3 + R3 on their own controller to join; the controller used most recently besides it becomes player 1's (so press something on yours first). Each controller then works only its own character, and the camera follows player 1's right stick. Two PlayStation controllers, or a PlayStation and an Xbox controller, both work.
+- Off by default and not fully tested yet, under the co-op settings: target markers and aiming for both players, co-op starting again by itself after loads and cutscenes, and rumble on player 2's controller.
+- **The controller you pick up drives the Arisen.** The game listens to one "active" controller and does not switch by itself, so a controller that went off, or a second one left connected, could leave the Arisen ignoring the one in your hands while the keyboard still worked. The mod hands the Arisen to the controller you use (switch: "The controller you use drives the Arisen").
 - Any key can be given Ctrl: hold Ctrl while you press the new key.
 - These are the defaults. Every keyboard key above (co-op and the six skill orders included) and three controller combinations (take control / next character, back to the Arisen, couch co-op) can be changed under **Controls** in the settings window. There is also a switch there to keep the Arisen out of the take-control round.
 - A line at the bottom of the screen says what the take-control button does right now and to whom ("L1+L3: Control <pawn>", "Hold D-pad down: Control Arisen"). It follows the keyboard or the controller, whichever you last used, and can be switched off under Controls.
@@ -38,6 +42,13 @@ Take direct control of your pawns. Possess your main pawn or a hired pawn and pl
 When control changes hands, the camera pulls back so both characters are in view, the action slows for a moment, and the camera glides in behind the one you now play while they light up with one of the game's own glows. Full speed returns just before the camera lands. Under **Switching characters** you can pick another camera style (Instant, Establish, Bird's-eye or Custom), the slow-down, when full speed returns, and the glow (Pawn lift by default; Revival, Can interact, Riftstone, Summon, Healing, Astral or none).
 
 Open the REFramework menu (Insert) and look for **Direct Pawn Control** to change options. The things most players change are at the top; everything else is folded away. Outside that menu the mod puts very little on screen: one line saying who you are playing or have selected, the Arisen's bars over his head, and in co-op player 2's bars and skill list.
+
+## Playing a pawn feels like playing the Arisen
+While one player plays a pawn, the game treats the pawn more like the player:
+- **Sound:** the pawn gets the player's sound settings, sounds get quieter by distance from the camera rather than from the Arisen, and echo / ambience follow the pawn.
+- **Skill slow motion:** skills that slow the world for the Arisen (Riotous Fury, for example) do it for the pawn too.
+- Hit-stop and perfect-block slow motion already worked for a pawn.
+These are under "Playing as the player" in the settings, each with its own switch.
 
 ## What your pawn can do while you play it
 - Loot corpses, open chests, gather and pick things up: press interact when the mod's `[Interact]` prompt shows over the object. Items go to the pawn's inventory.
@@ -65,15 +76,20 @@ Wait and To Me orders tell him to stay or follow again. A caster Arisen answers 
 - Looting, gathering, chests, waking and reviving by your pawn happen without the usual animation.
 - The Arisen does not aim. A Magick Archer or Archer Arisen shoots at what he has locked on to. The Arisen's melee vocations do not guard or dodge.
 - The bow aim camera and reticle are for Archer pawns in normal possession, not in co-op. Aimed skills for a bow pawn are on the controller only.
-- Co-op needs player 1 on keyboard and mouse and player 2 on a controller, and player 1 always plays the Arisen. Choosing any character per player is planned.
+- In co-op player 1 always plays the Arisen and player 2 a pawn. Choosing any character per player is planned.
 - Quick skills (Numpad 1-6) cover the six pawn vocations; attack skills need an enemy in view or near the pawn.
 - Possessing a pawn far away from the Arisen for a long time is not recommended.
 - While you play a pawn, the button guide does not show "Dash" on its button. Dashing works as usual; only the label is missing.
 - **Thief** pawns had crashes in early versions; none since. If you do get crashes while playing a Thief pawn, the advanced options have a switch that puts Thief pawns on simpler fallback controls.
+
+## For mod authors
+Other REFramework mods can ask who is being played, react when control changes hands, and take over DPC's camera transition or camera follow through `_G.DPC_API`. See `API.md` in the source.
 
 ## Uninstall
 Remove the mod and delete `reframework/data/DirectPawnControl.json` and `DPC_*.json` if you want a clean slate.
 
 ## Credits
 - **Pawn Tactical Wheel** showed that a pawn can be ordered to use a skill by handing its AI the skill's own action pack, and its table got this mod's quick skills started. Its way of keeping an ordered skill going (the pawn's decision maker is switched off until the action is over) is used for skill orders since 0.9.151. The released mod carries no data from it: which action pack belongs to which skill is read from the game's own skill table while you play.
+- **joseau11** sent the code two-controller co-op is built on, plus co-op aiming, auto-resume and rumble, and Camera Distance's look-ahead pull-back.
+- **guitarguy1104**'s DD2PartySwitcher showed how to have the game treat the played pawn as the player for single game calls; the sound changes use that method.
 - Built with REFramework by praydog.

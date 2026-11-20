@@ -1,0 +1,142 @@
+{
+ "id": "sound-as-player-2",
+ "title": "Sound from who you play: the real switches, one at a time",
+ "intro": "Headphones help. Stand somewhere with character: next to a wall, cave mouth or building. Start as the Arisen. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "Taking over your main pawn. Then walk ~15 m away from the Arisen (he follows; that is fine, keep moving).",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 0
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "A (game as it is): sprint until out of breath, swing, jump, walk by the wall. Whose breathing and steps sound close?",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 0
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "B: the pawn you play now has the player's sound settings. Same actions. Different?",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "B + C1: loudness by distance from the CAMERA. Different?",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "text": "B + C2: loudness by distance from the PAWN you play. Different from C1?",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 2
+    }
+   ]
+  },
+  {
+   "text": "B + C2 + D: the place's echo and ambience follow the pawn too. Walk in and out of a cave or building if you can.",
+   "secs": 20,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "Back to the Arisen with everything still on (it should all go back to normal on its own). Listen: does the Arisen sound like himself again?",
+   "secs": 8,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "All switches off again. Tell Claude which stage sounded most like playing the pawn yourself, and anything odd (silence, doubled sounds, wrong music).",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 0
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": false
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_sound-as-player-2.json",
+  "show": [
+   "sound",
+   "pf"
+  ],
+  "probes": {
+   "sound": "local out = {}\nlocal function wc(ch)\n  local go = ch and ch:call(\"get_GameObject\")\n  return go and go:call(\"getComponent(System.Type)\", sdk.typeof(\"app.WwiseCharacter\")), go and tostring(go:call(\"get_Name\"))\nend\nlocal list = {}\npcall(function() list[#list + 1] = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\") end)\npcall(function() local l = sdk.get_managed_singleton(\"app.PawnManager\"):call(\"get_PawnCharacterList\"); for i = 0, l:call(\"get_Count\") - 1 do list[#list + 1] = l:call(\"get_Item\", i) end end)\nfor _, ch in ipairs(list) do\n  local w, nm = wc(ch)\n  if w then out[#out + 1] = nm .. \":\" .. tostring(w:call(\"get_CharacterCategory\")) .. \"/\" .. string.format(\"%.2f\", w:call(\"get_CharacterRTPC\") or -1) .. \"/\" .. tostring(w:call(\"get_IsRTPCTreatedAsPlayer\")) end\nend\npcall(function() out[#out + 1] = \"decayAtPlayer=\" .. tostring(sdk.find_type_definition(\"via.simplewwise.Driver\"):get_method(\"get_CalcDistanceDecayAtPlayerPos\"):call(nil)) end)\nreturn table.concat(out, \" \")\n",
+   "pf": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R or not R.pf then return \"no DPC dev\" end\nlocal parts = {}\nfor k, n in pairs(R.pf.n) do parts[#parts + 1] = k .. \"=\" .. n end\ntable.sort(parts)\nreturn table.concat(parts, \" \") .. (R.pf.voice_err and (\" ERR \" .. R.pf.voice_err) or \"\") .. (R.pf.listener_err and (\" ERR \" .. R.pf.listener_err) or \"\")"
+  }
+ }
+}

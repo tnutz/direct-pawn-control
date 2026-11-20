@@ -1,6 +1,11 @@
 # MODLOG: Camera Distance & Framing Studio (Dragon's Dogma 2)
 
 
+### 2.9.9 (2026-11-19): joseau11's co-op changes
+- `coop_ahead_per_m` (0 = off, his setting about 0.35): the frustum fit did not pull back when player 2 ran ahead, since a pawn far down the view line still fits on screen, just small. The camera now also pulls back by this much per metre player 2 is ahead past `coop_start_dist`, up to `coop_fit_cap`. Slider under the fit settings.
+- The off-screen player 2 marker is hidden while a menu, shop, talk or a non-player camera is up.
+- Tested (`cam-299-1`, Thirteen, 2026-11-19): look-ahead pulls back as intended; the marker hides over the Esc menu. the tester: about 0.1 feels better than 0.35, so 0.1 is the default. His idea for later: when player 2 runs ahead, raising the camera would help more than pulling back.
+
 ### 2.9.8 (2026-11-17): the status names aiming as aiming (not tested in game yet)
 - **Reported 2026-11-17, walk-through 3, step "bow aim as the Arisen" (screenshot):** the expected status text did not show, and the "Auto-Suspend While Aiming" option could not be found. The status line read `cam = suspended: Non-Player Camera (Event/Talk)`, not "suspended: Aiming".
 - From the code: the "not the player camera" check (`MainCameraController.get_CurrentPlayerCamera() == false`) runs before the aim check and returns first. **Assumed, not yet confirmed from the run's recording: the screenshot was taken while aiming**, i.e. the game's aim camera counts as a non-player camera.

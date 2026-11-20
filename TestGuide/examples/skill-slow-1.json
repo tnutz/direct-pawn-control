@@ -1,0 +1,55 @@
+{
+ "id": "skill-slow-1",
+ "title": "Skill slow motion (Riotous Fury) for the played pawn",
+ "intro": "BEFORE YOU PRESS END: open ground, and the pawn you play must have Riotous Fury (or another skill with a slow-motion moment) equipped. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev5"
+ },
+ "steps": [
+  {
+   "text": "GET READY (no timer): stand in the open. Press End to spawn unkillable goblins and take over your main pawn.",
+   "wait": true
+  },
+  {
+   "text": "AS THE PAWN: use Riotous Fury on the goblins 3 or 4 times. Does the world slow down like it does for the Arisen? (The first use may still miss.)",
+   "secs": 40,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 8.0,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Done: goblins gone, back to the Arisen. Tell Claude what you saw.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_skill-slow-1.json",
+  "show": [
+   "pf"
+  ],
+  "probes": {
+   "pf": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R or not R.pf then return \"no DPC dev\" end\nlocal parts = {}\nfor k, n in pairs(R.pf.n) do parts[#parts + 1] = k .. \"=\" .. n end\ntable.sort(parts)\nreturn table.concat(parts, \" \") .. (R.pf.voice_err and (\" ERR \" .. R.pf.voice_err) or \"\") .. (R.pf.listener_err and (\" ERR \" .. R.pf.listener_err) or \"\")"
+  }
+ }
+}

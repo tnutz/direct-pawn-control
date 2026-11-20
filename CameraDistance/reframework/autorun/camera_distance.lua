@@ -20,7 +20,7 @@
 -- ==============================================================================
 
 local MOD_NAME = "Camera Distance & Framing"
-local MOD_VERSION = "2.9.8"
+local MOD_VERSION = "2.9.9"
 local CONFIG_FILE = "camera_distance_config.json"
 
 -- ==============================================================================
@@ -210,6 +210,7 @@ local DEFAULT_CONFIG = {
     coop_base_dist = 5.7,          -- vanilla camera distance from the Arisen (measured)
     coop_depth_factor = 0.6,       -- pull-back per metre of along-view separation
     coop_fit_cap = 30.0,     -- cap on the fit pull-back (m)
+    coop_ahead_per_m = 0.1,        -- 2.9.9 (joseau11): also pull back by this much per metre player 2 runs ahead of the Arisen (0 = off; he uses about 0.35, the tester prefers 0.1)
     coop_aim_fov_max = 50.0,       -- bow zoom limit: widest view while aiming (real vertical FOV; normal is 36)
     coop_aim_back_max = 4.0,       -- 2.8.0: bow zoom limit: furthest the aim camera may pull back (m)
     coop_aim_zoom_limit = false,   -- 2.7.0: in co-op, widen the bow-aim zoom just enough to keep player 2's pawn in view
@@ -968,6 +969,10 @@ local function camera_tick()
                 target_sx, target_sz = rx * cs, rz * cs
                 state.coop_cs = cs
                 target_coop_extra = math.min(config.coop_fit_cap or 30.0, math.max(0.0, need / cosp - along0))
+                local ahead = depth - (config.coop_start_dist or 4.0)
+                if ahead > 0 and (config.coop_ahead_per_m or 0) > 0 then
+                    target_coop_extra = math.min(config.coop_fit_cap or 30.0, math.max(target_coop_extra, ahead * config.coop_ahead_per_m))
+                end
                 state.coop_fit_dbg = string.format("across %.1f  ahead %.1f  camera needs %.1f m behind the Arisen (normal %.1f)  slide %.1f  fov %.0f  aspect %.2f",
                     side, depth, need, along0 * cosp, cs, vfov, aspect)
             elseif sep < 80.0 then
@@ -1456,8 +1461,32 @@ end
 
 -- 2.6.0 off-screen marker: while player 2's pawn is outside the view (bow aiming, camera blocked by terrain, pull-back
 -- cap reached), draw a dot with an arrow on the screen edge in his direction, with his name and distance.
+local marker_hide_t, marker_hide = 0, false
+local function marker_hidden()
+    local now = os.clock()
+    if now < marker_hide_t then return marker_hide end
+    marker_hide_t = now + 0.1
+    local hide = false
+    pcall(function()
+        local gm = sdk.get_managed_singleton("app.GuiManager")
+        if gm and gm:call("isPausedGUI") == true then hide = true; return end
+        local fm = sdk.get_managed_singleton("app.FacilityManager")
+        local ef = fm and fm:call("get_ExecFacility")
+        if type(ef) == "userdata" then
+            local okv, v = pcall(ef.get_field, ef, "value__")
+            ef = okv and v or nil
+        end
+        if (tonumber(ef) or 0) ~= 0 then hide = true; return end
+        local mc = get_main_camera_controller()
+        if mc and mc:call("get_CurrentPlayerCamera") == false and not is_player_aiming(mc) then hide = true end
+    end)
+    marker_hide = hide
+    return hide
+end
+
 local function draw_coop_marker()
     if not (config.enabled and config.coop_marker ~= false and state.coop_active) then return end
+    if marker_hidden() then return end
     local pp = get_coop_pawn_position()
     local cam = sdk.get_primary_camera()
     if not (pp and cam) then return end
@@ -1794,7 +1823,9 @@ re.on_draw_ui(function()
                 f2, config.coop_fill = imgui.slider_float("Fit: use this share of the screen", config.coop_fill or 0.8, 0.4, 1.0)
                 local f3
                 f3, config.coop_arisen_fill = imgui.slider_float("Fit: how far off-centre the Arisen may go (0 = never)", config.coop_arisen_fill or 0.45, 0.0, 0.8)
-                if f1 or f2 or f3 then save_config() end
+                local f4
+                f4, config.coop_ahead_per_m = imgui.slider_float("Fit: pull back per metre player 2 is ahead (0 = off)", config.coop_ahead_per_m or 0.0, 0.0, 1.0)
+                if f1 or f2 or f3 or f4 then save_config() end
                 if state.coop_fit_dbg then imgui.text(state.coop_fit_dbg) end
             end
             changed = changed or c1 or c2 or c3 or c4 or c5 or c6

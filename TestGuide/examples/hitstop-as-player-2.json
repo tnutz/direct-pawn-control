@@ -1,0 +1,94 @@
+{
+ "id": "hitstop-as-player-2",
+ "title": "Hit-stop as the player (A/B), with unkillable goblins and the game's own numbers",
+ "intro": "BEFORE YOU PRESS END: open ground, no other fights, a melee main pawn is best (Fighter / Warrior / Thief). The goblins in this test cannot die, so the party can't finish them; the numbers are read from the game. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "GET READY (no timer): stand in the open, weapon out. Press End to spawn the goblins and start.",
+   "wait": true,
+   "each_frame": "if not G_hs2 then\n  G_hs2 = { by = {}, stage = \"-\" }\n  local hc = sdk.find_type_definition(\"app.HitController\")\n  local m = hc and hc:get_method(\"getHitStopTime\")\n  local function nm(go) local n; pcall(function() n = go:call(\"get_Name\") end); return n end\n  if m then\n    sdk.hook(m, function(args)\n      local st = thread.get_hook_storage()\n      st.hs2 = { di = args[3], hc = args[2] }\n    end, function(r)\n      local st = thread.get_hook_storage()\n      local s = st.hs2; st.hs2 = nil\n      if not s then return r end\n      pcall(function()\n        local v = sdk.to_float(r)\n        local di = sdk.to_managed_object(s.di)\n        local hcobj = sdk.to_managed_object(s.hc)\n        local owner = di and di:get_field(\"<AttackOwnerObject>k__BackingField\")\n        local victim = hcobj and hcobj:call(\"get_GameObject\")\n        local d = _G.DPC_dbg\n        local who = \"other\"\n        local an = owner and nm(owner)\n        if d and d.state.active and d.state.pawn_chara and owner and owner:get_address() == d.state.pawn_chara:call(\"get_GameObject\"):get_address() then who = \"played pawn\"\n        elseif an == \"ch000000_00\" then who = \"Arisen\" end\n        local vn = victim and nm(victim) or \"?\"\n        if vn:find(\"^ch2\") then\n          local k = G_hs2.stage .. \" | \" .. who\n          local b = G_hs2.by[k] or { n = 0, sum = 0, zero = 0 }\n          b.n = b.n + 1; b.sum = b.sum + (v or 0); if (v or 0) <= 0 then b.zero = b.zero + 1 end\n          G_hs2.by[k] = b\n        end\n      end)\n      return r\n    end)\n  end\nend\nG_hs2.stage = \"-\"\n",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_hitstop",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "AS THE ARISEN: hit the goblins (they can't die). Feel the little freeze on each hit.",
+   "secs": 20,
+   "each_frame": "if not G_hs2 then\n  G_hs2 = { by = {}, stage = \"-\" }\n  local hc = sdk.find_type_definition(\"app.HitController\")\n  local m = hc and hc:get_method(\"getHitStopTime\")\n  local function nm(go) local n; pcall(function() n = go:call(\"get_Name\") end); return n end\n  if m then\n    sdk.hook(m, function(args)\n      local st = thread.get_hook_storage()\n      st.hs2 = { di = args[3], hc = args[2] }\n    end, function(r)\n      local st = thread.get_hook_storage()\n      local s = st.hs2; st.hs2 = nil\n      if not s then return r end\n      pcall(function()\n        local v = sdk.to_float(r)\n        local di = sdk.to_managed_object(s.di)\n        local hcobj = sdk.to_managed_object(s.hc)\n        local owner = di and di:get_field(\"<AttackOwnerObject>k__BackingField\")\n        local victim = hcobj and hcobj:call(\"get_GameObject\")\n        local d = _G.DPC_dbg\n        local who = \"other\"\n        local an = owner and nm(owner)\n        if d and d.state.active and d.state.pawn_chara and owner and owner:get_address() == d.state.pawn_chara:call(\"get_GameObject\"):get_address() then who = \"played pawn\"\n        elseif an == \"ch000000_00\" then who = \"Arisen\" end\n        local vn = victim and nm(victim) or \"?\"\n        if vn:find(\"^ch2\") then\n          local k = G_hs2.stage .. \" | \" .. who\n          local b = G_hs2.by[k] or { n = 0, sum = 0, zero = 0 }\n          b.n = b.n + 1; b.sum = b.sum + (v or 0); if (v or 0) <= 0 then b.zero = b.zero + 1 end\n          G_hs2.by[k] = b\n        end\n      end)\n      return r\n    end)\n  end\nend\nG_hs2.stage = \"1 Arisen\"\n",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 8.0,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    }
+   ]
+  },
+  {
+   "text": "Taking over your main pawn.",
+   "secs": 4,
+   "each_frame": "if not G_hs2 then\n  G_hs2 = { by = {}, stage = \"-\" }\n  local hc = sdk.find_type_definition(\"app.HitController\")\n  local m = hc and hc:get_method(\"getHitStopTime\")\n  local function nm(go) local n; pcall(function() n = go:call(\"get_Name\") end); return n end\n  if m then\n    sdk.hook(m, function(args)\n      local st = thread.get_hook_storage()\n      st.hs2 = { di = args[3], hc = args[2] }\n    end, function(r)\n      local st = thread.get_hook_storage()\n      local s = st.hs2; st.hs2 = nil\n      if not s then return r end\n      pcall(function()\n        local v = sdk.to_float(r)\n        local di = sdk.to_managed_object(s.di)\n        local hcobj = sdk.to_managed_object(s.hc)\n        local owner = di and di:get_field(\"<AttackOwnerObject>k__BackingField\")\n        local victim = hcobj and hcobj:call(\"get_GameObject\")\n        local d = _G.DPC_dbg\n        local who = \"other\"\n        local an = owner and nm(owner)\n        if d and d.state.active and d.state.pawn_chara and owner and owner:get_address() == d.state.pawn_chara:call(\"get_GameObject\"):get_address() then who = \"played pawn\"\n        elseif an == \"ch000000_00\" then who = \"Arisen\" end\n        local vn = victim and nm(victim) or \"?\"\n        if vn:find(\"^ch2\") then\n          local k = G_hs2.stage .. \" | \" .. who\n          local b = G_hs2.by[k] or { n = 0, sum = 0, zero = 0 }\n          b.n = b.n + 1; b.sum = b.sum + (v or 0); if (v or 0) <= 0 then b.zero = b.zero + 1 end\n          G_hs2.by[k] = b\n        end\n      end)\n      return r\n    end)\n  end\nend\nG_hs2.stage = \"-\"\n",
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "A, AS THE PAWN, game as it is: hit the goblins the same way.",
+   "secs": 20,
+   "each_frame": "if not G_hs2 then\n  G_hs2 = { by = {}, stage = \"-\" }\n  local hc = sdk.find_type_definition(\"app.HitController\")\n  local m = hc and hc:get_method(\"getHitStopTime\")\n  local function nm(go) local n; pcall(function() n = go:call(\"get_Name\") end); return n end\n  if m then\n    sdk.hook(m, function(args)\n      local st = thread.get_hook_storage()\n      st.hs2 = { di = args[3], hc = args[2] }\n    end, function(r)\n      local st = thread.get_hook_storage()\n      local s = st.hs2; st.hs2 = nil\n      if not s then return r end\n      pcall(function()\n        local v = sdk.to_float(r)\n        local di = sdk.to_managed_object(s.di)\n        local hcobj = sdk.to_managed_object(s.hc)\n        local owner = di and di:get_field(\"<AttackOwnerObject>k__BackingField\")\n        local victim = hcobj and hcobj:call(\"get_GameObject\")\n        local d = _G.DPC_dbg\n        local who = \"other\"\n        local an = owner and nm(owner)\n        if d and d.state.active and d.state.pawn_chara and owner and owner:get_address() == d.state.pawn_chara:call(\"get_GameObject\"):get_address() then who = \"played pawn\"\n        elseif an == \"ch000000_00\" then who = \"Arisen\" end\n        local vn = victim and nm(victim) or \"?\"\n        if vn:find(\"^ch2\") then\n          local k = G_hs2.stage .. \" | \" .. who\n          local b = G_hs2.by[k] or { n = 0, sum = 0, zero = 0 }\n          b.n = b.n + 1; b.sum = b.sum + (v or 0); if (v or 0) <= 0 then b.zero = b.zero + 1 end\n          G_hs2.by[k] = b\n        end\n      end)\n      return r\n    end)\n  end\nend\nG_hs2.stage = \"2 pawn, off\"\n"
+  },
+  {
+   "text": "B, AS THE PAWN, hit-stop as the player ON: same again. Like the Arisen's hits now?",
+   "secs": 20,
+   "each_frame": "if not G_hs2 then\n  G_hs2 = { by = {}, stage = \"-\" }\n  local hc = sdk.find_type_definition(\"app.HitController\")\n  local m = hc and hc:get_method(\"getHitStopTime\")\n  local function nm(go) local n; pcall(function() n = go:call(\"get_Name\") end); return n end\n  if m then\n    sdk.hook(m, function(args)\n      local st = thread.get_hook_storage()\n      st.hs2 = { di = args[3], hc = args[2] }\n    end, function(r)\n      local st = thread.get_hook_storage()\n      local s = st.hs2; st.hs2 = nil\n      if not s then return r end\n      pcall(function()\n        local v = sdk.to_float(r)\n        local di = sdk.to_managed_object(s.di)\n        local hcobj = sdk.to_managed_object(s.hc)\n        local owner = di and di:get_field(\"<AttackOwnerObject>k__BackingField\")\n        local victim = hcobj and hcobj:call(\"get_GameObject\")\n        local d = _G.DPC_dbg\n        local who = \"other\"\n        local an = owner and nm(owner)\n        if d and d.state.active and d.state.pawn_chara and owner and owner:get_address() == d.state.pawn_chara:call(\"get_GameObject\"):get_address() then who = \"played pawn\"\n        elseif an == \"ch000000_00\" then who = \"Arisen\" end\n        local vn = victim and nm(victim) or \"?\"\n        if vn:find(\"^ch2\") then\n          local k = G_hs2.stage .. \" | \" .. who\n          local b = G_hs2.by[k] or { n = 0, sum = 0, zero = 0 }\n          b.n = b.n + 1; b.sum = b.sum + (v or 0); if (v or 0) <= 0 then b.zero = b.zero + 1 end\n          G_hs2.by[k] = b\n        end\n      end)\n      return r\n    end)\n  end\nend\nG_hs2.stage = \"3 pawn, on\"\n",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_hitstop",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "Done: goblins gone, back to the Arisen, switch off. Tell Claude: did B feel like the Arisen? Too much?",
+   "secs": 5,
+   "each_frame": "if not G_hs2 then\n  G_hs2 = { by = {}, stage = \"-\" }\n  local hc = sdk.find_type_definition(\"app.HitController\")\n  local m = hc and hc:get_method(\"getHitStopTime\")\n  local function nm(go) local n; pcall(function() n = go:call(\"get_Name\") end); return n end\n  if m then\n    sdk.hook(m, function(args)\n      local st = thread.get_hook_storage()\n      st.hs2 = { di = args[3], hc = args[2] }\n    end, function(r)\n      local st = thread.get_hook_storage()\n      local s = st.hs2; st.hs2 = nil\n      if not s then return r end\n      pcall(function()\n        local v = sdk.to_float(r)\n        local di = sdk.to_managed_object(s.di)\n        local hcobj = sdk.to_managed_object(s.hc)\n        local owner = di and di:get_field(\"<AttackOwnerObject>k__BackingField\")\n        local victim = hcobj and hcobj:call(\"get_GameObject\")\n        local d = _G.DPC_dbg\n        local who = \"other\"\n        local an = owner and nm(owner)\n        if d and d.state.active and d.state.pawn_chara and owner and owner:get_address() == d.state.pawn_chara:call(\"get_GameObject\"):get_address() then who = \"played pawn\"\n        elseif an == \"ch000000_00\" then who = \"Arisen\" end\n        local vn = victim and nm(victim) or \"?\"\n        if vn:find(\"^ch2\") then\n          local k = G_hs2.stage .. \" | \" .. who\n          local b = G_hs2.by[k] or { n = 0, sum = 0, zero = 0 }\n          b.n = b.n + 1; b.sum = b.sum + (v or 0); if (v or 0) <= 0 then b.zero = b.zero + 1 end\n          G_hs2.by[k] = b\n        end\n      end)\n      return r\n    end)\n  end\nend\nG_hs2.stage = \"-\"\n",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "pf_hitstop",
+     "value": false
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_hitstop-as-player-2.json",
+  "show": [
+   "hitstop"
+  ],
+  "probes": {
+   "hitstop": "if not G_hs2 then return \"-\" end\nlocal o = {}\nfor k, b in pairs(G_hs2.by) do o[#o + 1] = string.format(\"%s: %d hits, avg %.2f, zero %d\", k, b.n, b.n > 0 and b.sum / b.n or 0, b.zero) end\ntable.sort(o)\nreturn table.concat(o, \" || \")"
+  }
+ }
+}

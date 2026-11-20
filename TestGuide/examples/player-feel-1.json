@@ -1,0 +1,68 @@
+{
+ "id": "player-feel-1",
+ "title": "What the game does for the player: Arisen vs a played pawn (hit-stop, slow-mo, sound)",
+ "intro": "Watch-only test, nothing is changed. Party around you, a Fighter or Warrior main pawn is ideal. Start as the ARISEN (not playing a pawn). Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.169"
+ },
+ "steps": [
+  {
+   "text": "Getting ready (installing the watch-only logger).",
+   "secs": 2,
+   "each_frame": "-- player-feel logger (installed once by the plan; watch-only: every hook returns the game's own result)\nif not G_pf then\n  G_pf = { log = {}, n = 0, t0 = os.clock() }\n  local L = G_pf\n  local function goname(o)\n    if not o then return nil end\n    local n\n    pcall(function()\n      local td = o:get_type_definition():get_full_name()\n      if td == \"via.GameObject\" then n = o:call(\"get_Name\") else n = o:call(\"get_GameObject\"):call(\"get_Name\") end\n    end)\n    return n and tostring(n) or nil\n  end\n  local function who_in(o) -- every object-typed field of a hit record that names a game object\n    local r = {}\n    pcall(function()\n      for _, f in ipairs(o:get_type_definition():get_fields()) do\n        if not f:is_static() then\n          local okv, v = pcall(o.get_field, o, f:get_name())\n          if okv and type(v) == \"userdata\" and v.get_type_definition then\n            local nm = goname(v)\n            if nm then r[f:get_name()] = nm end\n          end\n        end\n      end\n    end)\n    return r\n  end\n  local function add(e)\n    if L.n >= 600 then return end\n    L.n = L.n + 1\n    e.t = math.floor((os.clock() - L.t0) * 100) / 100\n    pcall(function() local d = _G.DPC_dbg; e.played = d and d.state and d.state.active and tostring(d.state.pawn_name) or \"Arisen\" end)\n    L.log[#L.log + 1] = e\n    if L.n % 10 == 0 or e.k ~= \"hitstop\" then pcall(json.dump_file, \"test_guide/player_feel_log.json\", L.log) end\n  end\n  local function hookm(tn, sig, pre, post)\n    local t = sdk.find_type_definition(tn)\n    local m = t and t:get_method(sig)\n    if not m then add({ k = \"missing\", what = tn .. \".\" .. sig }); return end\n    sdk.hook(m, function(args) pcall(pre, args) end, function(r) pcall(post or function() end, r); return r end)\n  end\n  -- hit-stop time chosen for a hit\n  hookm(\"app.HitController\", \"getHitStopTime(app.HitController.DamageInfo)\",\n    function(args) local s = thread.get_hook_storage(); s.di = sdk.to_managed_object(args[3]); s.hc = sdk.to_managed_object(args[2]) end,\n    function(r)\n      local s = thread.get_hook_storage()\n      local v = sdk.to_float(r)\n      if s.di then add({ k = \"hitstop\", v = v, hit = goname(s.hc), who = who_in(s.di) }) end\n      s.di = nil\n    end)\n  -- hit-stop applied to a work rate (whose)\n  for _, sig in ipairs({ \"setHitStop(System.Single, System.Single, System.Boolean)\", \"setHitStop(app.HitStopData.Work, System.Boolean)\" }) do\n    hookm(\"app.WorkRate\", sig, function(args)\n      local wr = sdk.to_managed_object(args[2])\n      local e = { k = \"setHitStop\", on = goname(wr), sig = sig:sub(1, 22) }\n      if sig:find(\"Single, System.Single\") then e.a = sdk.to_float(args[3]); e.b = sdk.to_float(args[4]) end\n      add(e)\n    end)\n  end\n  -- monster death slow-motion\n  for _, p in ipairs({ { \"app.Ch200000\", \"isEnableWorldSlow(app.HitController.DamageInfo)\" }, { \"app.Ch261000\", \"isEnableWorldSlow(app.HitController.DamageInfo)\" },\n                       { \"app.Ch200000\", \"checkDieWorldSlow(app.HitController.DamageInfo)\" } }) do\n    hookm(p[1], p[2], function(args) local s = thread.get_hook_storage(); s.ws = sdk.to_managed_object(args[3]); s.wo = sdk.to_managed_object(args[2]) end,\n      function(r)\n        local s = thread.get_hook_storage()\n        local e = { k = p[2]:match(\"^(%w+)\"), cls = p[1], mon = goname(s.wo), who = s.ws and who_in(s.ws) or nil }\n        if e.k == \"isEnableWorldSlow\" then e.ret = (sdk.to_int64(r) & 1) == 1 end\n        add(e)\n      end)\n  end\n  hookm(\"app.Ch200000\", \"requestDieWorldSlow()\", function(args) add({ k = \"requestDieWorldSlow\", mon = goname(sdk.to_managed_object(args[2])) }) end)\n  hookm(\"app.Ch255000\", \"callDieWorldSlow()\", function(args) add({ k = \"callDieWorldSlow\", mon = goname(sdk.to_managed_object(args[2])) }) end)\n  -- slow actions in behaviour trees (perfect guard, etc.)\n  for _, tn in ipairs({ \"app.JustGuardHitSlow\", \"app.SlowAction\" }) do\n    hookm(tn, \"start(via.behaviortree.ActionArg)\", function(args)\n      local e = { k = \"slowAction\", cls = tn }\n      pcall(function() local act = sdk.to_managed_object(args[2]); e.on = goname(act) or tostring(act:get_type_definition():get_full_name()) end)\n      add(e)\n    end)\n  end\n  add({ k = \"installed\" })\nend\n"
+  },
+  {
+   "text": "AS THE ARISEN: kill these goblins with heavy hits and skills. If you can, block / perfect-guard a hit.",
+   "secs": 30,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 10.0,
+     "angle": 0,
+     "still": false,
+     "tough": false
+    }
+   ]
+  },
+  {
+   "text": "Now TAKE OVER your main pawn (L1 + left stick click).",
+   "wait": true
+  },
+  {
+   "text": "AS THE PAWN: kill these goblins the same way (heavy hits, skills, a block if you can).",
+   "secs": 30,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 10.0,
+     "angle": 0,
+     "still": false,
+     "tough": false
+    }
+   ]
+  },
+  {
+   "text": "Go back to the Arisen. Optional bonus: if a big monster is nearby, kill it once as the Arisen and once as the pawn on another day. Done.",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_player-feel-1.json",
+  "show": [
+   "sound"
+  ],
+  "probes": {
+   "sound": "local out = {}\nlocal function wc(ch)\n  local go = ch and ch:call(\"get_GameObject\")\n  return go and go:call(\"getComponent(System.Type)\", sdk.typeof(\"app.WwiseCharacter\")), go and tostring(go:call(\"get_Name\"))\nend\nlocal list = {}\npcall(function() list[#list + 1] = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\") end)\npcall(function() local l = sdk.get_managed_singleton(\"app.PawnManager\"):call(\"get_PawnCharacterList\"); for i = 0, l:call(\"get_Count\") - 1 do list[#list + 1] = l:call(\"get_Item\", i) end end)\nfor _, ch in ipairs(list) do\n  local w, nm = wc(ch)\n  if w then out[#out + 1] = nm .. \":\" .. tostring(w:call(\"get_CharacterCategory\")) .. \"/\" .. string.format(\"%.2f\", w:call(\"get_CharacterRTPC\") or -1) .. \"/\" .. tostring(w:call(\"get_IsRTPCTreatedAsPlayer\")) end\nend\nreturn table.concat(out, \" \")\n"
+  }
+ }
+}

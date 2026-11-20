@@ -23,6 +23,10 @@ from urllib.parse import unquote, urlparse
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import find_marks  # noqa: E402
+try:
+    import bench as bench_mod  # noqa: E402  (the test bench; optional)
+except ImportError:
+    bench_mod = None
 from spans import take_spans  # noqa: E402
 
 GAME_DEFAULT = r"<game folder>\reframework\data\capture"
@@ -34,6 +38,50 @@ class Desk:
         self.lock = threading.Lock()
         self.job = {"name": None, "running": False, "lines": [], "ok": None, "n": 0}
         self.last_backup = {}
+        self.bench = None
+        self.rec = {"recording": False, "file": None}
+
+    def rec_watch(self):
+        """Is OBS recording? A recording file in this folder that grew in the last few seconds. Written for
+        CaptureGuide (capture/recording.json) every 2 s, so the game can warn before a take with no footage."""
+        sizes, grew_t = {}, {}
+        while True:
+            now = time.time()
+            try:
+                for f in self.recordings():
+                    try:
+                        sz = os.path.getsize(self.p(f))
+                    except OSError:
+                        continue
+                    if f in sizes and sz != sizes[f]:
+                        grew_t[f] = now
+                    sizes[f] = sz
+                live = [f for f, t in grew_t.items() if now - t < 5.0]
+                self.rec = {"recording": bool(live), "file": max(live) if live else None}
+                if self.game_ok():
+                    tmp = os.path.join(self.game, "recording.json.tmp")
+                    with open(tmp, "w", encoding="utf-8") as fh:
+                        json.dump({"wall": int(now), "recording": self.rec["recording"], "file": self.rec["file"],
+                                   "folder": self.dir}, fh)
+                    os.replace(tmp, os.path.join(self.game, "recording.json"))
+            except OSError:
+                pass
+            time.sleep(2.0)
+
+    def get_bench(self):
+        """The test bench (tools/bench.py), made on first use. Its game folder is found from the capture folder."""
+        if self.bench is None and bench_mod is not None:
+            game = None
+            if self.game:  # ...\Dragons Dogma 2\reframework\data\capture
+                g = os.path.abspath(os.path.join(self.game, "..", "..", ".."))
+                game = g if os.path.isfile(os.path.join(g, "DD2.exe")) else None
+            try:
+                self.bench = bench_mod.Bench(game, say=lambda line: None)
+            except SystemExit as e:
+                raise ValueError(str(e))
+        if self.bench is None:
+            raise ValueError("bench.py is not next to desk.py")
+        return self.bench
 
     def p(self, *parts):
         return os.path.join(self.dir, *parts)
@@ -101,6 +149,7 @@ class Desk:
         fps = {os.path.basename(m["file"]): m.get("fps", 60) for m in marks}
         scanned = {os.path.basename(m["file"]): m.get("size") for m in marks}
         spans = take_spans(log, marks)
+        dropped = {(x.get("serial"), x.get("wall0")) for x in self.drops() if isinstance(x, dict)}
         takes = []
         for i, (t, sp) in enumerate(zip(log.get("takes", []), spans)):
             parts = None
@@ -110,16 +159,17 @@ class Desk:
                 if not all(os.path.isfile(self.p("out", "src", os.path.basename(x["src"]))) for x in parts):
                     parts = None
             takes.append({"index": i, "shot": t.get("shot"), "take": t.get("take"), "serial": t.get("serial"),
-                          "verdict": t.get("verdict"), "wall": t.get("wall0"), "len": t.get("len"), "parts": parts,
+                          "verdict": "practice" if (t.get("serial"), t.get("wall0")) in dropped else t.get("verdict"),
+                          "wall": t.get("wall0"), "len": t.get("len"), "parts": parts,
                           "fps": fps.get(os.path.basename(sp[0][0]), 60) if sp else 60,
-                          "events": t.get("events") or [], "mark_t": t.get("mark_t")})
+                          "events": t.get("events") or [], "mark_t": t.get("mark_t"), "rec": t.get("rec")})
         recs = self.recordings()
         fresh = [f for f in recs if scanned.get(f) != os.path.getsize(self.p(f))]
         game_log = self.read(os.path.join(self.game, "log.json")) if self.game_ok() else None
         return {"shots": shots, "takes": takes, "choices": self.read(self.p("edit_choices.json")),
                 "recordings": recs, "unscanned": fresh, "game": self.game, "game_ok": self.game_ok(),
                 "game_takes": len(game_log.get("takes", [])) if isinstance(game_log, dict) else None,
-                "final": os.path.isfile(self.p("out", "final.mp4")), "folder": self.dir,
+                "final": os.path.isfile(self.p("out", "final.mp4")), "folder": self.dir, "rec": self.rec,
                 "lists": [x for x in self.lists() if x["id"] != self.safe_id(shots.get("id") or "")]}
 
     # ---- saving from the page ---------------------------------------------------------------------------------
@@ -228,6 +278,31 @@ class Desk:
                 time.sleep(0.7)
         threading.Thread(target=work, daemon=True).start()
         return {"ok": True, "sent": len(cmds), "secs": len(cmds) * 0.7}
+
+    def drops_path(self):
+        return os.path.join(self.game, "drops.json") if self.game_ok() else self.p("drops.json")
+
+    def drops(self):
+        d = self.read(self.drops_path(), [])
+        return d if isinstance(d, list) else []
+
+    def drop_takes(self, shot_id):
+        """Takes of this shot that have no video are set aside (CaptureGuide reads capture/drops.json and marks them
+        "practice", so the shot counts as not shot yet). The takes stay in the log."""
+        if not isinstance(shot_id, str) or not shot_id:
+            raise ValueError("no shot")
+        d = self.drops()
+        have = {(x.get("serial"), x.get("wall0")) for x in d if isinstance(x, dict)}
+        n = 0
+        for t in self.state()["takes"]:
+            if t["shot"] == shot_id and not t["parts"] and t["verdict"] != "practice" and (t["serial"], t["wall"]) not in have:
+                d.append({"serial": t["serial"], "wall0": t["wall"], "shot": shot_id})
+                n += 1
+        tmp = self.drops_path() + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(d, fh, indent=1)
+        os.replace(tmp, self.drops_path())
+        return {"dropped": n}
 
     def shoot_next(self, shot_id):
         """The guide opens on this shot the next time it is armed (once)."""
@@ -511,6 +586,11 @@ def handler(desk):
                 return self.send(200, open(os.path.join(HERE, "desk.html"), "rb").read(), "text/html; charset=utf-8")
             if path == "/api/state":
                 return self.send(200, desk.state())
+            if path == "/api/bench":
+                try:
+                    return self.send(200, desk.get_bench().info())
+                except ValueError as e:
+                    return self.send(200, {"error": str(e)})
             if path == "/api/status":
                 with desk.lock:
                     return self.send(200, dict(desk.job))
@@ -580,12 +660,30 @@ def handler(desk):
                     return self.send(200, desk.new_list(body.get("title")))
                 if path == "/api/list/open":
                     return self.send(200, desk.open_list(body.get("id")))
+                if path == "/api/quit":  # a newer desk started: this one makes way
+                    self.send(200, {"ok": True})
+                    print("A new capture desk was started: this one is closing.")
+                    threading.Thread(target=desk.srv.shutdown, daemon=True).start()
+                    return None
+                if path == "/api/drop":
+                    return self.send(200, desk.drop_takes(body.get("shot")))
                 if path == "/api/next":
                     return self.send(200, desk.shoot_next(body.get("shot")))
                 if path == "/api/draft":
                     return self.send(200, desk.draft(body.get("text"), body.get("shot"), body.get("notes")))
                 if path == "/api/process":
                     return self.send(200, {"started": desk.start("Get new footage", desk.process)})
+                if path == "/api/bench/start":
+                    return self.send(200, {"started": desk.get_bench().start_thread()})
+                if path == "/api/bench/stop":
+                    return self.send(200, {"stopping": desk.get_bench().stop_thread()})
+                if path == "/api/bench/job":  # a job from the page: {"plans": [...], ...}
+                    b = desk.get_bench()
+                    if not isinstance(body, dict) or not body.get("plans"):
+                        raise ValueError("a job needs plans")
+                    name = time.strftime("%Y%m%d-%H%M%S_") + "".join(c for c in str(body.get("id") or "desk") if c.isalnum() or c in "-_") + ".json"
+                    bench_mod.write_json(b.p("jobs", name), body)
+                    return self.send(200, {"queued": name})
                 if path == "/api/render":
                     return self.send(200, {"started": desk.start("Render", desk.render)})
             except (ValueError, OSError) as e:
@@ -597,8 +695,9 @@ def handler(desk):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dir", default=os.path.dirname(HERE), help="folder with the recordings (default: the parent of tools)")
+    found = bench_mod.find_game() if bench_mod else None  # (C: or E: Steam library, or DD2_GAME_DIR)
     ap.add_argument("--game", default=os.environ.get("DD2_CAPTURE_DIR") or (
-        os.path.join(os.environ["DD2_GAME_DIR"], "reframework", "data", "capture") if os.environ.get("DD2_GAME_DIR") else GAME_DEFAULT))
+        os.path.join(found, "reframework", "data", "capture") if found else GAME_DEFAULT))
     ap.add_argument("--port", type=int, default=8777)
     ap.add_argument("--once", action="store_true", help="fetch the new footage and render, then exit")
     ap.add_argument("--no-browser", action="store_true")
@@ -607,18 +706,36 @@ def main():
     if a.once:
         ok = desk.process() is not False and desk.render() is not False
         return 0 if ok else 1
-    try:
-        srv = ThreadingHTTPServer(("127.0.0.1", a.port), handler(desk))
-    except OSError:
-        print(f"Port {a.port} is in use: the desk is probably already running. Open http://127.0.0.1:{a.port}")
+    srv = None
+    for attempt in range(2):
+        try:
+            srv = ThreadingHTTPServer(("127.0.0.1", a.port), handler(desk))
+            break
+        except OSError:
+            if attempt:
+                break
+            # an older desk is still running (often in a forgotten window): ask it to close, then take its place
+            try:
+                import urllib.request
+                urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{a.port}/api/quit", data=b"{}",
+                                       headers={"Content-Type": "application/json"}), timeout=3).read()
+                print("An older capture desk was running; it was asked to close.")
+            except Exception:
+                pass
+            time.sleep(1.5)
+    if srv is None:
+        print(f"Port {a.port} is in use and the program there did not close (a desk from before this change, or"
+              f" another program). Close the other desk windows and start this again.")
         if not a.no_browser:
             webbrowser.open(f"http://127.0.0.1:{a.port}")
         return 1
+    desk.srv = srv
     srv.daemon_threads = True
     url = f"http://127.0.0.1:{a.port}"
     print(f"Capture desk: {url}\nRecordings: {desk.dir}\nGame folder: {desk.game}{'' if desk.game_ok() else '  (NOT FOUND)'}\n"
           f"Leave this window open while you use the page. Close it (or Ctrl+C) when done.")
     desk.pull(print)
+    threading.Thread(target=desk.rec_watch, daemon=True).start()
     if not a.no_browser:
         webbrowser.open(url)
     try:

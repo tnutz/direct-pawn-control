@@ -1,0 +1,48 @@
+{
+ "id": "pads-active-1",
+ "title": "Controllers: the controller you pick up drives the Arisen (dev13, PS5 + Xbox)",
+ "intro": "Both controllers connected (PS5 wired, Xbox wireless), co-op OFF, playing the Arisen, somewhere open with no enemies. DPC 0.9.170-dev13b (Reset Scripts first). This test switches the game's active controller. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev13b"
+ },
+ "steps": [
+  {
+   "text": "Get ready: both controllers in reach. Press End to start.",
+   "wait": true
+  },
+  {
+   "text": "PS5: walk forward with the left stick.",
+   "secs": 6
+  },
+  {
+   "text": "Put the PS5 down. XBOX: walk forward with its left stick. Does the Arisen walk (maybe after a moment)?",
+   "secs": 10
+  },
+  {
+   "text": "XBOX: jump with A a few times.",
+   "secs": 6
+  },
+  {
+   "text": "Put the Xbox down. PS5: walk forward again. Back on the PS5?",
+   "secs": 10
+  },
+  {
+   "text": "Keyboard: W for a moment, then the PS5 stick again. Still fine?",
+   "secs": 10
+  },
+  {
+   "text": "Done. Tell Claude which steps worked.",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_pads-active-1.json",
+  "show": [
+   "pads"
+  ],
+  "probes": {
+   "pads": "local o = {}\nlocal function ax(v) if not v then return \"-\" end local ok, s = pcall(function() return string.format(\"%.2f,%.2f\", v.x, v.y) end) return ok and s or \"?\" end\npcall(function()\n  local inp = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\"):call(\"get_Input\")\n  o[#o + 1] = \"arisenL=\" .. ax(inp:call(\"get_AxisL\"))\nend)\npcall(function()\n  local m = sdk.get_managed_singleton(\"app.UserPadManager\")\n  local d = m:call(\"get_ActiveUserPad\"):call(\"getDevice\")\n  o[#o + 1] = string.format(\"active=%X %s\", d:get_address() & 0xFFFFFF, d:get_type_definition():get_name())\nend)\npcall(function()\n  local gp = sdk.get_native_singleton(\"via.hid.GamePad\"); local td = sdk.find_type_definition(\"via.hid.GamePad\")\n  local arr = sdk.call_native_func(gp, td, \"get_ConnectingDevices\")\n  for i = 0, arr:call(\"get_Count\") - 1 do\n    local dv = arr:call(\"get_Item\", i)\n    o[#o + 1] = string.format(\"d%d[%X] b=%X L=%s\", i, dv:get_address() & 0xFFFFFF, dv:call(\"get_Button\") or 0, ax(dv:call(\"get_AxisL\")))\n  end\nend)\nlocal R = _G.DPC_dbg and _G.DPC_dbg.R\nif R then o[#o + 1] = \"switches=\" .. tostring(R.tp.pa_n or 0) .. \" err=\" .. tostring(R.tp.pa_err) end\nreturn table.concat(o, \" \")"
+  }
+ }
+}

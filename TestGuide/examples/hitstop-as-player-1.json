@@ -1,0 +1,130 @@
+{
+ "id": "hitstop-as-player-1",
+ "title": "Hit-stop and big-kill slow motion as the player (A/B)",
+ "intro": "Fighter, Warrior or Thief main pawn is best (melee hits). Start as the Arisen. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "AS THE ARISEN (reference): kill these goblins with heavy hits. Feel the little freeze on each hit.",
+   "secs": 25,
+   "each_frame": "if not G_hs then\n  G_hs = { n = 0, sum = 0, max = 0, by = {} }\n  local wr = sdk.find_type_definition(\"app.WorkRate\")\n  local m = wr and wr:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m then\n    sdk.hook(m, function(args)\n      local ok, t = pcall(sdk.to_float, args[3])\n      if ok and type(t) == \"number\" then\n        G_hs.n = G_hs.n + 1; G_hs.sum = G_hs.sum + t; if t > G_hs.max then G_hs.max = t end\n        local k = G_stage or \"?\"\n        local b = G_hs.by[k] or { n = 0, sum = 0 }\n        b.n = b.n + 1; b.sum = b.sum + t; G_hs.by[k] = b\n      end\n    end, function(r) return r end)\n  end\nend\nG_stage = \"1 Arisen\"\n",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_hitstop",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_world_slow",
+     "value": false
+    },
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 10.0,
+     "angle": 0,
+     "still": false,
+     "tough": false
+    }
+   ]
+  },
+  {
+   "text": "Taking over your main pawn.",
+   "secs": 4,
+   "each_frame": "if not G_hs then\n  G_hs = { n = 0, sum = 0, max = 0, by = {} }\n  local wr = sdk.find_type_definition(\"app.WorkRate\")\n  local m = wr and wr:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m then\n    sdk.hook(m, function(args)\n      local ok, t = pcall(sdk.to_float, args[3])\n      if ok and type(t) == \"number\" then\n        G_hs.n = G_hs.n + 1; G_hs.sum = G_hs.sum + t; if t > G_hs.max then G_hs.max = t end\n        local k = G_stage or \"?\"\n        local b = G_hs.by[k] or { n = 0, sum = 0 }\n        b.n = b.n + 1; b.sum = b.sum + t; G_hs.by[k] = b\n      end\n    end, function(r) return r end)\n  end\nend\nG_stage = \"-\"\n",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "A, AS THE PAWN, game as it is: kill these goblins the same way.",
+   "secs": 25,
+   "each_frame": "if not G_hs then\n  G_hs = { n = 0, sum = 0, max = 0, by = {} }\n  local wr = sdk.find_type_definition(\"app.WorkRate\")\n  local m = wr and wr:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m then\n    sdk.hook(m, function(args)\n      local ok, t = pcall(sdk.to_float, args[3])\n      if ok and type(t) == \"number\" then\n        G_hs.n = G_hs.n + 1; G_hs.sum = G_hs.sum + t; if t > G_hs.max then G_hs.max = t end\n        local k = G_stage or \"?\"\n        local b = G_hs.by[k] or { n = 0, sum = 0 }\n        b.n = b.n + 1; b.sum = b.sum + t; G_hs.by[k] = b\n      end\n    end, function(r) return r end)\n  end\nend\nG_stage = \"2 pawn off\"\n",
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 10.0,
+     "angle": 0,
+     "still": false,
+     "tough": false
+    }
+   ]
+  },
+  {
+   "text": "B, AS THE PAWN, hit-stop as the player ON: same again. Does it feel like the Arisen's hits now?",
+   "secs": 25,
+   "each_frame": "if not G_hs then\n  G_hs = { n = 0, sum = 0, max = 0, by = {} }\n  local wr = sdk.find_type_definition(\"app.WorkRate\")\n  local m = wr and wr:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m then\n    sdk.hook(m, function(args)\n      local ok, t = pcall(sdk.to_float, args[3])\n      if ok and type(t) == \"number\" then\n        G_hs.n = G_hs.n + 1; G_hs.sum = G_hs.sum + t; if t > G_hs.max then G_hs.max = t end\n        local k = G_stage or \"?\"\n        local b = G_hs.by[k] or { n = 0, sum = 0 }\n        b.n = b.n + 1; b.sum = b.sum + t; G_hs.by[k] = b\n      end\n    end, function(r) return r end)\n  end\nend\nG_stage = \"3 pawn on\"\n",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "set",
+     "key": "pf_hitstop",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "pf_world_slow",
+     "value": true
+    },
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 10.0,
+     "angle": 0,
+     "still": false,
+     "tough": false
+    }
+   ]
+  },
+  {
+   "text": "Done: back to the Arisen, switches off. Tell Claude: did B feel like the Arisen? Too much? Anything odd? (Big-kill slow motion needs a big monster; try it later with the switch on.)",
+   "secs": 5,
+   "each_frame": "if not G_hs then\n  G_hs = { n = 0, sum = 0, max = 0, by = {} }\n  local wr = sdk.find_type_definition(\"app.WorkRate\")\n  local m = wr and wr:get_method(\"setHitStop(System.Single, System.Single, System.Boolean)\")\n  if m then\n    sdk.hook(m, function(args)\n      local ok, t = pcall(sdk.to_float, args[3])\n      if ok and type(t) == \"number\" then\n        G_hs.n = G_hs.n + 1; G_hs.sum = G_hs.sum + t; if t > G_hs.max then G_hs.max = t end\n        local k = G_stage or \"?\"\n        local b = G_hs.by[k] or { n = 0, sum = 0 }\n        b.n = b.n + 1; b.sum = b.sum + t; G_hs.by[k] = b\n      end\n    end, function(r) return r end)\n  end\nend\nG_stage = \"-\"\n",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "pf_hitstop",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_world_slow",
+     "value": false
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_hitstop-as-player-1.json",
+  "show": [
+   "hitstop",
+   "pf"
+  ],
+  "probes": {
+   "hitstop": "if not G_hs then return \"-\" end\nlocal parts = {}\nfor k, b in pairs(G_hs.by) do parts[#parts + 1] = string.format(\"%s: %d hits, avg %.3f s\", k, b.n, b.n > 0 and b.sum / b.n or 0) end\ntable.sort(parts)\nreturn table.concat(parts, \" | \")",
+   "pf": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R or not R.pf then return \"no DPC dev\" end\nlocal parts = {}\nfor k, n in pairs(R.pf.n) do parts[#parts + 1] = k .. \"=\" .. n end\ntable.sort(parts)\nreturn table.concat(parts, \" \") .. (R.pf.voice_err and (\" ERR \" .. R.pf.voice_err) or \"\") .. (R.pf.listener_err and (\" ERR \" .. R.pf.listener_err) or \"\")"
+  }
+ }
+}

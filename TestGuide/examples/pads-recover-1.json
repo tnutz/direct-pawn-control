@@ -1,0 +1,32 @@
+{
+ "id": "pads-recover-1",
+ "title": "Controllers back after a swap: does the Arisen answer the controller?",
+ "intro": "Game window in front, no co-op, not playing a pawn. Both controllers on. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev10"
+ },
+ "steps": [
+  {
+   "text": "Controller A only: move the left stick and press a few buttons. Does the Arisen move?",
+   "secs": 10
+  },
+  {
+   "text": "Controller B only: the same. Does the Arisen move?",
+   "secs": 10
+  },
+  {
+   "text": "Keyboard: W and Space. Then done; tell Claude what moved him.",
+   "secs": 6
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_pads-recover-1.json",
+  "show": [
+   "pads"
+  ],
+  "probes": {
+   "pads": "local o = {}\npcall(function() o[#o + 1] = \"mode=\" .. tostring(sdk.get_managed_singleton(\"app.UserInputManager\"):call(\"get_HIDInputMode\")) end)\npcall(function()\n  local inp = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\"):call(\"get_Input\")\n  o[#o + 1] = string.format(\"arisen=%X mag=%.2f\", inp:get_field(\"ButtonOnFlags\") or 0, inp:call(\"get_AxisMagnitudeL\") or 0)\nend)\npcall(function()\n  local gp = sdk.get_native_singleton(\"via.hid.GamePad\"); local td = sdk.find_type_definition(\"via.hid.GamePad\")\n  local arr = sdk.call_native_func(gp, td, \"get_ConnectingDevices\")\n  for i = 0, arr:call(\"get_Count\") - 1 do local dv = arr:call(\"get_Item\", i); o[#o + 1] = string.format(\"d%d=%X\", i, dv:call(\"get_Button\") or 0) end\nend)\nlocal R = _G.DPC_dbg and _G.DPC_dbg.R\nif R then o[#o + 1] = \"fixes=\" .. tostring(R.tp.pm_fixes or 0) .. \" coop=\" .. tostring(R.api_table.state().coop.active) end\nreturn table.concat(o, \" \")"
+  }
+ }
+}

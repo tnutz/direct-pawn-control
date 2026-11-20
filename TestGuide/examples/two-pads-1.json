@@ -1,0 +1,120 @@
+{
+ "id": "two-pads-1",
+ "title": "Two controllers in couch co-op",
+ "intro": "Needs TWO controllers connected and a second person (or two hands). Start as the Arisen, no co-op running. Press End (keyboard) to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "Turning on two controllers and starting co-op with your main pawn.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_buttons",
+     "value": 1
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_cam",
+     "value": 1
+    },
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: hold L1 + L3 on your controller until it says it is set, then let go. Press End when done.",
+   "wait": true
+  },
+  {
+   "text": "Each player moves on their own stick: Arisen on controller 1, pawn on controller 2. Does each stick move only its own character?",
+   "secs": 20
+  },
+  {
+   "text": "Buttons: both attack, jump and sprint. Does each controller only work its own character? (Mode 1: take out player 2's buttons)",
+   "secs": 25
+  },
+  {
+   "text": "Cameras: player 1 turns the camera with the right stick while player 2 also moves their right stick. Camera follows player 1 only?",
+   "secs": 15
+  },
+  {
+   "text": "Mode 2 (leave the Arisen's buttons to the game, joseau11's way): same button check. Different?",
+   "secs": 20,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_buttons",
+     "value": 2
+    }
+   ]
+  },
+  {
+   "text": "Mode 3 (player 1's controller only). joseau11 saw the main menu keep opening with this: if it does, press Esc / Circle and wait for the next step.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_buttons",
+     "value": 3
+    }
+   ]
+  },
+  {
+   "text": "Camera mode 2 (holds still while player 2 moves their right stick). Compare with before.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_buttons",
+     "value": 1
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_cam",
+     "value": 2
+    }
+   ]
+  },
+  {
+   "text": "Ending co-op and turning two controllers off. Tell Claude which button mode and camera mode worked, and anything odd.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads_cam",
+     "value": 1
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": false
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 4,
+  "out": "test_guide/result_two-pads-1.json",
+  "show": [
+   "pads"
+  ],
+  "probes": {
+   "pads": "local R = _G.DPC_dbg and _G.DPC_dbg.R\nif not R or not R.tp then return \"no DPC dev\" end\nlocal t = R.tp\nreturn string.format(\"pads=%d p1=%X p2=%X wait=%s on=%s p1b=%X p2b=%X game_b=%X masked=%d stick=%d cam=%d%s\", t.n or 0, t.p1 or 0, t.p2 or 0,\n  tostring(t.wait_release), tostring(R.tp_on()), (t.p1v and t.p1v.b) or 0, (t.p2v and t.p2v.b) or 0, t.game_b or 0,\n  t.masked or 0, t.stick_fixes or 0, t.cam_fixes or 0, t.err and (\" ERR \" .. t.err) or \"\")"
+  }
+ }
+}

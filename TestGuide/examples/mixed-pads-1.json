@@ -1,0 +1,60 @@
+{
+ "id": "mixed-pads-1",
+ "title": "Controllers: PlayStation (wired) + Xbox (wireless) - which controller the game hears (watch only)",
+ "intro": "Both controllers connected (PS5 wired, Xbox wireless), co-op OFF, playing the Arisen, standing somewhere open and safe (no enemies). This only records; it changes nothing. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "Get ready: put both controllers in reach. Press End to start.",
+   "wait": true
+  },
+  {
+   "text": "PS5 ONLY: hold its left stick forward. Xbox untouched.",
+   "secs": 8
+  },
+  {
+   "text": "Let go of everything.",
+   "secs": 3
+  },
+  {
+   "text": "XBOX ONLY: hold its left stick to the RIGHT. PS5 untouched.",
+   "secs": 8
+  },
+  {
+   "text": "Let go of everything.",
+   "secs": 3
+  },
+  {
+   "text": "BOTH: PS5 stick forward AND Xbox stick to the RIGHT at the same time.",
+   "secs": 8
+  },
+  {
+   "text": "Let go of everything.",
+   "secs": 3
+  },
+  {
+   "text": "XBOX ONLY: press A a few times (jump).",
+   "secs": 6
+  },
+  {
+   "text": "PS5 ONLY: press Cross a few times (jump).",
+   "secs": 6
+  },
+  {
+   "text": "Done. Tell Claude what the Arisen did in each step.",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_mixed-pads-1.json",
+  "show": [
+   "pads"
+  ],
+  "probes": {
+   "pads": "local o = {}\nlocal function ax(v) if not v then return \"-\" end local ok, s = pcall(function() return string.format(\"%.2f,%.2f\", v.x, v.y) end) return ok and s or \"?\" end\npcall(function() o[#o + 1] = \"mode=\" .. tostring(sdk.get_managed_singleton(\"app.UserInputManager\"):call(\"get_HIDInputMode\")) end)\npcall(function()\n  local inp = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\"):call(\"get_Input\")\n  o[#o + 1] = \"arisenL=\" .. ax(inp:call(\"get_AxisL\"))\nend)\npcall(function()\n  local gp = sdk.get_native_singleton(\"via.hid.GamePad\"); local td = sdk.find_type_definition(\"via.hid.GamePad\")\n  local m = sdk.call_native_func(gp, td, \"get_MergedDevice\")\n  if m then o[#o + 1] = string.format(\"merged b=%X L=%s\", m:call(\"get_Button\") or 0, ax(m:call(\"get_AxisL\"))) end\n  local li = sdk.call_native_func(gp, td, \"get_LastInputDevice\")\n  if li then o[#o + 1] = string.format(\"last=%X\", li:get_address() & 0xFFFFFF) end\n  local ok, uid = pcall(sdk.call_native_func, gp, td, \"get_LastInputDeviceUniqueId\")\n  if ok then o[#o + 1] = \"lastuid=\" .. tostring(uid) end\n  local arr = sdk.call_native_func(gp, td, \"get_ConnectingDevices\")\n  local n = arr:call(\"get_Count\")\n  o[#o + 1] = \"n=\" .. tostring(n)\n  for i = 0, n - 1 do\n    local dv = arr:call(\"get_Item\", i)\n    local tn = \"?\"\n    pcall(function() tn = dv:get_type_definition():get_full_name() end)\n    o[#o + 1] = string.format(\"d%d[%X %s] b=%X L=%s raw=%s\", i, dv:get_address() & 0xFFFFFF, tn, dv:call(\"get_Button\") or 0, ax(dv:call(\"get_AxisL\")), ax(dv:call(\"get_RawAxisL\")))\n  end\nend)\nreturn table.concat(o, \" \")"
+  }
+ }
+}

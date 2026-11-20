@@ -644,7 +644,7 @@
    "title": "Couch co-op (robot is player 2)",
    "caption": "One PC. One copy. Two players.",
    "brief": "Co-op starts on the main pawn; the robot is player 2 and now goes for the enemy and fights an Ogre that cannot die. Camera Distance must be on.",
-   "you": "You are the Arisen on keyboard and mouse: fight alongside, then walk away from player 2 so the camera pulls back to hold you both. Press End after about 25 seconds.",
+   "you": "You are the Arisen (controller, or keyboard and mouse): fight alongside, then walk away from player 2 so the camera pulls back to hold you both. Press End after about 25 seconds.",
    "setup": [
     {
      "cmd": "robot",

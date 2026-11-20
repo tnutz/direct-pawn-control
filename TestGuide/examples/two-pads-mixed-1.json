@@ -1,0 +1,70 @@
+{
+ "id": "two-pads-mixed-1",
+ "title": "Two-controller co-op with a PS5 (player 1, Arisen) and an Xbox (player 2, pawn)",
+ "intro": "Needs: DPC 0.9.170-dev13b, co-op OFF, playing the Arisen, your main pawn close by (this test brings it next to you if it is far), somewhere open with no enemies. Player 1 = wired PS5, player 2 = Xbox. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev13b"
+ },
+ "steps": [
+  {
+   "text": "Get ready: both controllers in hand. Press End to start.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_start_bring",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1 (PS5): walk a step. Then PLAYER 2 (Xbox): hold L3 + R3 (both stick clicks) until it says player 2 joined. (Holding L3 + R3 also moves this guide on; that's fine, keep holding.)",
+   "secs": 20
+  },
+  {
+   "text": "Both walk on your own stick: Arisen on the PS5, pawn on the Xbox. Each stick moves only its own character?",
+   "secs": 15
+  },
+  {
+   "text": "Both: attack, jump, sprint. Each controller only works its own character?",
+   "secs": 15
+  },
+  {
+   "text": "Cameras: player 1 turns the camera on the PS5 right stick while player 2 moves the Xbox right stick. Camera follows player 1 only?",
+   "secs": 12
+  },
+  {
+   "text": "PLAYER 2 (Xbox): cycle to another pawn (your usual switch combination). Does player 2 move the new pawn?",
+   "secs": 15
+  },
+  {
+   "text": "PLAYER 1 (PS5): hold L3 + R3 for 3 seconds until co-op ends.",
+   "secs": 12
+  },
+  {
+   "text": "PS5 walk, then Xbox walk: both drive the Arisen again (the one you use)?",
+   "secs": 12,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_start_bring",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude which steps worked and anything odd.",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_two-pads-mixed-1.json",
+  "show": [
+   "pads"
+  ],
+  "probes": {
+   "pads": "local o = {}\nlocal function ax(v) if not v then return \"-\" end local ok, s = pcall(function() return string.format(\"%.2f,%.2f\", v.x, v.y) end) return ok and s or \"?\" end\npcall(function()\n  local inp = sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\"):call(\"get_Input\")\n  o[#o + 1] = string.format(\"arisenL=%s arisenB=%X\", ax(inp:call(\"get_AxisL\")), inp:get_field(\"ButtonOnFlags\") or 0)\nend)\npcall(function()\n  local d = sdk.get_managed_singleton(\"app.UserPadManager\"):call(\"get_ActiveUserPad\"):call(\"getDevice\")\n  o[#o + 1] = string.format(\"active=%X\", d:get_address() & 0xFFFFFF)\nend)\nlocal R = _G.DPC_dbg and _G.DPC_dbg.R\nif R then\n  local t = R.tp\n  o[#o + 1] = string.format(\"coop=%s p1=%X p2=%X wait=%s switches=%d err=%s\", tostring(R.api_table.state().coop.active), (t.p1 or 0) & 0xFFFFFF, (t.p2 or 0) & 0xFFFFFF, tostring(t.wait_release), t.pa_n or 0, tostring(t.err or t.pa_err))\n  for _, d in ipairs(R.tp_devs()) do\n    local v = R.tp_read(d)\n    o[#o + 1] = string.format(\"[%X b=%X L=%.2f,%.2f]\", d:get_address() & 0xFFFFFF, v.b, v.lx, v.ly)\n  end\nend\nreturn table.concat(o, \" \")"
+  }
+ }
+}

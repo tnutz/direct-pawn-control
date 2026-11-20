@@ -1,0 +1,78 @@
+{
+ "id": "title-loop-D",
+ "title": "Quit-to-title crash hunt, variant D: sound parts off (unattended)",
+ "intro": "Runs by itself on the test bench.",
+ "requires": {
+  "DirectPawnControl": "0.9.170-dev11"
+ },
+ "steps": [
+  {
+   "text": "Variant D: sound parts off. Taking over the main pawn.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pf_sound_voice",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_space",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "pf_sound_listener",
+     "value": 0
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Robot fights as the pawn.",
+   "secs": 22,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch220000_00",
+     "count": 3,
+     "dist": 8.0,
+     "angle": 0,
+     "still": false,
+     "tough": false
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 20,
+     "fight": true
+    }
+   ]
+  },
+  {
+   "text": "Back to the Arisen; the bench then quits to the title menu.",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_title-loop-D.json",
+  "show": [
+   "active"
+  ],
+  "probes": {
+   "active": "local d = _G.DPC_dbg; return d and d.state.active"
+  }
+ }
+}
