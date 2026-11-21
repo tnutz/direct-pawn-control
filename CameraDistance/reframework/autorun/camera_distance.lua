@@ -20,7 +20,7 @@
 -- ==============================================================================
 
 local MOD_NAME = "Camera Distance & Framing"
-local MOD_VERSION = "2.9.9"
+local MOD_VERSION = "2.9.18"
 local CONFIG_FILE = "camera_distance_config.json"
 
 -- ==============================================================================
@@ -127,7 +127,7 @@ local BUILTIN_PRESETS = {
 }
 
 local DEFAULT_CONFIG = {
-    config_version = 3,
+    config_version = 4,               -- 2.9.18: 4 (files from before start fresh except camera feel and keys)
     enabled = true,
     active_preset_index = 1,       -- 2.9.4: a fresh install starts on the vanilla camera
 
@@ -168,6 +168,20 @@ local DEFAULT_CONFIG = {
     suspend_in_menus = true,
     suspend_in_cutscenes = true,
     suspend_when_aiming = true,
+    coop_frame_climbing = true,      -- 2.9.13: keep the co-op framing while climbing a monster
+    coop_calm = true,                -- 2.9.17: co-op camera moves no faster than the two speeds below
+    coop_max_pull_speed = 3.0,       -- 2.9.17: metres a second the co-op pull-back may change
+    coop_max_slide_speed = 3.0,      -- 2.9.17: metres a second the co-op sideways slide may move
+    coop_crane_rate = 10.0,          -- 2.9.17: degrees a second the crane may rise
+    coop_crane = true,               -- 2.9.15: co-op: rise and look down when a wall pushes the camera in
+    coop_crane_per_m = 6.0,          -- 2.9.15: degrees of extra look-down per metre the wall took away
+    coop_crane_max = 60.0,           -- 2.9.15: most extra look-down (degrees). 2.9.16: 25 (was 35). 2.9.18-dev5: 60, the tester's own ("whatever I had crane set at is what I want defaults to be")
+    coop_crane_view_max = 60.0,      -- 2.9.16: the crane never takes the view past this look-down (degrees). 2.9.18-dev5: 60 (the tester's own)
+    coop_narrow_pull = 0.4,          -- 2.9.14: share of the co-op pull-back used on the Narrow camera (caves, corridors)
+    coop_narrow_fov = 8.0,           -- 2.9.14: degrees wider view on the Narrow camera in co-op instead
+    camera_log = true,               -- 2.9.14: log the game camera kinds seen (data/camera_types_log.json)
+    coop_climb_extra = 6.0,          -- 2.9.13-dev2: metres further back while climbing in co-op (plus the co-op pull-back). dev6: 6 (the tester: 6 matches the co-op camera)
+    climb_extra = 0.0,               -- 2.9.13-dev2: metres further back while climbing, always
 
     -- Quick-Zoom & Hotkeys
     zoom_step = 0.75,
@@ -213,12 +227,20 @@ local DEFAULT_CONFIG = {
     coop_ahead_per_m = 0.1,        -- 2.9.9 (joseau11): also pull back by this much per metre player 2 runs ahead of the Arisen (0 = off; he uses about 0.35, the tester prefers 0.1)
     coop_aim_fov_max = 50.0,       -- bow zoom limit: widest view while aiming (real vertical FOV; normal is 36)
     coop_aim_back_max = 4.0,       -- 2.8.0: bow zoom limit: furthest the aim camera may pull back (m)
-    coop_aim_zoom_limit = false,   -- 2.7.0: in co-op, widen the bow-aim zoom just enough to keep player 2's pawn in view
+    coop_aim_zoom_limit = true,    -- 2.7.0: in co-op, widen the bow-aim zoom just enough to keep player 2's pawn in view
     safe_169 = false,              -- 2.9.5: off by default (an ultrawide player wants the whole screen used). 2.9.3: on screens wider than 16:9, frame co-op and place the marker for the middle
                                    -- 16:9 (so a 16:9 recording shows both players); "auto", true or false
     coop_marker = true,            -- 2.6.0: edge marker pointing at player 2's pawn while he is off screen
     coop_arisen_fill = 0.45,       -- 2.5.0: how far off-centre the Arisen may be pushed (share of the half-screen; 0 = never)
     coop_fill = 0.8,               -- 2.4.0: keep both characters inside this share of the screen
+    -- 2.9.12: "classic" co-op camera (the r/DragonsDogma "DD2 couch co op prototype" look): centred on the whole
+    -- group, seen from higher up, pulled back even with everyone together; "follow" = the camera stays player 1's
+    -- and slides only as much as it must (2.4 - 2.9.11)
+    coop_style = "classic",        -- 2.9.12: default from the tester's co-op tests (kept both players on screen well)
+    coop_classic_pitch = 5.0,     -- degrees added to the downward look (the prototype looks steeply down)
+    coop_classic_extra = 6.0,      -- metres pulled back with everyone together
+    coop_classic_height = 1.5,     -- metres raised
+    coop_classic_fill = 0.7,       -- share of the screen the group may use
 }
 
 local function deep_copy(orig)
@@ -249,8 +271,29 @@ local function save_config()
     end
 end
 
+-- 2.9.18 (the tester: "make sure the settings someone had from old version of the mod don't mess up the new much much
+-- better defaults ... maintain key bindings where they're applicable but come in fresh with most settings"). A file
+-- from before 2.9.18 (config_version < 4) keeps only the player's own camera feel and keys; everything about co-op,
+-- climbing and the rest starts from the new defaults. The old file is kept as camera_distance_config.before_2.9.18.json.
+local state_fresh_note = false
+local KEEP_FROM_OLD = {
+    enabled = true, hotkeys = true, enable_keyboard_hotkeys = true, enable_mousewheel_zoom = true,
+    mousewheel_modifier_key = true, enable_gamepad_combos = true, zoom_step = true,
+    active_preset_index = true, custom_presets = true,
+    distance = true, extra_distance = true, height_y = true, shoulder_x = true, shoulder_side = true,
+    pitch_deg = true, forward_lead = true, fov_enabled = true, fov_value = true,
+    use_combat_distance = true, combat_distance = true,
+    rts_mode = true, rts_distance = true, rts_extra_distance = true, rts_forward_lead = true, rts_height_y = true, rts_pitch_deg = true,
+}
 local function load_config()
     local loaded = json.load_file(CONFIG_FILE)
+    if type(loaded) == "table" and (loaded.config_version or 0) < 4 and next(loaded) ~= nil then
+        pcall(json.dump_file, "camera_distance_config.before_2.9.18.json", loaded)
+        local kept = {}
+        for k, v in pairs(loaded) do if KEEP_FROM_OLD[k] or k == "config_version" then kept[k] = v end end
+        loaded = kept
+        state_fresh_note = true
+    end
     if type(loaded) == "table" then
         local is_v1 = (loaded.distance ~= nil and loaded.use_combat_distance == nil and loaded.hotkeys == nil)
         local is_pre_v2_1 = (loaded.config_version == nil or loaded.config_version < 2)
@@ -278,7 +321,8 @@ local function load_config()
             config.config_version = 3
             save_config()
         end
-        config.config_version = 3
+        config.config_version = 4
+        if state_fresh_note then save_config() end
     end
 end
 
@@ -488,15 +532,29 @@ end
 -- always false. The bow / magick bow aim is camera control type 7 (app.CameraDefine.ControlType.Aim) on the
 -- main camera controller (seen live in DirectPawnControl's archer-aim-1 probe).
 local CONTROL_TYPE_AIM = 7
-local function is_player_aiming(main_ctrl)
-    if not main_ctrl then return false end
+local CONTROL_TYPE_CLIMBING = 6
+local function control_type(main_ctrl)
+    if not main_ctrl then return nil end
     local ok, ct = pcall(main_ctrl.call, main_ctrl, "get_CurrentControlType")
-    if not ok then return false end
+    if not ok then return nil end
     if type(ct) == "userdata" then
         local ok_v, v = pcall(ct.get_field, ct, "value__")
         ct = ok_v and v or nil
     end
-    return ct == CONTROL_TYPE_AIM
+    return ct
+end
+-- 2.9.14: which game cameras the co-op framing works on (the tester agreed 2026-11-21). app.CameraDefine.ControlType;
+-- what each is for is inferred from its name until the camera log (below) shows them in play.
+local CT_NAMES = { [-1] = "None", [0] = "Player", [1] = "Usually", [2] = "Combat", [3] = "Narrow", [4] = "AirShip",
+    [5] = "Notice", [6] = "Climbing", [7] = "Aim", [8] = "Ballista", [9] = "Follow", [10] = "CinematicAction",
+    [11] = "Watch", [12] = "InsertView", [13] = "Talk", [14] = "Requirement", [15] = "Shot", [16] = "CutScene",
+    [17] = "CutSceneFPS", [18] = "UserEdit", [19] = "Photo" }
+local CT_FRAME = { [0] = true, [1] = true, [2] = true, [3] = true, [6] = true, [9] = true } -- framing in co-op
+local CT_MARKER = { [0] = true, [1] = true, [2] = true, [3] = true, [5] = true, [6] = true, [7] = true, [8] = true,
+    [9] = true, [15] = true } -- the off-screen marker in co-op
+local CT_NARROW = 3
+local function is_player_aiming(main_ctrl)
+    return control_type(main_ctrl) == CONTROL_TYPE_AIM
 end
 
 local function check_suspend_state(player, cam_mgr, main_ctrl)
@@ -513,6 +571,14 @@ local function check_suspend_state(player, cam_mgr, main_ctrl)
     -- Native MainCameraController:get_CurrentPlayerCamera() returns false during cutscenes, talks, & non-player cameras!
     if config.suspend_in_cutscenes and main_ctrl then
         local ok_pc, is_pl_cam = pcall(function() return main_ctrl:call("get_CurrentPlayerCamera") end)
+        -- 2.9.13: climbing a monster (control type 6, app.CameraDefine.ControlType.Climbing) is a player camera too
+        -- in co-op: suspended here, the co-op framing let go of player 2 while player 1 climbed (the tester, 2026-11-20).
+        -- 2.9.14: likewise every camera in CT_FRAME (normal, combat, narrow, climbing, following an NPC)
+        local ct = control_type(main_ctrl)
+        if ok_pc and is_pl_cam == false and state.coop_active and ct and CT_FRAME[ct]
+           and (ct ~= CONTROL_TYPE_CLIMBING or config.coop_frame_climbing ~= false) then
+            is_pl_cam = true
+        end
         if ok_pc and is_pl_cam == false then
             -- 2.9.8: the bow aim camera also answers "not the player camera", so this check caught aiming first
             -- and the status read "Event/Talk" while aiming. Same suspension, the right name.
@@ -668,7 +734,30 @@ local function lerp(a, b, t)
 end
 
 -- DirectPawnControl writes reframework/data/DPC_coop.json when couch co-op starts/stops.
+-- 2.9.18-dev3: the Rift check runs 10 x a second (it rode on the 1 s co-op poll, and the tester saw "a bit of time when first
+-- entering the rift where the camera was pulled back and glitchy"); on entering, the co-op pull-back is dropped at once
+local function rift_check(now)
+    if now < (state.rift_next or 0) then return end
+    state.rift_next = now + 0.1
+    local was = state.in_rift
+    state.in_rift = false
+    pcall(function()
+        local fm = sdk.get_managed_singleton("app.FacilityManager")
+        local rs = fm and fm:get_field("RimStateNow")
+        if type(rs) == "userdata" then rs = rs:get_field("value__") end
+        rs = tonumber(rs)
+        state.in_rift = rs ~= nil and rs ~= 0 and rs ~= 15
+    end)
+    if state.in_rift then
+        state.coop_active = false
+        if not was then state.coop_extra, state.coop_shift_x, state.coop_shift_z = 0.0, 0.0, 0.0 end
+    elseif was then
+        state.coop_next_poll = 0 -- back out: read DPC's co-op status straight away
+    end
+end
+
 local function poll_coop_status(now)
+    pcall(rift_check, now)
     if now < state.coop_next_poll then return end
     -- json.load_file logs an error for a missing file; back off when DPC isn't installed
     state.coop_next_poll = now + ((state.coop_fail > 3) and 30.0 or 1.0)
@@ -678,18 +767,103 @@ local function poll_coop_status(now)
         state.coop_active = d.active == true
         state.coop_idx = tonumber(d.pawn_idx) or 0
         state.coop_name = tostring(d.pawn_name or "")
+        -- 2.9.18-dev2 (the tester: "get rid of the co-op camera in the rift"): the Rift is the game's "Rim"
+        -- (app.FacilityManager.RimStateNow: None 0 / End 15 outside it). DPC keeps co-op on; the camera is the normal one there.
+        if state.in_rift then state.coop_active = false end
+        state.coop_anchor_idx = tonumber(d.anchor_idx) or -1 -- 2.9.10: DPC 0.9.171, both players on pawns: the camera's pawn
+        state.coop_players = {} -- 2.9.11: DPC 0.9.172, players 3+ (pawn indices)
+        state.coop_player_names, state.coop_player_nums = {}, {} -- 2.9.18: DPC 0.9.172-dev36, for their edge markers
+        if type(d.players) == "table" then
+            for i, v in ipairs(d.players) do
+                if tonumber(v) then
+                    state.coop_players[#state.coop_players + 1] = tonumber(v)
+                    state.coop_player_names[#state.coop_players] = type(d.player_names) == "table" and tostring(d.player_names[i] or "") or ""
+                    state.coop_player_nums[#state.coop_players] = type(d.player_nums) == "table" and tonumber(d.player_nums[i]) or (#state.coop_players + 2)
+                end
+            end
+        end
     else
         state.coop_fail = state.coop_fail + 1
         state.coop_active = false
     end
 end
 
-local function get_coop_pawn_position()
+-- 2.4.0 / 2.9.11 co-op frustum solver, for any number of other players. The view direction belongs to player 1, so
+-- the free variables are how far back the camera sits (need, along the ground) and a sideways slide cs (the native
+-- aim-point shift, which puts player 1 off-centre by cs; he may use up to arisen_fill of the half-screen, the others
+-- up to fill). Each other player must be (a) far enough ahead that their sideways offset fits the horizontal FOV:
+-- |side - cs| <= k * (depth + need), and (b) far enough ahead that their feet fit the vertical FOV (min_front).
+-- Result: the smallest need with a cs that fits everyone; cs is the least slide inside that window.
+-- rel: list of { dx, dz (from player 1), dy (player 1's height minus theirs) }.
+local function coop_solve(rel, o)
+    local fx, fz = o.fx, o.fz
+    local rx, rz = fz, -fx
+    local tan_v = math.tan(math.rad(o.vfov) * 0.5)
+    local k = math.max(0.2, tan_v * o.aspect * o.fill)
+    local kA = math.max(0.0, tan_v * o.aspect * math.min(o.fill, o.arisen_fill))
+    local pitch = math.atan(o.sinp, o.cosp)
+    local lim_v = math.max(0.15, math.tan(pitch + math.atan(tan_v * o.fill)))
+    local pts = {}
+    local wide_side, max_depth = 0.0, -1e9
+    for _, p in ipairs(rel) do
+        local side = p.dx * rx + p.dz * rz         -- + = to the right of player 1 on screen
+        local depth = p.dx * fx + p.dz * fz        -- + = farther from the camera than player 1
+        pts[#pts + 1] = { side = side, depth = depth, dy = p.dy or 0.0 }
+        if math.abs(side) > math.abs(wide_side) then wide_side = side end
+        if depth > max_depth then max_depth = depth end
+    end
+    local need0 = o.along0 * o.cosp
+    local need = need0
+    for _ = 1, 3 do
+        local n2 = need0
+        for _, p in ipairs(pts) do
+            local cam_h = 1.5 + (need / o.cosp) * o.sinp + p.dy
+            local min_front = math.min(40.0, math.max(2.0, cam_h / lim_v))
+            n2 = math.max(n2, min_front - p.depth, (math.abs(p.side) - k * p.depth) / (kA + k))
+        end
+        need = n2
+    end
+    -- one slide for everyone: the window where every player fits; widen need until it is not empty
+    local cs
+    for _ = 1, 80 do
+        local lo, hi = -kA * need, kA * need
+        for _, p in ipairs(pts) do
+            local r = k * (p.depth + need)
+            lo = math.max(lo, p.side - r)
+            hi = math.min(hi, p.side + r)
+        end
+        if lo <= hi + 1e-6 then -- (one player sits on the edge exactly: rounding)
+            if lo > hi then lo, hi = hi, lo end
+            cs = math.max(lo, math.min(hi, 0.0))
+            break
+        end
+        need = need + 0.5
+    end
+    cs = cs or 0.0
+    local extra = math.min(o.cap, math.max(0.0, need / o.cosp - o.along0))
+    local ahead = max_depth - (o.start_dist or 4.0)
+    if ahead > 0 and (o.ahead_per_m or 0) > 0 then
+        extra = math.min(o.cap, math.max(extra, ahead * o.ahead_per_m))
+    end
+    return { sx = rx * cs, sz = rz * cs, cs = cs, extra = extra, need = need, need0 = need0, side = wide_side, depth = max_depth }
+end
+
+local function get_coop_pawn_position(idx)
+    -- 2.9.10: DPC 0.9.171, player 2 on the Arisen: pawn index -1 = the Arisen
+    if (idx or state.coop_idx) == -1 then
+        local ok, pos = pcall(function()
+            local cm = sdk.get_managed_singleton("app.CharacterManager")
+            if not cm then return nil end
+            local ar = cm:call("get_ManualPlayer")
+            return ar and ar:call("get_Transform"):call("get_Position")
+        end)
+        return ok and pos or nil
+    end
     local pm = sdk.get_managed_singleton("app.PawnManager")
     if not pm then return nil end
     local ok, pos = pcall(function()
         local list = pm:call("get_PawnCharacterList")
-        local chara = list and list:call("get_Item", state.coop_idx)
+        local chara = list and list:call("get_Item", idx or state.coop_idx)
         local xf = chara and chara:call("get_Transform")
         return xf and xf:call("get_Position")
     end)
@@ -719,6 +893,8 @@ end
 
 re.on_script_reset(function()
     reset_camera_to_vanilla()
+    -- 2.9.13: put the climbing camera's base distance back (the setting object lives as long as the game)
+    if state.climb_set and state.climb_base then pcall(function() state.climb_set:set_field("_BaseDistance", state.climb_base) end) end
 end)
 
 -- Per-frame camera logic. v2.1 ran this from re.on_frame (the render thread) while it called into the game
@@ -844,6 +1020,28 @@ local function camera_tick()
     local player_pos = get_player_position(player)
 
     -- Check Suspend & Combat Contexts
+    -- 2.9.14 camera log: every game camera kind seen, how long, in co-op or not (data/camera_types_log.json)
+    pcall(function()
+        local ct = control_type(main_ctrl)
+        local now = os.clock()
+        if ct ~= state.ctype then
+            local L = state.ct_log
+            if not L then L = { seen = {}, entries = {} }; state.ct_log = L end
+            if state.ctype ~= nil and state.ct_t0 then
+                local e = { kind = CT_NAMES[state.ctype] or tostring(state.ctype), secs = math.floor((now - state.ct_t0) * 10 + 0.5) / 10, coop = state.ct_coop == true, at = os.date("%H:%M:%S") }
+                L.entries[#L.entries + 1] = e
+                if #L.entries > 300 then table.remove(L.entries, 1) end
+                local sn = L.seen[e.kind] or { count = 0, secs = 0, coop = 0 }
+                sn.count, sn.secs = sn.count + 1, sn.secs + e.secs
+                if e.coop then sn.coop = sn.coop + 1 end
+                L.seen[e.kind] = sn
+                if config.camera_log ~= false then json.dump_file("camera_types_log.json", L) end
+            end
+            state.ctype, state.ct_t0, state.ct_coop = ct, now, state.coop_active
+        elseif state.coop_active then
+            state.ct_coop = true
+        end
+    end)
     state.is_suspended, state.suspend_reason = check_suspend_state(player, cam_mgr, main_ctrl)
     state.aim_now = is_player_aiming(main_ctrl)
     if not state.aim_now and not (config.fov_enabled) then
@@ -889,10 +1087,26 @@ local function camera_tick()
     poll_coop_status(now)
     local target_coop_extra, target_sx, target_sz = 0.0, 0.0, 0.0
     if config.coop_framing and state.coop_active and not state.is_suspended and player_pos then
+        -- 2.9.10: with both players on pawns the camera follows player 1's pawn, not the Arisen: frame from there
+        local player_pos = ((state.coop_anchor_idx or -1) >= 0 and get_coop_pawn_position(state.coop_anchor_idx)) or player_pos
+        -- 2.9.10: DPC 0.9.171, player 2 on the Arisen: pawn_idx -1 = the other player is the Arisen
+        -- 2.9.11: every other player (DPC 0.9.172 players 3+ in "players"), not only player 2
+        local others = {}
         local pp = get_coop_pawn_position()
-        if pp then
-            local dx, dz = pp.x - player_pos.x, pp.z - player_pos.z
-            local sep = math.sqrt(dx * dx + dz * dz)
+        if pp then others[#others + 1] = pp end
+        for _, pi in ipairs(state.coop_players or {}) do
+            local q = get_coop_pawn_position(pi)
+            if q then others[#others + 1] = q end
+        end
+        state.coop_n = #others + 1
+        if #others > 0 then
+            local sep, cx, cz = 0.0, 0.0, 0.0
+            for _, o in ipairs(others) do
+                local ddx, ddz = o.x - player_pos.x, o.z - player_pos.z
+                sep = math.max(sep, math.sqrt(ddx * ddx + ddz * ddz))
+                cx, cz = cx + ddx, cz + ddz
+            end
+            local dx, dz = cx / #others, cz / #others   -- toward the middle of the others (the fallback's shift)
             state.coop_sep = sep
             local fx, fz = nil, nil
             if config.coop_fit ~= false then
@@ -905,15 +1119,6 @@ local function camera_tick()
                 end)
             end
             if sep < 80.0 and fx then
-                -- 2.4.0 frustum solver. The view direction belongs to player 1, so the only free variable is how
-                -- far back the camera sits. Each character must be inside the view pyramid: far enough ahead of the
-                -- camera that (a) its sideways offset fits the horizontal FOV and (b) its feet fit the vertical FOV.
-                -- Take the smallest pull-back that satisfies both. Ahead and near the centre line needs none.
-                -- The 2.2/2.3 sideways joint shift is not used: it only reached the screen on some frames (that
-                -- was the nametag flicker) and not at all with the 2.2.1 switch.
-                local rx, rz = fz, -fx
-                local side = dx * rx + dz * rz             -- + = pawn to the right of the Arisen on screen
-                local depth = dx * fx + dz * fz            -- + = pawn farther from the camera than the Arisen
                 local vfov, aspect, cosp, sinp = 36.0, state.coop_aspect or (16.0 / 9.0), 1.0, 0.0
                 pcall(function()
                     local cam = sdk.get_primary_camera()
@@ -937,11 +1142,6 @@ local function camera_tick()
                     if safe == "auto" then safe = aspect > 1.9 end
                     if safe and aspect > 16.0 / 9.0 then aspect = 16.0 / 9.0 end
                 end
-                local fill = config.coop_fill or 0.8
-                local tan_v = math.tan(math.rad(vfov) * 0.5)
-                local k = math.max(0.2, tan_v * aspect * fill)
-                local kA = math.max(0.0, tan_v * aspect * math.min(fill, config.coop_arisen_fill or 0.45))
-                local pitch = math.atan(sinp, cosp)
                 local base = 5.5
                 pcall(function()
                     local ctrl = cam_mgr:call("getMainCameraController", 0)
@@ -949,36 +1149,49 @@ local function camera_tick()
                     local bd = cur and cur:call("get_BaseDistance")
                     if type(bd) == "number" and bd > 0.5 then base = bd end
                 end)
-                local along0 = base + state.cur_native_dist          -- camera distance without the co-op extra
-                local need = along0 * cosp
-                local lim_v = math.max(0.15, math.tan(pitch + math.atan(tan_v * fill)))
-                local dy = player_pos.y - pp.y                       -- + = pawn stands lower than the Arisen
-                local min_front = 0.0
-                for _ = 1, 3 do
-                    local cam_h = 1.5 + (need / cosp) * sinp + dy    -- camera height above the pawn's feet
-                    min_front = math.min(40.0, math.max(2.0, cam_h / lim_v))
-                    -- 2.5.0: the camera may also slide sideways by cs (native aim-point shift), which puts the
-                    -- Arisen off-centre by cs. He may use up to kA of the half-screen, the pawn up to k:
-                    --   |cs| <= kA * need   and   |side - cs| <= k * (depth + need)
-                    -- so the smallest pull-back that has a solution is (|side| - k * depth) / (kA + k).
-                    need = math.max(along0 * cosp, min_front - depth, (math.abs(side) - k * depth) / (kA + k))
+                local rel = {}
+                for _, o in ipairs(others) do
+                    rel[#rel + 1] = { dx = o.x - player_pos.x, dz = o.z - player_pos.z, dy = player_pos.y - o.y }
                 end
-                local cs = math.max(0.0, math.abs(side) - k * (depth + need))   -- least shift that still fits the pawn
-                cs = math.min(cs, kA * need)
-                if side < 0 then cs = -cs end
-                target_sx, target_sz = rx * cs, rz * cs
-                state.coop_cs = cs
-                target_coop_extra = math.min(config.coop_fit_cap or 30.0, math.max(0.0, need / cosp - along0))
-                local ahead = depth - (config.coop_start_dist or 4.0)
-                if ahead > 0 and (config.coop_ahead_per_m or 0) > 0 then
-                    target_coop_extra = math.min(config.coop_fit_cap or 30.0, math.max(target_coop_extra, ahead * config.coop_ahead_per_m))
+                local classic = config.coop_style == "classic"
+                local r
+                if classic then
+                    -- 2.9.12: aim at the middle of everyone; nobody may sit off-centre more than the others
+                    local all = { player_pos }
+                    for _, o in ipairs(others) do all[#all + 1] = o end
+                    local mx, my, mz = 0.0, 0.0, 0.0
+                    for _, q in ipairs(all) do mx, my, mz = mx + q.x, my + q.y, mz + q.z end
+                    mx, my, mz = mx / #all, my / #all, mz / #all
+                    local relc = {}
+                    for _, q in ipairs(all) do relc[#relc + 1] = { dx = q.x - mx, dz = q.z - mz, dy = my - q.y } end
+                    local ce = config.coop_classic_extra or 6.0
+                    r = coop_solve(relc, {
+                        fx = fx, fz = fz, vfov = vfov, aspect = aspect, cosp = cosp, sinp = sinp,
+                        fill = config.coop_classic_fill or 0.7, arisen_fill = 0.0,
+                        along0 = base + state.cur_native_dist + ce, cap = config.coop_fit_cap or 30.0,
+                        start_dist = config.coop_start_dist or 4.0, ahead_per_m = 0,
+                    })
+                    r.extra = math.min(config.coop_fit_cap or 30.0, r.extra + ce)
+                    r.sx, r.sz, r.cs = mx - player_pos.x, mz - player_pos.z, 0.0
+                    target_pitch_deg = target_pitch_deg + (config.coop_classic_pitch or 5.0)
+                    target_height_y = target_height_y + (config.coop_classic_height or 1.5)
+                else
+                    r = coop_solve(rel, {
+                        fx = fx, fz = fz, vfov = vfov, aspect = aspect, cosp = cosp, sinp = sinp,
+                        fill = config.coop_fill or 0.8, arisen_fill = config.coop_arisen_fill or 0.45,
+                        along0 = base + state.cur_native_dist, cap = config.coop_fit_cap or 30.0,
+                        start_dist = config.coop_start_dist or 4.0, ahead_per_m = config.coop_ahead_per_m or 0,
+                    })
                 end
-                state.coop_fit_dbg = string.format("across %.1f  ahead %.1f  camera needs %.1f m behind the Arisen (normal %.1f)  slide %.1f  fov %.0f  aspect %.2f",
-                    side, depth, need, along0 * cosp, cs, vfov, aspect)
+                target_sx, target_sz = r.sx, r.sz
+                state.coop_cs = r.cs
+                target_coop_extra = r.extra
+                state.coop_fit_dbg = string.format((classic and "classic, " or "") .. "%d players  widest across %.1f  ahead %.1f  camera needs %.1f m behind player 1 (normal %.1f)  slide %.1f  fov %.0f  aspect %.2f",
+                    #others + 1, r.side, r.depth, r.need, r.need0, r.cs, vfov, aspect)
             elseif sep < 80.0 then
                 target_coop_extra = math.min(config.coop_max_extra or 10.0,
                     math.max(0.0, (sep - (config.coop_start_dist or 4.0)) * (config.coop_zoom_per_m or 0.45)))
-                local c = config.coop_center or 0.5
+                local c = (config.coop_style == "classic") and (#others / (#others + 1)) or (config.coop_center or 0.5)
                 target_sx, target_sz = dx * c, dz * c
                 local sl = math.sqrt(target_sx * target_sx + target_sz * target_sz)
                 local mx = config.coop_max_shift or 12.0
@@ -1003,14 +1216,32 @@ local function camera_tick()
     state.cur_forward_lead = lerp(state.cur_forward_lead, target_forward_lead, alpha)
     -- 2.4.1: pull back fast (someone is leaving the frame), come back in slowly (no pumping while he weaves)
     local coop_alpha = alpha
+    -- 2.9.14 Narrow camera (caves, corridors): the game pushes the camera in at walls, so a full pull-back only
+    -- fights the collision; pull back a share of it (coop_narrow_pull) and widen the view a little instead
+    -- (coop_narrow_fov, applied with the co-op FOV below).
+    state.narrow = state.coop_active and state.ctype == CT_NARROW
+    if state.narrow then target_coop_extra = target_coop_extra * (config.coop_narrow_pull or 0.4) end
     if state.initialized and dt then
         local sp = (target_coop_extra > state.coop_extra) and (config.coop_out_speed or 14.0) or (config.coop_in_speed or 2.5)
         coop_alpha = 1.0 - math.exp(-sp * dt)
     end
+    -- 2.9.17 calmer co-op camera (the tester: "the camera should probably give up and bookmark any player that would cause
+    -- the camera to suddenly have to move ... favor safer more cinematic movements"): the pull-back and the sideways
+    -- slide change by at most coop_max_pull_speed / coop_max_slide_speed metres a second. A player who runs off faster
+    -- than that leaves the frame for a moment and gets the edge marker instead of the camera lurching after him.
+    local prev_extra, prev_sx, prev_sz = state.coop_extra, state.coop_shift_x, state.coop_shift_z
     state.coop_extra = lerp(state.coop_extra, target_coop_extra, coop_alpha)
     local shift_alpha = (state.initialized and dt) and (1.0 - math.exp(-(config.coop_shift_speed or 8.0) * dt)) or alpha
     state.coop_shift_x = lerp(state.coop_shift_x, target_sx, shift_alpha)
     state.coop_shift_z = lerp(state.coop_shift_z, target_sz, shift_alpha)
+    if dt and dt > 0 and config.coop_calm ~= false then
+        local mp = (config.coop_max_pull_speed or 3.0) * dt
+        state.coop_extra = prev_extra + math.max(-mp, math.min(mp, state.coop_extra - prev_extra))
+        local ms = (config.coop_max_slide_speed or 3.0) * dt
+        local dx, dz = state.coop_shift_x - prev_sx, state.coop_shift_z - prev_sz
+        local dl = math.sqrt(dx * dx + dz * dz)
+        if dl > ms then state.coop_shift_x, state.coop_shift_z = prev_sx + dx / dl * ms, prev_sz + dz / dl * ms end
+    end
 
     -- 1. Apply Native DistanceOffset to app.CameraManager
     pcall(function()
@@ -1045,6 +1276,11 @@ local function camera_tick()
                     target_fov = target_fov + config.combat_fov_offset
                 end
                 state.cur_fov = lerp(state.cur_fov, target_fov, alpha)
+                pri_cam:call("set_FOV", state.cur_fov)
+                state.fov_was_overridden = true
+            elseif state.narrow and not state.is_suspended and (config.coop_narrow_fov or 0) > 0 and state.vanilla_fov then
+                -- 2.9.14: co-op in a Narrow camera (caves): a little wider instead of the full pull-back
+                state.cur_fov = lerp(state.fov_was_overridden and state.cur_fov or state.vanilla_fov, state.vanilla_fov + config.coop_narrow_fov, alpha)
                 pri_cam:call("set_FOV", state.cur_fov)
                 state.fov_was_overridden = true
             elseif state.fov_was_overridden and state.vanilla_fov then
@@ -1082,6 +1318,50 @@ local function install_camera_controller_hooks()
     -- that amount with the view direction unchanged, and everything in the frame sees one pose
     -- (TestGuide cam-shift-2, variant H: +3 m on _Pog -> camera +3.00 m, stable, no accumulation).
     local root_td = sdk.find_type_definition("app.PlayerCameraControllerRoot")
+    -- 2.9.13-dev2: the climbing camera (app.ClimbingCameraController, its own controller) ignores DistanceOffset and
+    -- the player controller's _Pog: in coop-cam-2 it stayed tight on player 1 climbing a cyclops. Its distance is
+    -- ClimbingCameraSetting._BaseDistance (damped by the controller), so while climbing in co-op that is raised by
+    -- the co-op pull-back plus coop_climb_extra; climb_extra applies outside co-op too. Kept as the game's value plus
+    -- the extra every update, put back on Reset Scripts.
+    -- 2.9.13-dev5: coop-climb-2: at the start of a climb the extra distance did not show until the slider was moved
+    -- (then it followed). The climbing camera seems to take the setting's distance when it starts and re-read it
+    -- only when it changes. So the distance is also set before onStart / onTransition, and on the first frames of
+    -- a new climb it is nudged (+0.05 m for a frame) so the camera re-reads it, as moving the slider did.
+    local climb_td = sdk.find_type_definition("app.ClimbingCameraController")
+    local function climb_apply(o)
+        local st = o and o:get_field("_Setting")
+        if not st then return end
+        local addr = st:get_address()
+        if state.climb_addr ~= addr then
+            if state.climb_set and state.climb_base then pcall(function() state.climb_set:set_field("_BaseDistance", state.climb_base) end) end
+            state.climb_set, state.climb_addr, state.climb_base = st, addr, st:get_field("_BaseDistance")
+        end
+        local extra = 0.0
+        if config.enabled then
+            extra = config.climb_extra or 0.0
+            if state.coop_active and config.coop_frame_climbing ~= false then
+                extra = extra + (config.coop_climb_extra or 6.0) + math.max(0.0, state.coop_extra or 0.0)
+            end
+        end
+        local now = os.clock()
+        if now - (state.climb_t or -10.0) > 0.5 then state.climb_new_t = now end -- a new climb
+        local nudge = 0.0
+        if state.climb_new_t and now - state.climb_new_t < 0.3 and extra > 0.0 then
+            state.climb_nudge_n = (state.climb_nudge_n or 0) + 1
+            if state.climb_nudge_n % 2 == 1 then nudge = 0.05 end
+        end
+        st:set_field("_BaseDistance", (state.climb_base or 0.0) + extra + nudge)
+        state.climb_extra_now, state.climb_t = extra, now
+    end
+    for _, mname in ipairs({ "onStart", "onTransition", "onUpdate" }) do
+        local m = climb_td and climb_td:get_method(mname)
+        if m then
+            sdk.hook(m, function(args)
+                pcall(function() climb_apply(sdk.to_managed_object(args[2])) end)
+            end, nil)
+        end
+    end
+
     local pog_m = root_td and root_td:get_method("updatePog")
     if pog_m then
         sdk.hook(pog_m, function(args)
@@ -1145,6 +1425,59 @@ local function install_camera_controller_hooks()
         end, function(retval)
             if not (config.enabled and config.native_offsets) then return retval end
             local pitch_deg = state.cur_pitch_deg or 0.0
+            -- 2.9.15 co-op crane: when a wall pushes the camera in (the controller's IsHitTerrain), the distance it
+            -- lost becomes extra pitch: the camera rises over the players and looks down, as tilting down by hand
+            -- kept both in view against walls (the tester, 2026-11-21). Expected distance = the camera's distance while
+            -- nothing blocks it; rises quickly, settles back slowly.
+            pcall(function()
+                local o = thread.get_hook_storage().upd_ctrl
+                local want = 0.0
+                if o and config.coop_crane ~= false and state.coop_active and not state.is_suspended then
+                    local P, G = o:get_field("_Position"), o:get_field("_Pog")
+                    if P and G then
+                        local d = math.sqrt((P.x - G.x) ^ 2 + (P.y - G.y) ^ 2 + (P.z - G.z) ^ 2)
+                        local hit = o:get_field("<IsHitTerrain>k__BackingField") == true
+                        state.crane_hit = hit
+                        if not hit or not state.crane_expect then
+                            state.crane_expect = state.crane_expect and (state.crane_expect + (d - state.crane_expect) * 0.1) or d
+                        end
+                        local lost = hit and math.max(0.0, (state.crane_expect or d) - d) or 0.0
+                        state.crane_lost = lost
+                        want = math.min(config.coop_crane_max or 60.0, lost * (config.coop_crane_per_m or 6.0))
+                    end
+                end
+                -- 2.9.17: calmer crane: a wall has to stay for 0.4 s before it rises, and it turns at most
+                -- coop_crane_rate degrees a second up and two thirds of that down
+                local now = os.clock()
+                if want > 0.0 then state.crane_since = state.crane_since or now else state.crane_since = nil end
+                if state.crane_since and now - state.crane_since < 0.4 then want = math.min(want, state.crane_deg or 0.0) end
+                local cur = state.crane_deg or 0.0
+                local dtc = math.min(0.1, math.max(0.0, now - (state.crane_t or now)))
+                state.crane_t = now
+                local rate = (config.coop_crane_rate or 10.0) * dtc
+                local step = want - cur
+                if step > rate then step = rate elseif step < -rate * 0.66 then step = -rate * 0.66 end
+                cur = cur + step
+                if cur < 0.05 and want == 0.0 then cur = 0.0 end
+                state.crane_deg = cur
+            end)
+            -- 2.9.16: never past a steep look-down. Against a tight wall the crane plus the game's own pitch went near
+            -- straight down and the view flipped while turning (the tester's screenshots). The crane only adds up to
+            -- coop_crane_view_max (60 deg) of total look-down, judged from the camera's current view.
+            if (state.crane_deg or 0.0) > 0.0 then
+                pcall(function()
+                    local o = thread.get_hook_storage().upd_ctrl
+                    local q = o and o:get_field("_Rotation")
+                    if not q then return end
+                    -- camera forward = -Z of the rotation; look-down angle from its y component
+                    local fy = -(2.0 * (q.y * q.z - q.w * q.x))
+                    local down = math.deg(math.asin(math.max(-1.0, math.min(1.0, -fy))))
+                    local room = math.max(0.0, (config.coop_crane_view_max or 60.0) - down - (state.cur_pitch_deg or 0.0))
+                    if state.crane_deg > room then state.crane_deg = room end
+                    state.crane_view = down
+                end)
+            end
+            pitch_deg = pitch_deg + (state.crane_deg or 0.0)
             if math.abs(pitch_deg) < 0.01 then return retval end
             pcall(function()
                 local o = thread.get_hook_storage().upd_ctrl
@@ -1278,6 +1611,11 @@ local function install_camera_controller_hooks()
             if ok_role and role ~= nil and role ~= 0 then
                 return retval
             end
+            -- 2.9.13-dev3: nothing on the camera joint while climbing. The native offsets (pitch, shoulder, height)
+            -- ride the player camera controller, which does not run while climbing, so the pitch fell back to the
+            -- joint and the name labels jumped around (coop-climb-1 screenshot; the 2.9.1 nametag flicker again).
+            -- The climbing camera gets only its own distance (ClimbingCameraSetting, above).
+            if os.clock() - (state.climb_t or -10.0) < 0.25 then return retval end
 
             local sx = state.cur_shoulder_x
             local hy = state.cur_height_y
@@ -1478,16 +1816,17 @@ local function marker_hidden()
         end
         if (tonumber(ef) or 0) ~= 0 then hide = true; return end
         local mc = get_main_camera_controller()
-        if mc and mc:call("get_CurrentPlayerCamera") == false and not is_player_aiming(mc) then hide = true end
+        -- 2.9.13-dev5: not while climbing in co-op (the marker went missing for an off-screen player 2)
+        if mc and mc:call("get_CurrentPlayerCamera") == false and not is_player_aiming(mc)
+           and not CT_MARKER[control_type(mc) or -1] then hide = true end
     end)
     marker_hide = hide
     return hide
 end
 
-local function draw_coop_marker()
-    if not (config.enabled and config.coop_marker ~= false and state.coop_active) then return end
-    if marker_hidden() then return end
-    local pp = get_coop_pawn_position()
+-- 2.9.16: the edge marker for any co-op player (player 2 in light blue, player 1 in gold: the tester, 2026-11-21, "Camera
+-- does not bookmark P1 when out of frame as it should")
+local function draw_edge_marker(pp, name, col)
     local cam = sdk.get_primary_camera()
     if not (pp and cam) then return end
     local ds = imgui.get_display_size()
@@ -1523,18 +1862,39 @@ local function draw_coop_marker()
     local t = math.min(hx / math.max(0.0001, math.abs(dxs)), hy / math.max(0.0001, math.abs(dys)))
     local px, py = cx + dxs * t, cy + dys * t
     local r = math.max(10.0, Hh * 0.012)
-    local col, dark = 0xFF33CCFF, 0xC0000000
+    local dark = 0xC0000000
     draw.filled_circle(px, py, r + 3, dark, 24)
     draw.filled_circle(px, py, r, col, 24)
     draw.line(px + dxs * (r + 4), py + dys * (r + 4), px + dxs * (r * 2.6), py + dys * (r * 2.6), col)
     draw.line(px + dxs * (r * 2.6), py + dys * (r * 2.6), px + dxs * (r * 1.7) - dys * r * 0.6, py + dys * (r * 1.7) + dxs * r * 0.6, col)
     draw.line(px + dxs * (r * 2.6), py + dys * (r * 2.6), px + dxs * (r * 1.7) + dys * r * 0.6, py + dys * (r * 1.7) - dxs * r * 0.6, col)
     local dist = math.sqrt(vx * vx + vy * vy + vz * vz)
-    local label = string.format("%s  %.0f m", (state.coop_name ~= "" and state.coop_name) or "Player 2", dist)
+    local label = string.format("%s  %.0f m", name, dist)
     local tx = px - dxs * (r * 2 + 8) - (dxs > 0.3 and (#label * 9) or (dxs < -0.3 and 0 or #label * 4.5))
     local ty = py - dys * (r * 2 + 8) - 9
     draw.text(label, tx + 1, ty + 1, 0xFF000000)
     draw.text(label, tx, ty, 0xFFFFFFFF)
+end
+
+local function draw_coop_marker()
+    if not (config.enabled and config.coop_marker ~= false and state.coop_active) then return end
+    if marker_hidden() then return end
+    local p2 = get_coop_pawn_position()
+    -- colours are 0xAABBGGRR: player 2 light blue, player 1 gold (2.9.16 had both yellow-orange)
+    if p2 then draw_edge_marker(p2, (state.coop_name ~= "" and state.coop_name) or "Player 2", 0xFFFFC040) end
+    local p1 = ((state.coop_anchor_idx or -1) >= 0 and get_coop_pawn_position(state.coop_anchor_idx)) or get_player_position()
+    if p1 and (state.coop_idx or 0) ~= -1 then draw_edge_marker(p1, "Player 1", 0xFF30C8FF) end
+    -- 2.9.18: players 3+ (the tester: "P3 is missing a bookmark when off screen"); colours match DPC's target dots:
+    -- P3 green, P4 magenta, P5 red, then white
+    local cols = { [3] = 0xFF50E050, [4] = 0xFFF050E0, [5] = 0xFF4040FF }
+    for i, pi in ipairs(state.coop_players or {}) do
+        local q = get_coop_pawn_position(pi)
+        if q then
+            local n = (state.coop_player_nums or {})[i] or (i + 2)
+            local nm = (state.coop_player_names or {})[i]
+            draw_edge_marker(q, (nm and nm ~= "") and nm or ("Player " .. n), cols[n] or 0xFFF0F0F0)
+        end
+    end
 end
 
 re.on_frame(function()
@@ -1652,8 +2012,60 @@ re.on_draw_ui(function()
             local ck
             ck, config.coop_framing = imgui.checkbox("Keep both players on screen", config.coop_framing)
             changed = changed or ck
+            if config.coop_framing then
+                -- 2.9.12
+                local styles = { "Follow player 1 (slides only as much as needed)", "Classic co-op (centred on everyone, from above)" }
+                local cur = (config.coop_style == "classic") and 2 or 1
+                local cs, ni = imgui.combo("Co-op camera", cur, styles)
+                if cs then config.coop_style = (ni == 2) and "classic" or "follow"; changed = true end
+                if config.coop_style == "classic" then
+                    local k1, k2, k3, k4
+                    k1, config.coop_classic_pitch = imgui.slider_float("   Look down by (degrees)", config.coop_classic_pitch or 5.0, 0.0, 60.0, "%.0f")
+                    k2, config.coop_classic_extra = imgui.slider_float("   Pulled back with everyone together (m)", config.coop_classic_extra or 6.0, 0.0, 15.0, "%.1f")
+                    k3, config.coop_classic_height = imgui.slider_float("   Raised (m)", config.coop_classic_height or 1.5, 0.0, 6.0, "%.1f")
+                    k4, config.coop_classic_fill = imgui.slider_float("   Group uses this share of the screen", config.coop_classic_fill or 0.7, 0.3, 1.0, "%.2f")
+                    changed = changed or k1 or k2 or k3 or k4
+                end
+            end
             ck, config.coop_marker = imgui.checkbox("Show an edge marker for player 2 while he is off screen", config.coop_marker ~= false)
             changed = changed or ck
+            -- 2.9.13-dev4: climbing next to the other co-op choices (was under the suspend options, hard to find)
+            ck, config.coop_frame_climbing = imgui.checkbox("Keep both players in view while climbing a monster", config.coop_frame_climbing ~= false)
+            changed = changed or ck
+            if config.coop_frame_climbing ~= false then
+                ck, config.coop_climb_extra = imgui.slider_float("   Climbing camera further back (m)", config.coop_climb_extra or 6.0, 0.0, 15.0, "%.1f")
+                changed = changed or ck
+                if state.climb_base then imgui.text(string.format("   climbing camera: game %.1f m, +%.1f m now", state.climb_base, state.climb_extra_now or 0.0)) end
+            end
+            -- 2.9.17
+            ck, config.coop_calm = imgui.checkbox("Calm camera: no sudden moves (a player who runs off gets the edge marker)", config.coop_calm ~= false)
+            changed = changed or ck
+            if config.coop_calm ~= false then
+                ck, config.coop_max_pull_speed = imgui.slider_float("   Pull back / in at most (m/s)", config.coop_max_pull_speed or 3.0, 0.5, 15.0, "%.1f")
+                changed = changed or ck
+                ck, config.coop_max_slide_speed = imgui.slider_float("   Slide sideways at most (m/s)", config.coop_max_slide_speed or 3.0, 0.5, 15.0, "%.1f")
+                changed = changed or ck
+            end
+            -- 2.9.15
+            ck, config.coop_crane = imgui.checkbox("Against walls: rise and look down instead (crane)", config.coop_crane ~= false)
+            changed = changed or ck
+            if config.coop_crane ~= false then
+                ck, config.coop_crane_per_m = imgui.slider_float("   Look down per metre the wall takes (deg)", config.coop_crane_per_m or 6.0, 1.0, 15.0, "%.1f")
+                changed = changed or ck
+                ck, config.coop_crane_max = imgui.slider_float("   Most extra look-down (deg)", config.coop_crane_max or 25.0, 5.0, 60.0, "%.0f")
+                changed = changed or ck
+                ck, config.coop_crane_rate = imgui.slider_float("   Rise at most (deg/s)", config.coop_crane_rate or 10.0, 2.0, 40.0, "%.0f")
+                changed = changed or ck
+                ck, config.coop_crane_view_max = imgui.slider_float("   Never look down more than (deg)", config.coop_crane_view_max or 60.0, 30.0, 80.0, "%.0f")
+                changed = changed or ck
+                imgui.text(string.format("   wall: %s, %.1f m taken, +%.0f deg now (view %.0f deg down)", state.crane_hit and "yes" or "no", state.crane_lost or 0.0, state.crane_deg or 0.0, state.crane_view or 0.0))
+            end
+            -- 2.9.14
+            ck, config.coop_narrow_pull = imgui.slider_float("Caves / corridors: share of the pull-back", config.coop_narrow_pull or 0.4, 0.0, 1.0, "%.2f")
+            changed = changed or ck
+            ck, config.coop_narrow_fov = imgui.slider_float("Caves / corridors: wider view instead (deg)", config.coop_narrow_fov or 8.0, 0.0, 20.0, "%.0f")
+            changed = changed or ck
+            imgui.text("   Game camera now: " .. tostring(CT_NAMES[state.ctype or -1] or state.ctype) .. (state.narrow and " (narrow: less pull-back, wider view)" or ""))
         end
         imgui.separator()
 
@@ -1900,6 +2312,8 @@ re.on_draw_ui(function()
 
             c, config.suspend_when_aiming = imgui.checkbox("Auto-Suspend While Aiming (Bow / Magick Bow / Scopes)", config.suspend_when_aiming)
             changed = changed or c
+            c, config.climb_extra = imgui.slider_float("Climbing camera further back, always (m)", config.climb_extra or 0.0, 0.0, 15.0, "%.1f m")
+            changed = changed or c
 
             imgui.tree_pop()
         end
@@ -1982,3 +2396,17 @@ re.on_draw_ui(function()
 
     imgui.tree_pop()
 end)
+
+-- 2.9.12: a small API for other scripts (TestGuide plans switch settings with it):
+-- CameraDistance_API.set("coop_style", "classic"), .get(key), .version
+_G.CameraDistance_API = {
+    version = MOD_VERSION,
+    get = function(key) return config[key] end,
+    set = function(key, value)
+        if config[key] == nil or type(config[key]) ~= type(value) then return false end
+        config[key] = value
+        pcall(save_config)
+        return true
+    end,
+}
+

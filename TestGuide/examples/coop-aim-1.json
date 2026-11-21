@@ -1,0 +1,204 @@
+{
+ "id": "coop-aim-1",
+ "title": "Co-op aiming (joseau11's, off by default): target markers, keep / switch / share targets (DPC 0.9.172-dev6)",
+ "intro": "Two controllers, both awake. A full party, open ground, playing the Arisen, co-op off. Player 2 ideally on an archer or mage pawn (any works). Three tough goblins will be spawned (they cannot die). About 3 minutes. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev6"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-aim-1.json",
+  "show": [
+   "dbg",
+   "p2t"
+  ],
+  "probes": {
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "aim": "local D = _G.DPC_dbg; return D ~= nil and D.cfg.coop_aim == true",
+   "dbg": "local D = _G.DPC_dbg; return D and tostring(D.R.ta_dbg or '')",
+   "p2t": "local D = _G.DPC_dbg; return D and tostring(D.coop.tgt_name or 'none')",
+   "p2a": "local D = _G.DPC_dbg; local t = D and D.coop.tgt; local ok, a = pcall(function() return t and t:get_address() end); return ok and a or 0",
+   "pin": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.pin ~= nil",
+   "p1": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.p1 ~= nil",
+   "p1set": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.p1_set == true",
+   "same": "local D = _G.DPC_dbg; local a, b = D and D.R.ta.p1, D and D.coop.tgt; if not (a and b) then return false end; local ok, r = pcall(function() return a:get_address() == b:get_address() end); return ok and r",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_auto_target",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until co-op starts (player 1 the Arisen, player 2 a pawn). 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "==",
+     "value": "classic",
+     "label": "classic co-op on"
+    },
+    {
+     "probe": "aim",
+     "agg": "last",
+     "op": "==",
+     "value": true,
+     "label": "co-op aiming on"
+    }
+   ]
+  },
+  {
+   "text": "Three tough goblins in front. Do nothing yet: player 2 should get an automatic target with a coloured marker above it. 8 seconds.",
+   "secs": 8,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 8.0,
+     "angle": 0,
+     "still": true,
+     "tough": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "p2t",
+     "agg": "last",
+     "op": "~=",
+     "value": "none",
+     "label": "player 2 has an automatic target"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: tap R3 (right stick click) once: 'target kept', the marker gets a ring. 8 seconds.",
+   "secs": 8,
+   "expect": [
+    {
+     "probe": "pin",
+     "agg": "any",
+     "label": "player 2's target kept"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: flick the right stick RIGHT, wait a second, flick it LEFT, a few times: the kept target moves to the next goblin on that side. 12 seconds.",
+   "secs": 12
+  },
+  {
+   "text": "PLAYER 2: tap R3 again: back to the automatic target (the ring goes). 6 seconds.",
+   "secs": 6,
+   "expect": [
+    {
+     "probe": "pin",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "player 2 back to automatic"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: point the camera at a goblin and click R3 (right stick): player 1's marker (another colour) appears on it and the Arisen locks on. 8 seconds.",
+   "secs": 8,
+   "expect": [
+    {
+     "probe": "p1",
+     "agg": "any",
+     "label": "player 1 picked a target"
+    },
+    {
+     "probe": "p1set",
+     "agg": "any",
+     "label": "the Arisen's lock-on took player 1's target"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: HOLD R3 for a second: player 2 takes player 1's target (two markers side by side). 8 seconds.",
+   "secs": 8,
+   "expect": [
+    {
+     "probe": "same",
+     "agg": "any",
+     "label": "player 2 on player 1's target"
+    }
+   ]
+  },
+  {
+   "text": "Both fight 20 seconds. Do attacks and skills go to your own targets? Player 2 tries another flick and R3 tap mid-fight.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: click R3 again on the same goblin: player 1's target released. 6 seconds.",
+   "secs": 6,
+   "expect": [
+    {
+     "probe": "p1",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "player 1's target released"
+    }
+   ]
+  },
+  {
+   "text": "Removing the goblins. PLAYER 1: hold L3 + R3 for 3 seconds to end co-op. 12 seconds.",
+   "secs": 12,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "text": "Done (co-op aiming switched back off). Tell Claude: were the markers clear? Did keep / flick / share feel right? Should it be on by default?",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": false
+    }
+   ]
+  }
+ ]
+}

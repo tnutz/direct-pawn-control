@@ -1,0 +1,134 @@
+{
+ "id": "pawn-dash-2",
+ "title": "Played pawn sprint, round 2: what ends it? (DPC 0.9.172-dev12)",
+ "intro": "One controller (or keyboard). Open flat ground with room to run 15+ seconds, out of combat, full stamina, not possessing anyone, co-op off. About 1 minute. Steps with a checklist last until done; End (keyboard) ends any step early.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev12",
+  "TestGuide": "2.6"
+ },
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_pawn-dash-2.json",
+  "show": [
+   "pspd",
+   "aspd",
+   "pdash",
+   "psw",
+   "pin",
+   "bmode"
+  ],
+  "probes": {
+   "pspd": "local D = _G.DPC_dbg; local c = D and D.state.active and D.state.pawn_chara; return c and H.speed(c, 'pawn')",
+   "aspd": "return H.speed()",
+   "on": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "pdash": "local D = _G.DPC_dbg; local h = D and D.state.pawn_human; return h ~= nil and h:call('get_IsDash') == true",
+   "adash": "local a = H.arisen(); local h = a and a:call('get_Human'); return h ~= nil and h:call('get_IsDash') == true",
+   "preq": "local D = _G.DPC_dbg; local q = D and D.native.pip; return q ~= nil and q:get_field('RequestDash') == true",
+   "psw": "local D = _G.DPC_dbg; local q = D and D.native.pip; return q ~= nil and q:get_field('DashSwitch') == true",
+   "pkeep": "local D = _G.DPC_dbg; local q = D and D.native.pip; return q and q:get_field('DashTriggerKeepTime')",
+   "pen": "local D = _G.DPC_dbg; local q = D and D.native.param; return q ~= nil and q:call('get_IsEnableDashAction') == true",
+   "pen_h": "local D = _G.DPC_dbg; local h = D and D.state.pawn_human; return h ~= nil and h:call('get_IsEnableDashAction') == true",
+   "atrk": "local a = H.arisen(); local h = a and a:call('get_Human'); local t = h and h:get_field('Track'); return t ~= nil and t:call('get_IsDashCancel') == true",
+   "ptrk": "local D = _G.DPC_dbg; local h = D and D.state.pawn_human; local t = h and h:get_field('Track'); local ok, r = pcall(function() return t:call('get_IsDashCancel') end); return ok and r == true",
+   "pin": "local D = _G.DPC_dbg; local function fb(inp) local af = D.af(); local on = inp and inp:get_field('ButtonOnFlags') or 0; local trg = inp and inp:get_field('ButtonTriggerFlags') or 0; local s = ''; if (on & (af.Dash or 0)) ~= 0 then s = s .. 'D' end; if (trg & (af.Dash or 0)) ~= 0 then s = s .. 'd' end; if (on & (af.KeepDash or 0)) ~= 0 then s = s .. 'K' end; return s end; return D and D.state.pawn_input and fb(D.state.pawn_input) or ''",
+   "ain": "local D = _G.DPC_dbg; local function fb(inp) local af = D.af(); local on = inp and inp:get_field('ButtonOnFlags') or 0; local trg = inp and inp:get_field('ButtonTriggerFlags') or 0; local s = ''; if (on & (af.Dash or 0)) ~= 0 then s = s .. 'D' end; if (trg & (af.Dash or 0)) ~= 0 then s = s .. 'd' end; if (on & (af.KeepDash or 0)) ~= 0 then s = s .. 'K' end; return s end; return D and fb(H.ar_input()) or ''",
+   "bmode": "local D = _G.DPC_dbg; return D and tostring(D.brain.on and D.brain.mode or 'off')",
+   "bdash": "local D = _G.DPC_dbg; return D ~= nil and D.brain.on == true and ((D.brain.want or 0) & (D.af().Dash or 0)) ~= 0",
+   "drive": "local D = _G.DPC_dbg; return D and tostring(D.native.drive)",
+   "pstam": "local D = _G.DPC_dbg; local c = D and D.state.pawn_chara; local m = c and c:call('get_StaminaManager'); return m and m:call('get_RemainingAmount')",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "native_dash_to_req",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "arisen_brain",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "As the ARISEN: start sprinting and keep it up, straight or wide circles. 10 seconds (End to move on).",
+   "secs": 10
+  },
+  {
+   "text": "Taking over your main pawn. Stand still.",
+   "secs": 4,
+   "min_secs": 3,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "on",
+     "agg": "last",
+     "label": "pawn possessed",
+     "op": "==",
+     "value": true,
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "As the PAWN: start sprinting the same way you did as the Arisen and keep it up. 12 seconds.",
+   "secs": 12
+  },
+  {
+   "text": "Stop. Turning OFF the Arisen's follow brain for comparison. Stand still.",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_brain",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "As the PAWN again (the Arisen now stands still): sprint the same way. Does it hold now? 12 seconds.",
+   "secs": 12
+  },
+  {
+   "text": "Putting everything back (brain on, back to the Arisen).",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "arisen_brain",
+     "value": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: did the pawn hold the sprint in either run? How do you start a sprint (tap or hold, which button)?",
+   "secs": 5
+  }
+ ]
+}

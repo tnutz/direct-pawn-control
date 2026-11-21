@@ -1,0 +1,307 @@
+{
+ "id": "coop-aim-3",
+ "title": "Co-op aiming round 3: deliberate flicks across six goblins, player 1 walks freely while targeted (DPC 0.9.172-dev11)",
+ "intro": "Two controllers, both awake. A full party, open ground with room left, right and ahead, playing the Arisen, co-op off. Player 2 ideally on an archer or mage pawn (any works). Six tough goblins will be spawned (they cannot die). About 5 minutes. Press End (keyboard) when ready. Page Up reruns a test. Steps with a checklist last until it's done; End (keyboard) ends any step early.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev11",
+  "TestGuide": "2.6"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-aim-3.json",
+  "show": [
+   "dbg",
+   "p2t"
+  ],
+  "probes": {
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "aim": "local D = _G.DPC_dbg; return D ~= nil and D.cfg.coop_aim == true",
+   "dbg": "local D = _G.DPC_dbg; return D and tostring(D.R.ta_dbg or '')",
+   "p2t": "local D = _G.DPC_dbg; return D and tostring(D.coop.tgt_name or 'none')",
+   "p2a": "local D = _G.DPC_dbg; local t = D and D.coop.tgt; local ok, a = pcall(function() return t and t:get_address() end); return ok and a or 0",
+   "pin": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.pin ~= nil",
+   "p1": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.p1 ~= nil",
+   "p1set": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.p1_set == true",
+   "same": "local D = _G.DPC_dbg; local a, b = D and D.R.ta.p1, D and D.coop.tgt; if not (a and b) then return false end; local ok, r = pcall(function() return a:get_address() == b:get_address() end); return ok and r",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "flicks": "local D = _G.DPC_dbg; return D and (D.R.ta.flick_n or 0) or 0",
+   "flick_mode": "local D = _G.DPC_dbg; return D and tostring(D.cfg.coop_aim_flick or 'quick')"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_auto_target",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_flick",
+     "value": "deliberate"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_p1_assist",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until co-op starts (player 1 the Arisen, player 2 a pawn). 25 seconds.",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "classic co-op on",
+     "op": "==",
+     "value": "classic",
+     "must": true
+    },
+    {
+     "probe": "aim",
+     "agg": "last",
+     "label": "co-op aiming on",
+     "op": "==",
+     "value": true,
+     "must": true
+    },
+    {
+     "probe": "flick_mode",
+     "agg": "last",
+     "label": "deliberate flicks on",
+     "op": "==",
+     "value": "deliberate",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "Six tough goblins: two on the LEFT, two straight AHEAD (further), two on the RIGHT. Nobody touch anything: player 2 gets an automatic target with a marker. 10 seconds.",
+   "secs": 10,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 2,
+     "dist": 9.0,
+     "angle": -50,
+     "still": true,
+     "tough": true
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 2,
+     "dist": 13.0,
+     "angle": 0,
+     "still": true,
+     "tough": true
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 2,
+     "dist": 9.0,
+     "angle": 50,
+     "still": true,
+     "tough": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "p2t",
+     "agg": "last",
+     "label": "player 2 has an automatic target",
+     "op": "~=",
+     "value": "none",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: tap R3 once: 'target kept', the marker gets a ring. 8 seconds.",
+   "secs": 8,
+   "expect": [
+    {
+     "probe": "pin",
+     "agg": "any",
+     "label": "player 2's target kept",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: push the right stick SLOWLY left and right, all the way, a few times (player 2 has no camera in classic co-op, so nothing should move). The ring should STAY on the same goblin. 15 seconds.",
+   "secs": 15
+  },
+  {
+   "text": "PLAYER 2: quick FLICKS: snap the right stick fully RIGHT and let go, then pause a moment. Repeat until the ring reaches the rightmost goblin. Each flick should move exactly ONE goblin. 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "flicks",
+     "agg": "last",
+     "label": "at least one flick counted",
+     "op": ">=",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: flicks LEFT, one at a time, all the way across to the leftmost goblin. Count them: does each flick move exactly one goblin? 25 seconds.",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "flicks",
+     "agg": "last",
+     "label": "several flicks counted",
+     "op": ">=",
+     "value": 3
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: tap R3: back to automatic (ring goes). 8 seconds.",
+   "secs": 8,
+   "expect": [
+    {
+     "probe": "pin",
+     "agg": "last",
+     "label": "player 2 back to automatic",
+     "op": "==",
+     "value": false,
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: point the camera at a goblin on the RIGHT and click R3: player 1's marker appears on it. 10 seconds.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "p1",
+     "agg": "any",
+     "label": "player 1 picked a target",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: DON'T attack. Just WALK: push up, then left, then down, then right, a few seconds each. The Arisen should walk where you push, NOT toward your target. 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "p1",
+     "agg": "last",
+     "label": "player 1's target still marked",
+     "op": "==",
+     "value": true
+    },
+    {
+     "probe": "p1set",
+     "agg": "last",
+     "label": "no lock-on while only walking",
+     "op": "==",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: now attack your marked goblin (attack buttons and skills). Hits should go to it. Then stop and walk away again: movement should feel normal within a second. 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "p1set",
+     "agg": "any",
+     "label": "lock-on while player 1 fights"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: HOLD R3 for a second: player 2 takes player 1's target (two markers side by side). 10 seconds.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "same",
+     "agg": "any",
+     "label": "player 2 on player 1's target",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: flick once LEFT or RIGHT: player 2 moves off to a different goblin; player 1's marker stays. 10 seconds.",
+   "secs": 10
+  },
+  {
+   "text": "Both fight freely for 40 seconds. Player 1: switch targets with R3 on another goblin at least once. Player 2: flicks and R3 taps mid-fight. Notice anything that pulls you the wrong way.",
+   "secs": 40,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: click R3 on your current target: player 1's target released. 8 seconds.",
+   "secs": 8,
+   "expect": [
+    {
+     "probe": "p1",
+     "agg": "last",
+     "label": "player 1's target released",
+     "op": "==",
+     "value": false,
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "Removing the goblins. PLAYER 1: hold L3 + R3 for 3 seconds to end co-op. 12 seconds.",
+   "secs": 12,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "text": "Done (co-op aiming switched back off). Tell Claude: did slow pushes leave the ring alone? Did each flick move one goblin? Did the Arisen walk where you pushed while targeted?",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": false
+    }
+   ]
+  }
+ ]
+}

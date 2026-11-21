@@ -1,0 +1,179 @@
+{
+ "id": "p1-route-1",
+ "title": "What player 1's pawn receives: the game's input vs player 1's controller read directly (DPC 0.9.172)",
+ "intro": "Two controllers (player 2's can lie on the desk). A full party, open ground, no enemies, playing the Arisen, co-op off. Only player 1 acts, on their controller. About 2 minutes. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev3"
+ },
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_p1-route-1.json",
+  "show": [
+   "route",
+   "pon",
+   "p1b",
+   "pmag"
+  ],
+  "probes": {
+   "route": "local D = _G.DPC_dbg; return D and tostring(D.cfg.coop_any_p1_route)",
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or 'off')",
+   "pon": "local D = _G.DPC_dbg; return D and D.state.last_on_flags or 0",
+   "ptrg": "local D = _G.DPC_dbg; return D and D.state.last_trg_flags or 0",
+   "pmag": "local D = _G.DPC_dbg; return D and D.state.last_stick_mag or 0",
+   "p1b": "local D = _G.DPC_dbg; local v = D and D.R.tp.p1v; return v and v.b or -1",
+   "p1y": "local D = _G.DPC_dbg; local v = D and D.R.tp.p1v; return v and v.ly or 0",
+   "p2b": "local D = _G.DPC_dbg; local v = D and D.R.tp.p2v; return v and v.b or -1",
+   "active": "local D = _G.DPC_dbg; local ok, a = pcall(function() return sdk.get_managed_singleton('app.UserPadManager'):call('get_ActiveUserPad'):call('getDevice'):get_address() end); local t = D and D.R.tp; if not (ok and t) then return 'unknown' end; return (a == t.p1 and 'p1') or (a == t.p2 and 'p2') or 'other'",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_any",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_any_p1_route",
+     "value": "game"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: hold L3 + R3 until 'player 2 joined' (then put that controller down). PLAYER 1: press something first. 20 seconds.",
+   "secs": 20
+  },
+  {
+   "text": "Both on pawns (player 1 on the second pawn, player 2 on the main pawn).",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "cp",
+     "p1": 1,
+     "p2": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "==",
+     "value": "pawns",
+     "label": "both on pawns"
+    }
+   ]
+  },
+  {
+   "text": "WAY 1 (the game's input). PLAYER 1: push the left stick forward and hold it. 4 seconds.",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "pmag",
+     "agg": "max",
+     "op": ">",
+     "value": 0.5,
+     "label": "way 1: the stick reaches player 1's pawn"
+    },
+    {
+     "probe": "active",
+     "agg": "frac",
+     "op": "==",
+     "value": "p1",
+     "min_frac": 0.8,
+     "label": "way 1: the game listens to player 1's controller"
+    }
+   ]
+  },
+  {
+   "text": "WAY 1. PLAYER 1: tap light attack (Square / X) about once a second. 5 seconds.",
+   "secs": 5,
+   "expect": [
+    {
+     "probe": "ptrg",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "way 1: button presses reach player 1's pawn"
+    }
+   ]
+  },
+  {
+   "text": "WAY 1. PLAYER 1: hold L1 and press Square (skill 1). 5 seconds.",
+   "secs": 5
+  },
+  {
+   "text": "WAY 2 (player 1's controller read directly).",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_any_p1_route",
+     "value": "pad"
+    }
+   ]
+  },
+  {
+   "text": "WAY 2. PLAYER 1: push the left stick forward and hold it. 4 seconds.",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "pmag",
+     "agg": "max",
+     "op": ">",
+     "value": 0.5,
+     "label": "way 2: the stick reaches player 1's pawn"
+    }
+   ]
+  },
+  {
+   "text": "WAY 2. PLAYER 1: tap light attack about once a second. 5 seconds.",
+   "secs": 5,
+   "expect": [
+    {
+     "probe": "ptrg",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "way 2: button presses reach player 1's pawn"
+    }
+   ]
+  },
+  {
+   "text": "WAY 2. PLAYER 1: hold L1 and press Square (skill 1). 5 seconds.",
+   "secs": 5
+  },
+  {
+   "text": "WAY 2. PLAYER 2: touch nothing. PLAYER 1: turn the camera with the right stick. Does it turn? 5 seconds.",
+   "secs": 5
+  },
+  {
+   "text": "Back to way 1 and ending co-op.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_any_p1_route",
+     "value": "game"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude which way felt right: did the attack, the skill and the camera work in each? The recording has every frame of what the pawn got.",
+   "secs": 5
+  }
+ ]
+}

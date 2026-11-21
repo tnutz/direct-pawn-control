@@ -1,0 +1,189 @@
+{
+ "id": "any-coop-2",
+ "title": "Co-op, any combination (0.9.171-dev4): two controllers, two people",
+ "intro": "Two controllers and two people. Open ground, no enemies, a full party, playing the Arisen, co-op off. About 3 minutes. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.171-dev4"
+ },
+ "steps": [
+  {
+   "text": "Get ready: two controllers in two pairs of hands, co-op off. Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_any",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until 'player 2 joined'. Then each walk your own character for a moment.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "any",
+     "label": "co-op on",
+     "op": "==",
+     "value": "classic"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1 (on the Arisen): press L1 + left stick click. You should take a pawn, and the Arisen goes on his AI. Both walk around for a bit.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "any",
+     "label": "both players on pawns",
+     "op": "==",
+     "value": "pawns"
+    },
+    {
+     "probe": "s2e",
+     "agg": "max",
+     "label": "no errors in player 2's controls",
+     "op": "==",
+     "value": 0
+    },
+    {
+     "probe": "brain",
+     "agg": "any",
+     "label": "the Arisen on AI",
+     "op": "==",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "Each controller only works its own pawn? Both attack and use a skill. Camera follows player 1's pawn and keeps player 2 in view?",
+   "secs": 25
+  },
+  {
+   "text": "Same again, player 1's pawn now reading player 1's controller directly (the other way to feed it). Better, worse or the same? 15 seconds.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_any_p1_route",
+     "value": "pad"
+    }
+   ]
+  },
+  {
+   "text": "Back to the default way.",
+   "secs": 2,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_any_p1_route",
+     "value": "game"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: press L1 + left stick click a few times: through the free pawns to the Arisen. Stop when player 2 is the Arisen.",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "who",
+     "agg": "any",
+     "label": "player 2 can take the Arisen",
+     "op": "contains",
+     "value": "P2 the Arisen"
+    }
+   ]
+  },
+  {
+   "text": "Player 2 on the Arisen: player 2 walks and turns the camera. Does the camera follow player 2's stick now?",
+   "secs": 15
+  },
+  {
+   "text": "PLAYER 1: press L1 + left stick click until you are the Arisen again (player 2 then gets a pawn on their next press).",
+   "secs": 25
+  },
+  {
+   "text": "Either player: hold L3 + R3 for 3 seconds to end co-op.",
+   "secs": 12,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "frac",
+     "label": "co-op ended",
+     "op": "==",
+     "value": "off",
+     "min_frac": 0.5
+    },
+    {
+     "probe": "ai0",
+     "agg": "frac",
+     "label": "pawn AI back",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.5
+    },
+    {
+     "probe": "ai1",
+     "agg": "frac",
+     "label": "pawn AI back",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.5
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude what felt wrong.",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_any-coop-2.json",
+  "show": [
+   "who",
+   "mode",
+   "s2drv",
+   "s2err"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or 'off')",
+   "who": "local D = _G.DPC_dbg; local c = D and D.R.cp; if not (c and c.on) then return 'off' end; local n = c.names or {}; return 'P1 ' .. tostring(n[1]) .. ' / P2 ' .. tostring(n[2])",
+   "s2a": "local D = _G.DPC_dbg; return D ~= nil and D.R.s2.active == true",
+   "s2f": "local D = _G.DPC_dbg; return D and D.R.s2.frames or 0",
+   "s2e": "local D = _G.DPC_dbg; return D and ((D.R.s2.errors or 0) + ((D.R.s2.in_err and 1) or 0) + ((D.R.s2.failed and 100) or 0)) or 0",
+   "s2err": "local D = _G.DPC_dbg; return D and tostring(D.R.s2.err or D.R.s2.in_err or '')",
+   "s2idx": "local D = _G.DPC_dbg; return D and D.R.s2.active and D.R.s2.idx or -1",
+   "s2on": "local D = _G.DPC_dbg; return D and D.R.s2.last_on or 0",
+   "s2tgt": "local D = _G.DPC_dbg; return D and D.R.s2.tgt_sets or 0",
+   "poss": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "mainidx": "local D = _G.DPC_dbg; return D and D.state.active and D.state.pawn_idx or -1",
+   "coopjs": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and string.format('%s pawn %s anchor %s', tostring(d.active), tostring(d.pawn_idx), tostring(d.anchor_idx))",
+   "brain": "local D = _G.DPC_dbg; return D ~= nil and D.brain.on == true",
+   "shots": "local b = H.dpc_brain(); return b and ((b.presses or 0) + (b.skill_uses or 0)) or 0",
+   "v0": "return H.speed(H.pawn(0), 'pawn0')",
+   "v1": "return H.speed(H.pawn(1), 'pawn1')",
+   "va": "return H.speed()",
+   "act0": "local a, b = H.node(H.pawn(0)), H.node(H.pawn(0), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "ai0": "local p = H.pawn(0); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "ai1": "local p = H.pawn(1); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "camt": "local ok, n = pcall(function() local m = sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController', 0); return m:call('get_TargetObject'):call('get_Name') end); return ok and n",
+   "cplog": "local D = _G.DPC_dbg; local L = D and D.R.cp.log; return L and L[#L]",
+   "s2drv": "local D = _G.DPC_dbg; local s = D and D.R.s2; return s and string.format('%s hook %d in %d mir %d', s.drive_pre and 'pre' or 'player', s.hook_frames or 0, s.hook_input or 0, s.mirror_input or 0)"
+  }
+ }
+}

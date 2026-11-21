@@ -1,0 +1,169 @@
+{
+ "id": "coop-sound-2",
+ "title": "Co-op sound, second try: the listener and loudness follow the players (DPC 0.9.172-dev6)",
+ "intro": "Two controllers, both awake. A full party, open ground, no enemies, playing the Arisen, co-op off. Sound on (headphones help). About 2 minutes. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev6"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-sound-2.json",
+  "show": [
+   "lway",
+   "lerr",
+   "lcam",
+   "camd"
+  ],
+  "probes": {
+   "lway": "local D = _G.DPC_dbg; local L = D and D.R.lis; if not L then return 'none' end; return L.found or (L.failed and 'failed') or (L.active and ('trying ' .. tostring(L.ways[L.way_i]))) or 'idle'",
+   "lerr": "local D = _G.DPC_dbg; return D and D.R.lis.err or -1",
+   "lcam": "local D = _G.DPC_dbg; return D and D.R.lis.from_cam or -1",
+   "camd": "local D = _G.DPC_dbg; return D and D.R.lis.d or -1",
+   "lact": "local D = _G.DPC_dbg; return D ~= nil and D.R.lis.active == true",
+   "lerrs": "local D = _G.DPC_dbg; return D and D.R.lis.errs or 0",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or 'off')",
+   "kb": "local D = _G.DPC_dbg; return D ~= nil and D.R.cp.kb == true",
+   "tried": "local D = _G.DPC_dbg; return D and table.concat(D.R.lis.tried or {}, '; ') or ''"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_listener_move",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_listener_loudness",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until co-op starts (player 1 the Arisen, player 2 the main pawn). 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "==",
+     "value": "classic",
+     "label": "co-op on"
+    },
+    {
+     "probe": "kb",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "two controllers (player 1 not on the keyboard)"
+    }
+   ]
+  },
+  {
+   "text": "Walk the Arisen and the pawn apart (20-30 m) so the camera pulls back, then stand still for a few seconds while DPC finds how to move the listener. 25 seconds.",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "lact",
+     "agg": "any",
+     "label": "listener move active with the camera pulled back"
+    },
+    {
+     "probe": "lway",
+     "agg": "last",
+     "op": "~=",
+     "value": "failed",
+     "label": "a way to move the listener was found"
+    }
+   ]
+  },
+  {
+   "text": "Stay apart and fight the air: LISTEN to both characters' footsteps AND swings, also when one walks away from the camera. 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "lerr",
+     "agg": "avg",
+     "op": "<",
+     "value": 2.0,
+     "label": "listener on its target (m)"
+    },
+    {
+     "probe": "lcam",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "listener moved away from the camera (m)"
+    },
+    {
+     "probe": "lerrs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no listener errors"
+    }
+   ]
+  },
+  {
+   "text": "Switched OFF (the game's own sound): the cut-off and the quiet far swings should come back. Keep fighting the air. 15 seconds.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_listener_move",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "Switched back ON. Walk back together: the camera comes in. 15 seconds.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_listener_move",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: hold L3 + R3 for 3 seconds to end co-op.",
+   "secs": 12,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "==",
+     "value": "off",
+     "label": "co-op ended"
+    },
+    {
+     "probe": "lact",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "listener move off after co-op"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: both characters audible apart, swings included? Did switching it off bring the cut-off back?",
+   "secs": 5
+  }
+ ]
+}

@@ -1,0 +1,180 @@
+{
+ "id": "coop-checks-2",
+ "title": "Co-op checks 2: arrows without popups, downed-pawn alert, calm camera, player markers (DPC 0.9.172-dev31, Camera Distance 2.9.17)",
+ "intro": "Two controllers, both awake. A full party (Arisen, player 2's Archer pawn, at least one more pawn), out of combat, near a tall wall or cliff if you can. Playing the Arisen, co-op off. Each step lasts until you press End (keyboard).",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev31",
+  "TestGuide": "2.7"
+ },
+ "settings": [
+  {
+   "mod": "dpc",
+   "key": "down_alert",
+   "label": "Warn when someone is down"
+  },
+  {
+   "mod": "dpc",
+   "key": "free_arrows_give",
+   "label": "Give a played Archer missing special arrows"
+  },
+  {
+   "mod": "cd",
+   "key": "coop_crane",
+   "label": "Crane against walls"
+  },
+  {
+   "mod": "cd",
+   "key": "coop_crane_per_m",
+   "label": "Crane: look down per metre (deg)",
+   "min": 1,
+   "max": 15,
+   "fmt": "%.1f"
+  },
+  {
+   "mod": "cd",
+   "key": "coop_crane_view_max",
+   "label": "Crane: never look down more than (deg)",
+   "min": 30,
+   "max": 80,
+   "fmt": "%.0f"
+  },
+  {
+   "mod": "cd",
+   "key": "coop_max_pull_speed",
+   "label": "Calm: pull back / in at most (m/s)",
+   "min": 0.5,
+   "max": 15,
+   "fmt": "%.1f"
+  },
+  {
+   "mod": "cd",
+   "key": "coop_max_slide_speed",
+   "label": "Calm: slide at most (m/s)",
+   "min": 0.5,
+   "max": 15,
+   "fmt": "%.1f"
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_coop-checks-2.json",
+  "show": [
+   "down",
+   "given",
+   "arrows",
+   "climb"
+  ],
+  "probes": {
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "down": "local D = _G.DPC_dbg; return D and #D.R.down_list() or 0",
+   "given": "local D = _G.DPC_dbg; return D and D.R.arrow_give.given or 0",
+   "glast": "local D = _G.DPC_dbg; return D and tostring(D.R.arrow_give.last)",
+   "arrows": "local D = _G.DPC_dbg; local im = sdk.get_managed_singleton('app.ItemManager'); local c = D and D.state.pawn_chara; if not (im and c) then return '' end; local s = ''; for _, id in ipairs({166, 167, 168, 169}) do s = s .. tostring(im:call('getHaveNum(System.Int32, app.Character)', id, c)) .. ' ' end; return s",
+   "climb": "return 0"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "down_alert",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "cheat_free_arrows",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "free_arrows_give",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until co-op starts (player 1 the Arisen, player 2 the Archer pawn).",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "classic co-op on",
+     "op": "==",
+     "value": "classic",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "ARROWS: player 2's Archer gets any missing special arrow, this time without an 'obtained' popup. PLAYER 2: try Incendiary, Nocuous and Deluging Shot once more; any popup? End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "arrows",
+     "agg": "last",
+     "label": "special arrows in the bag (166 167 168 169)"
+    },
+    {
+     "probe": "given",
+     "agg": "last",
+     "label": "arrows given by DPC"
+    }
+   ]
+  },
+  {
+   "text": "DOWN ALERT: one of the other pawns is knocked down now. A red line at the top should name him, how far and which way, and count the seconds. PLAYER 1: go and revive him straight away (the line goes away). Don't leave him down: a pawn left down too long goes back to the Rift. End when done.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "down",
+     "idx": "other"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "down",
+     "agg": "max",
+     "label": "the alert listed a downed pawn",
+     "op": ">=",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "text": "CALM CAMERA + CRANE: run both players along a tall wall or cliff, then have one sprint away. The camera should move smoothly, never lurch; a player who outruns it gets an edge marker. Sliders: REFramework menu > Camera Distance > Couch co-op > Calm camera. End when done.",
+   "secs": 3600
+  },
+  {
+   "text": "MARKERS: player 1 runs off screen: gold marker; player 2 off screen: light blue marker. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "Done. PLAYER 1: hold L3 + R3 for 3 seconds to end co-op. Tell Claude: arrows (fired? message?), the alert, the crane, the gold marker.",
+   "secs": 10
+  }
+ ]
+}

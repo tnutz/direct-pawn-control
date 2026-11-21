@@ -1,0 +1,125 @@
+{
+ "id": "coop-climb-1",
+ "title": "Co-op climbing camera (Camera Distance 2.9.13-dev2, DPC 0.9.172-dev22)",
+ "intro": "Two controllers, both awake. Somewhere with a big climbable monster (cyclops, ogre...), playing the Arisen, co-op off. As long as you like; End (keyboard) ends a step.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev22",
+  "TestGuide": "2.6"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_coop-climb-1.json",
+  "show": [
+   "cam",
+   "f1",
+   "yaw",
+   "climb"
+  ],
+  "probes": {
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "aim": "local D = _G.DPC_dbg; return D ~= nil and D.cfg.coop_aim == true",
+   "dbg": "local D = _G.DPC_dbg; return D and tostring(D.R.ta_dbg or '')",
+   "p2t": "local D = _G.DPC_dbg; return D and tostring(D.coop.tgt_name or 'none')",
+   "pin": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.pin ~= nil",
+   "p1": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.p1 ~= nil",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "flicks": "local D = _G.DPC_dbg; return D and (D.R.ta.flick_n or 0) or 0",
+   "cam": "local D = _G.DPC_dbg; return D and tostring(D.cfg.coop_cam_turn)",
+   "camn": "local D = _G.DPC_dbg; return D and (D.R.cct.n or 0) or 0",
+   "flips": "local D = _G.DPC_dbg; return D and (D.R.cct.flips or 0) or 0",
+   "f1": "local D = _G.DPC_dbg; return D and D.R.ta.f1 and (D.R.ta.f1.flick_n or 0) or 0",
+   "yaw": "local D = _G.DPC_dbg; local y = D and D.R.cam_yaw(); return y and math.floor(math.deg(y) + 0.5)",
+   "climb": "local cm = sdk.get_managed_singleton('app.CameraManager'); local mc = cm and cm:call('getMainCameraController', 0); local ct = mc and mc:call('get_CurrentControlType'); if type(ct) == 'userdata' then ct = ct:get_field('value__') end; return ct"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_auto_target",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_p1",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_p1_flick",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_cam_turn",
+     "value": "p1"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until co-op starts (player 1 the Arisen).",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "classic co-op on",
+     "op": "==",
+     "value": "classic",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "Camera turning is now BOTH STICKS (the default). Find a big monster to climb. PLAYER 1 climbs it while PLAYER 2 stays back or moves around. The climbing camera should now pull back to keep player 2 in view. Tune it in the REFramework menu: Camera Distance > suspend options > 'Co-op: climbing camera further back'. Play as long as you like; End when done.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_cam_turn",
+     "value": "shared"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "climb",
+     "agg": "any",
+     "op": "==",
+     "value": 6,
+     "label": "climbing camera seen (type 6)"
+    }
+   ]
+  },
+  {
+   "text": "Done. PLAYER 1: hold L3 + R3 for 3 seconds to end co-op. Tell Claude how the climbing camera looked and which 'further back' value felt right.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,410 @@
+{
+ "id": "any-coop-1",
+ "title": "Co-op, any combination (0.9.171-dev1): both players on pawns, robot as player 2",
+ "intro": "Keyboard and mouse for you; one controller connected or none. Open ground, no enemies near, a full party (at least two pawns, both standing), playing the Arisen, nothing taken over. The robot plays player 2. About 2.5 minutes. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.171-dev3"
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End, then hands off until a step asks for you.",
+   "wait": true
+  },
+  {
+   "text": "Starting co-op on your main pawn. The robot plays player 2.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_any",
+     "value": true
+    },
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "frac",
+     "label": "co-op is on (classic: P1 Arisen, P2 a pawn)",
+     "op": "==",
+     "value": "classic",
+     "min_frac": 0.5
+    }
+   ]
+  },
+  {
+   "text": "Both on pawns: YOU (player 1) take the second pawn, the robot (player 2) keeps the main pawn. The Arisen goes on his AI.",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "cp",
+     "p1": 1,
+     "p2": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "frac",
+     "label": "both-pawns arrangement is up",
+     "op": "==",
+     "value": "pawns",
+     "min_frac": 0.5
+    },
+    {
+     "probe": "s2a",
+     "agg": "frac",
+     "label": "player 2's pawn is held by the second slot",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.7
+    },
+    {
+     "probe": "s2f",
+     "agg": "max",
+     "label": "player 2's pawn's controls run every frame",
+     "op": ">",
+     "value": 60
+    },
+    {
+     "probe": "s2e",
+     "agg": "max",
+     "label": "no errors in player 2's pawn's controls",
+     "op": "==",
+     "value": 0
+    },
+    {
+     "probe": "mainidx",
+     "agg": "last",
+     "label": "your pawn is the second pawn",
+     "op": "==",
+     "value": 1
+    },
+    {
+     "probe": "brain",
+     "agg": "frac",
+     "label": "the Arisen is on DPC's AI",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.7
+    },
+    {
+     "probe": "coopjs",
+     "agg": "frac",
+     "label": "Camera Distance is told to frame your pawn and player 2's",
+     "op": "contains",
+     "value": "anchor 1",
+     "min_frac": 0.5
+    }
+   ]
+  },
+  {
+   "text": "Robot (player 2) pushes its stick: the MAIN pawn should walk, yours stands.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 3,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v0",
+     "agg": "max",
+     "label": "player 2's stick moves player 2's pawn",
+     "op": ">",
+     "value": 2.0
+    },
+    {
+     "probe": "v1",
+     "agg": "max",
+     "label": "player 2's stick does not move your pawn",
+     "op": "<",
+     "value": 1.0
+    }
+   ]
+  },
+  {
+   "text": "Robot (player 2) presses light attack twice.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "act0",
+     "agg": "any",
+     "label": "player 2's pawn attacks"
+    },
+    {
+     "probe": "s2on",
+     "agg": "max",
+     "label": "player 2's buttons reach the pawn's input",
+     "op": ">",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "YOUR TURN: walk your pawn around with WASD and attack with the mouse a few times (the controller is player 2's in this test). 10 seconds.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "v1",
+     "agg": "max",
+     "label": "you move your pawn",
+     "op": ">",
+     "value": 2.0
+    },
+    {
+     "probe": "v0",
+     "agg": "max",
+     "label": "player 2's pawn stays put while the robot is idle",
+     "op": "<",
+     "value": 1.5
+    }
+   ]
+  },
+  {
+   "text": "Three tough goblins. The robot fights with player 2's pawn, the Arisen fights on his own, you fight too. 25 seconds.",
+   "secs": 25,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 6.0,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 24,
+     "fight": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shots",
+     "agg": "max",
+     "label": "the Arisen attacks on his own",
+     "op": ">",
+     "value": 0
+    },
+    {
+     "probe": "act0",
+     "agg": "any",
+     "label": "player 2's pawn fights"
+    },
+    {
+     "probe": "s2tgt",
+     "agg": "max",
+     "label": "player 2's pawn picks targets",
+     "op": ">",
+     "value": 0
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors in the fight",
+     "op": "==",
+     "value": 0
+    },
+    {
+     "probe": "s2e",
+     "agg": "max",
+     "label": "no errors in player 2's controls",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "Removing the goblins.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "text": "Player 2 (robot) goes to its next character.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "cp_next",
+     "player": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "s2idx",
+     "agg": "last",
+     "label": "player 2 moved on to another pawn",
+     "op": "~=",
+     "value": 0
+    },
+    {
+     "probe": "s2e",
+     "agg": "max",
+     "label": "no errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "YOUR TURN: press F6 to go to your next character, again and again until you are the Arisen (watch the name line). Press End when you are the Arisen.",
+   "wait": true
+  },
+  {
+   "text": "Checking: you on the Arisen, player 2 on a pawn (classic co-op).",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "frac",
+     "label": "back to classic co-op",
+     "op": "==",
+     "value": "classic",
+     "min_frac": 0.5
+    },
+    {
+     "probe": "poss",
+     "agg": "frac",
+     "label": "player 2's pawn is played",
+     "op": "==",
+     "value": true,
+     "min_frac": 0.5
+    }
+   ]
+  },
+  {
+   "text": "Ending co-op.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "frac",
+     "label": "co-op off",
+     "op": "==",
+     "value": "off",
+     "min_frac": 0.5
+    },
+    {
+     "probe": "s2a",
+     "agg": "frac",
+     "label": "second slot empty",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.5
+    },
+    {
+     "probe": "ai0",
+     "agg": "frac",
+     "label": "main pawn's AI is back on",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.5
+    },
+    {
+     "probe": "ai1",
+     "agg": "frac",
+     "label": "second pawn's AI is back on",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.5
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude what looked wrong (camera, HUD, controls).",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_any-coop-1.json",
+  "show": [
+   "who",
+   "mode",
+   "s2drv",
+   "s2err"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or 'off')",
+   "who": "local D = _G.DPC_dbg; local c = D and D.R.cp; if not (c and c.on) then return 'off' end; local n = c.names or {}; return 'P1 ' .. tostring(n[1]) .. ' / P2 ' .. tostring(n[2])",
+   "s2a": "local D = _G.DPC_dbg; return D ~= nil and D.R.s2.active == true",
+   "s2f": "local D = _G.DPC_dbg; return D and D.R.s2.frames or 0",
+   "s2e": "local D = _G.DPC_dbg; return D and ((D.R.s2.errors or 0) + ((D.R.s2.in_err and 1) or 0) + ((D.R.s2.failed and 100) or 0)) or 0",
+   "s2err": "local D = _G.DPC_dbg; return D and tostring(D.R.s2.err or D.R.s2.in_err or '')",
+   "s2idx": "local D = _G.DPC_dbg; return D and D.R.s2.active and D.R.s2.idx or -1",
+   "s2on": "local D = _G.DPC_dbg; return D and D.R.s2.last_on or 0",
+   "s2tgt": "local D = _G.DPC_dbg; return D and D.R.s2.tgt_sets or 0",
+   "poss": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "mainidx": "local D = _G.DPC_dbg; return D and D.state.active and D.state.pawn_idx or -1",
+   "coopjs": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and string.format('%s pawn %s anchor %s', tostring(d.active), tostring(d.pawn_idx), tostring(d.anchor_idx))",
+   "brain": "local D = _G.DPC_dbg; return D ~= nil and D.brain.on == true",
+   "shots": "local b = H.dpc_brain(); return b and ((b.presses or 0) + (b.skill_uses or 0)) or 0",
+   "v0": "return H.speed(H.pawn(0), 'pawn0')",
+   "v1": "return H.speed(H.pawn(1), 'pawn1')",
+   "va": "return H.speed()",
+   "act0": "local a, b = H.node(H.pawn(0)), H.node(H.pawn(0), 1)\nlocal function busy(n) n = tostring(n or ''); return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) end\nreturn busy(a) or busy(b)",
+   "ai0": "local p = H.pawn(0); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "ai1": "local p = H.pawn(1); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "camt": "local ok, n = pcall(function() local m = sdk.get_managed_singleton('app.CameraManager'):call('getMainCameraController', 0); return m:call('get_TargetObject'):call('get_Name') end); return ok and n",
+   "cplog": "local D = _G.DPC_dbg; local L = D and D.R.cp.log; return L and L[#L]",
+   "s2drv": "local D = _G.DPC_dbg; local s = D and D.R.s2; return s and string.format('%s hook %d in %d mir %d', s.drive_pre and 'pre' or 'player', s.hook_frames or 0, s.hook_input or 0, s.mirror_input or 0)"
+  }
+ }
+}

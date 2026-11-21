@@ -1,6 +1,6 @@
 # Direct Pawn Control - Play as Any Pawn. Includes Couch Co-op (Dragon's Dogma 2)
 
-Take direct control of your pawns. Possess your main pawn or a hired pawn and play it with the game's own player controls, camera and HUD, while the Arisen fights on beside you. Or hand a second player a controller and play couch co-op: player 1 on the Arisen (keyboard and mouse, or a second controller), player 2 on a pawn.
+Take direct control of your pawns. Possess your main pawn or a hired pawn and play it with the game's own player controls, camera and HUD, while the Arisen fights on beside you. Or hand friends a controller and play couch co-op: up to four players (more with party mods), each on their own character, the Arisen included.
 
 **Status: beta (0.9.x).** Playable from start to finish of a fight with every pawn vocation. See "Known limits".
 
@@ -20,16 +20,23 @@ Take direct control of your pawns. Possess your main pawn or a hired pawn and pl
 | **F6** | **L1 + left stick click** | Take control of the selection (a pawn, or back to the Arisen). On the controller, while you already play a pawn: go on to the next character in the party (each pawn in turn, then the Arisen), or to the one you just picked with the D-pad while its arrow is still showing |
 | | **Hold D-pad down** while playing a pawn | Back to the Arisen |
 | **F8** | | Warp the Arisen to the pawn you are playing |
-| **Ctrl+F6** | | Start / stop couch co-op (player 2's controller drives the selected pawn) |
-| | **Hold L3 + R3** (both stick clicks) on a second controller | Start couch co-op with that controller as player 2's (1.5 s). In co-op, either player holding L3 + R3 for 3 s ends it |
+| **Ctrl+F6** | | Start / stop couch co-op from the keyboard (player 1 stays on keyboard and mouse; with one controller connected it is player 2's straight away, with several each player holds L3 + R3 on theirs) |
+| | **Hold L3 + R3** (both stick clicks) on another controller, half a second | Join couch co-op as the next player. Held 3 s: leave (player 1 holding it on their controller ends co-op) |
 | **Numpad 1-6** | | The selected character uses skill slot 1-6 (the Arisen by default while you play a pawn; never the one you are playing) |
 | **Numpad 7** | | Warp all pawns to you |
 | **Numpad .** | | Heal / revive all pawns and the Arisen. A cheat, **off by default**: tick it under Cheats in the settings |
 
-- Another cheat, **off by default** (Cheats in the settings): special arrows (Explosive, Blighting, Tarring, Drenching) are never used up by your pawns, whether you play them or they fight on their own, so there is always something to fire when you take one over. A pawn still needs at least one of the arrow in the bag.
-- In couch co-op, player 2 changes to the next pawn with the same take-control combination (L1 + left stick click). It goes round the pawns only; the Arisen stays player 1's.
-- **Two controllers:** player 1 can play the Arisen on a controller too. With co-op off, player 2 holds L3 + R3 on their own controller to join; the controller used most recently besides it becomes player 1's (so press something on yours first). Each controller then works only its own character, and the camera follows player 1's right stick. Two PlayStation controllers, or a PlayStation and an Xbox controller, both work.
-- Off by default and not fully tested yet, under the co-op settings: target markers and aiming for both players, co-op starting again by itself after loads and cutscenes, and rumble on player 2's controller.
+- **Bow skills just work (on by default):** special arrows are not used up while you play a pawn, and a played Archer that has none of one kind is quietly given one. Given arrows weigh nothing for whoever carries them, so the weight class never changes; everyone else's arrows weigh what they always did. Switches under Cheats.
+
+### Couch co-op
+- **Joining:** whoever plays the Arisen keeps what they play on (keyboard and mouse, or their controller). A friend holds L3 + R3 on another controller for half a second and joins as player 2, then players 3 and 4 the same way. The friend takes the next character: a character player 1 just pointed at with the selection arrow, else the Arisen if player 1 is on a pawn, else the selected pawn. Holding L3 + R3 for 3 s leaves.
+- **Who is who:** each player's character glows in their colour when they join (player 1 amber, 2 light blue, 3 green, 4 violet) and keeps glowing while they play it (a tick per player under Couch co-op). A player who leaves flashes red. Each player has a target circle and an off-screen marker in their colour, their own bars and skill list, with their own controller's button names.
+- **Changing characters:** each player's take-control combination (L1 + left stick click; F6 for player 1) goes to their next free character, the Arisen included.
+- **Aiming (on by default):** tap R3 to keep a target, flick the right stick to move to the next enemy on that side, hold R3 to take player 1's target.
+- **Camera:** every player's right stick turns it (a slow push; a quick flick switches target). Ticks per player under Couch co-op. With Camera Distance installed the camera keeps everyone in view, climbs and cranes up against walls, and drops back to the normal camera in the Rift.
+- Two PlayStation controllers, PlayStation and Xbox controllers mixed, all work. Turn **Steam Input off** for Dragon's Dogma 2, or Steam merges the controllers into one and players can't be told apart.
+- Player 2's controller rumbles, and co-op starts again by itself after loads and cutscenes (both on by default).
+- Pawn Tactical Wheel's controller button (L1 + R3) is kept shut while co-op runs, so it doesn't pop open for other players; its keyboard key still works.
 - **The controller you pick up drives the Arisen.** The game listens to one "active" controller and does not switch by itself, so a controller that went off, or a second one left connected, could leave the Arisen ignoring the one in your hands while the keyboard still worked. The mod hands the Arisen to the controller you use (switch: "The controller you use drives the Arisen").
 - Any key can be given Ctrl: hold Ctrl while you press the new key.
 - These are the defaults. Every keyboard key above (co-op and the six skill orders included) and three controller combinations (take control / next character, back to the Arisen, couch co-op) can be changed under **Controls** in the settings window. There is also a switch there to keep the Arisen out of the take-control round.
@@ -76,7 +83,6 @@ Wait and To Me orders tell him to stay or follow again. A caster Arisen answers 
 - Looting, gathering, chests, waking and reviving by your pawn happen without the usual animation.
 - The Arisen does not aim. A Magick Archer or Archer Arisen shoots at what he has locked on to. The Arisen's melee vocations do not guard or dodge.
 - The bow aim camera and reticle are for Archer pawns in normal possession, not in co-op. Aimed skills for a bow pawn are on the controller only.
-- In co-op player 1 always plays the Arisen and player 2 a pawn. Choosing any character per player is planned.
 - Quick skills (Numpad 1-6) cover the six pawn vocations; attack skills need an enemy in view or near the pawn.
 - Possessing a pawn far away from the Arisen for a long time is not recommended.
 - While you play a pawn, the button guide does not show "Dash" on its button. Dashing works as usual; only the label is missing.
@@ -87,6 +93,9 @@ Other REFramework mods can ask who is being played, react when control changes h
 
 ## Uninstall
 Remove the mod and delete `reframework/data/DirectPawnControl.json` and `DPC_*.json` if you want a clean slate.
+
+## Upgrading
+Coming from 0.9.170 or older, your settings start from the new defaults once; your key and controller bindings are kept, and the old file stays as `DirectPawnControl.before_0.9.172.json`.
 
 ## Credits
 - **Pawn Tactical Wheel** showed that a pawn can be ordered to use a skill by handing its AI the skill's own action pack, and its table got this mod's quick skills started. Its way of keeping an ordered skill going (the pawn's decision maker is switched off until the action is over) is used for skill orders since 0.9.151. The released mod carries no data from it: which action pack belongs to which skill is read from the game's own skill table while you play.

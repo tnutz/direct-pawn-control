@@ -1,4 +1,4 @@
-# Direct Pawn Control: mod API (`_G.DPC_API`, version 1.0)
+# Direct Pawn Control: mod API (`_G.DPC_API`, version 1.1)
 
 Other REFramework Lua mods can ask Direct Pawn Control who is being played, react when control changes hands, and
 take over a few things DPC would otherwise do itself. Available since DPC 0.9.170.
@@ -28,18 +28,21 @@ end
 Always pass `{ mod = "Your mod's name" }` in `opts`: that is the name players see under Connected mods.
 
 Check for a feature before you rely on it: `DPC_API.has("events")`, `"claims"`, `"overrides"`, `"players"`,
-`"coop2pads"`. `DPC_API.version` is the API version ("1.0"), `DPC_API.dpc_version` the mod's version.
+`"coop2pads"`, `"players_n"` (1.1: co-op with players 3 and up), `"characters"` (1.1: offering characters to players).
+`DPC_API.version` is the API version ("1.1"), `DPC_API.dpc_version` the mod's version.
 
 ## Questions
 
 | Call | Returns |
 |---|---|
-| `state()` | `{ active, played, arisen = { name, job, chara, ai_on }, coop = { active, two_pads, players = { [1], [2] } }, transition = { running, style } }`. `active`: a pawn is being played. `played`: info about that pawn (below). `ai_on`: DPC's AI is driving the Arisen |
-| `played(p)` | The character (`app.Character`) player `p` (default 1) controls right now. In co-op player 1 is the Arisen and player 2 the pawn |
-| `player_of(chara)` | 1 or 2 if a player controls that character, else nil |
+| `state()` | `{ active, played, arisen = { name, job, chara, ai_on }, coop = { active, two_pads, players = { [1], [2], ... } }, transition = { running, style } }`. `active`: a pawn is being played. `played`: info about that pawn (below). `ai_on`: DPC's AI is driving the Arisen. `coop.players` has one entry per player (character info, below) |
+| `played(p)` | The character (`app.Character`) player `p` (default 1) controls right now. In classic co-op player 1 is the Arisen and player 2 the pawn; with "any combination" either can be on any character |
+| `players()` | 1.1: a list, in player order, of `{ player, chara, info, controller_lost }` for every player (players 3 and up included). `controller_lost`: that player's controller went away (their character waits) |
+| `players_max()` | 1.1: how many players can join at most (DPC's setting) |
+| `player_of(chara)` | The player number if a player controls that character, else nil |
 | `is_played(chara)` | true if a player controls that character |
 | `arisen_ai()` | `{ on, target, target_name, mode }`: whether DPC's AI drives the Arisen and what it is fighting |
-| `party()` | A list of `{ slot, name, job, job_name, chara, controlled_by }`; `controlled_by` is `"player1"`, `"player2"` or `"ai"` |
+| `party()` | A list of `{ slot, name, job, job_name, chara, controlled_by }`; `controlled_by` is `"player1"`, `"player2"`, ... or `"ai"` |
 | `option(key)` | The current value of one of DPC's settings (plain values only) |
 
 Character info (in `state()`): `{ chara, name, job, job_name, slot, is_main_pawn, is_arisen }`.
@@ -57,9 +60,25 @@ Compare characters by address (`a:get_address() == b:get_address()`), never with
 | `switch` | `{ player, from_name, to_name }`: straight from one character to another |
 | `release` | `{ player, name, reason }`: a player let go of a pawn |
 | `coop_start` / `coop_stop` | `{ players = { [1], [2] } }` / `{}` |
+| `player_join` / `player_leave` | 1.1: `{ player, name }` / `{ player, reason }`: a third (fourth, ...) player joined with their controller / left |
 | `transition_start` / `transition_end` | `{ style, chara }` / `{ to_name, interrupted }`: DPC's camera transition when control changes hands. An interrupted transition ends before the next one starts |
 | `arisen_ai_target` | `{ target, target_name }`: DPC's Arisen AI picked a new enemy |
 | `world_loading` / `world_back` | `{}`: a load screen started / the world is back |
+
+## Characters for players 3 and up (1.1)
+
+Players 3 and up join co-op by holding L3 + R3 on their own controller and take a free party member. A mod that grows
+the party (more pawns in the game's pawn list) needs nothing more. A mod that spawns characters outside the party can
+offer them:
+
+```lua
+local h = DPC_API.add_character(chara, { name = "Summoned Knight", mod = "My Mod" })
+-- later
+DPC_API.remove_character(h)   -- a player on it lets go first
+```
+
+The character needs the usual human components (an `app.Human` with a job) to be played. It is offered only to players 3
+and up; players 1 and 2 keep to the party.
 
 ## Claims: taking over something DPC does
 

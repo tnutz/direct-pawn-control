@@ -1,0 +1,117 @@
+{
+ "id": "coop-start-2",
+ "title": "Starting co-op with Ctrl + F6: waits for L3 + R3, or takes the only controller (DPC 0.9.172-dev47)",
+ "intro": "Playing the Arisen, co-op off, three controllers on. (Starts A and B passed in coop-start-1.) Each step waits for End.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev47",
+  "TestGuide": "2.7.2"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-start-2.json",
+  "show": [
+   "mode",
+   "p1",
+   "p2"
+  ],
+  "probes": {
+   "mode": "local D = _G.DPC_dbg; if not D then return '' end; if D.coop.active then return 'classic' elseif D.R.cp and D.R.cp.on and D.R.s2 and D.R.s2.active then return D.R.cp.mode end; return 'off'",
+   "p1": "local D = _G.DPC_dbg; local t = D and D.R.tp; if not t or not t.p1 then return 'none' end; return t.p1 == D.R.KB_ADDR and 'keyboard' or string.format('controller %X', t.p1 & 0xFFFFFF)",
+   "p2": "local D = _G.DPC_dbg; local t = D and D.R.tp; return (t and t.p2) and string.format('%X', t.p2 & 0xFFFFFF) or 'none'",
+   "wait": "local D = _G.DPC_dbg; return D and D.R.kb_wait() or false",
+   "np": "local D = _G.DPC_dbg; return D and D.R.np_count and D.R.np_count() or 0",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready: playing the Arisen, co-op off, all three controllers on and awake. Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "C. CTRL + F6 WITH SEVERAL CONTROLLERS: press Ctrl + F6. Co-op starts waiting for player 2 (no controller moves the Arisen or turns the camera). Then hold L3 + R3 on one controller (player 2), then on another (player 3). End when both are in.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "p2",
+     "agg": "last",
+     "label": "player 2's controller set"
+    },
+    {
+     "probe": "wait",
+     "agg": "any",
+     "label": "waited for player 2's controller",
+     "op": "==",
+     "value": true
+    },
+    {
+     "probe": "p1",
+     "agg": "last",
+     "label": "player 1 (want keyboard)",
+     "op": "==",
+     "value": "keyboard"
+    },
+    {
+     "probe": "np",
+     "agg": "max",
+     "label": "player 3 joined",
+     "op": ">=",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "text": "C. PLAYER 1: Ctrl + F6 to end co-op. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "co-op ended",
+     "op": "==",
+     "value": "off"
+    }
+   ]
+  },
+  {
+   "text": "D. (optional) CTRL + F6 WITH ONE CONTROLLER: switch two controllers off so only one is connected, leave it on the table, press Ctrl + F6. That controller should be player 2 straight away. Ctrl + F6 again to end. End when done (or straight away to skip).",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "p2",
+     "agg": "last",
+     "label": "player 2's controller"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude how each start felt.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  }
+ ]
+}

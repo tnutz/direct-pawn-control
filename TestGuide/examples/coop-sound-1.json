@@ -1,0 +1,141 @@
+{
+ "id": "coop-sound-1",
+ "title": "Co-op sound: the listener moves toward the players (DPC 0.9.172)",
+ "intro": "Two controllers (or keyboard + one controller), a full party, open ground, no enemies, playing the Arisen, co-op off. Sound on (headphones help). About 2 minutes. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev1"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-sound-1.json",
+  "show": [
+   "lway",
+   "lerr",
+   "lcam",
+   "camd"
+  ],
+  "probes": {
+   "lway": "local D = _G.DPC_dbg; local L = D and D.R.lis; if not L then return 'none' end; return L.found or (L.failed and 'failed') or (L.active and ('trying ' .. tostring(L.ways[L.way_i]))) or 'idle'",
+   "lerr": "local D = _G.DPC_dbg; return D and D.R.lis.err or -1",
+   "lcam": "local D = _G.DPC_dbg; return D and D.R.lis.from_cam or -1",
+   "camd": "local D = _G.DPC_dbg; return D and D.R.lis.d or -1",
+   "lact": "local D = _G.DPC_dbg; return D ~= nil and D.R.lis.active == true",
+   "lerrs": "local D = _G.DPC_dbg; return D and D.R.lis.errs or 0",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_listener_move",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "Starting classic co-op on your main pawn (you: the Arisen).",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": true,
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Walk the Arisen and the pawn apart (20-30 m) so the camera pulls back. DPC is finding how to move the listener: hold still-ish for a few seconds once apart. 25 seconds.",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "lact",
+     "agg": "any",
+     "label": "listener move active with the camera pulled back"
+    },
+    {
+     "probe": "lway",
+     "agg": "last",
+     "op": "~=",
+     "value": "failed",
+     "label": "a way to move the listener was found"
+    }
+   ]
+  },
+  {
+   "text": "Stay apart. LISTEN: footsteps, swings and voices of BOTH characters, also when one walks away from the camera. No sudden cut-off? 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "lerr",
+     "agg": "avg",
+     "op": "<",
+     "value": 2.0,
+     "label": "listener on its target (m)"
+    },
+    {
+     "probe": "lcam",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "listener moved away from the camera (m)"
+    },
+    {
+     "probe": "lerrs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no listener errors"
+    }
+   ]
+  },
+  {
+   "text": "Same with the switch off (the game's listener at the camera): the cut-off should come back. 15 seconds.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_listener_move",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "Switch back on. Walk back together: the camera comes in and the listener goes back to the camera. 15 seconds.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_listener_move",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "Ending co-op.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "lact",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "listener move off after co-op"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: did both characters stay audible apart? Did turning it off bring the cut-off back?",
+   "secs": 5
+  }
+ ]
+}

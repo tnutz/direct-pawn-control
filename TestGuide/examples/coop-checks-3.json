@@ -1,0 +1,145 @@
+{
+ "id": "coop-checks-3",
+ "title": "Co-op checks 3: given arrows weigh nothing only for their carrier, a real downed pawn with the game's own chime (DPC 0.9.172-dev32)",
+ "intro": "Two controllers, both awake. A full party (Arisen, player 2's Archer pawn, at least one more pawn), out of combat. Playing the Arisen, co-op off. Each step lasts until you press End (keyboard).",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev32",
+  "TestGuide": "2.7"
+ },
+ "settings": [
+  {
+   "mod": "dpc",
+   "key": "free_arrows_give",
+   "label": "Give a played Archer missing special arrows"
+  },
+  {
+   "mod": "dpc",
+   "key": "down_alert",
+   "label": "Our own down notice (off: the game's chime only)"
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_coop-checks-3.json",
+  "show": [
+   "given",
+   "kg",
+   "w_pawn",
+   "dead"
+  ],
+  "probes": {
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "given": "local D = _G.DPC_dbg; return D and D.R.arrow_give.given or 0",
+   "kg": "local D = _G.DPC_dbg; local G = D and D.R.arrow_give; local s = ''; if G and G.kg then for k, v in pairs(G.kg) do s = s .. tostring(k) .. '=' .. string.format('%.2f', v) .. ' ' end end; return s",
+   "w_pawn": "local D = _G.DPC_dbg; local im = sdk.get_managed_singleton('app.ItemManager'); local c = D and D.state.pawn_chara; if not (im and c) then return -1 end; return im:call('getStorageWeight(app.Character)', c)",
+   "w_arisen": "local im = sdk.get_managed_singleton('app.ItemManager'); local cm = sdk.get_managed_singleton('app.CharacterManager'); local c = cm and cm:call('get_ManualPlayer'); if not (im and c) then return -1 end; return im:call('getStorageWeight(app.Character)', c)",
+   "dead": "local pm = sdk.get_managed_singleton('app.PawnManager'); local l = pm and pm:call('get_PawnCharacterList'); if not l then return 0 end; local n = 0; for i = 0, l:call('get_Count') - 1 do local c = l:call('get_Item', i); if c and c:call('get_IsDead') then n = n + 1 end end; return n"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "cheat_free_arrows",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "free_arrows_give",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "down_alert",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 2: hold L3 + R3 until co-op starts (player 1 the Arisen, player 2 the Archer pawn).",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "classic co-op on",
+     "op": "==",
+     "value": "classic",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "WEIGHT: the Archer gets any missing special arrow. Open the Archer's equipment/bag and look at the weight and weight class: they should be the same as before the arrows arrived. Then check another pawn or the Arisen carrying arrows: those still weigh what they normally do. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "given",
+     "agg": "last",
+     "label": "arrows given by DPC"
+    },
+    {
+     "probe": "kg",
+     "agg": "last",
+     "label": "weight taken off, per character (id=kg)"
+    },
+    {
+     "probe": "w_pawn",
+     "agg": "last",
+     "label": "Archer's carried weight as the game reads it"
+    },
+    {
+     "probe": "w_arisen",
+     "agg": "last",
+     "label": "Arisen's carried weight"
+    }
+   ]
+  },
+  {
+   "text": "DOWN: one of the other pawns is knocked down now. He should fall and lie there like a real downed pawn, with the game's own chime and flash (our red line is off). PLAYER 1: revive him straight away. End when done.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "down",
+     "idx": "other"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "dead",
+     "agg": "max",
+     "label": "a pawn was really down (IsDead)",
+     "op": ">=",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "text": "Done. PLAYER 1: hold L3 + R3 for 3 seconds to end co-op. Tell Claude: did the weight class stay put, did the pawn fall, chime?",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  }
+ ]
+}

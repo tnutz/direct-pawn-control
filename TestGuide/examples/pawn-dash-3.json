@@ -1,0 +1,152 @@
+{
+ "id": "pawn-dash-3",
+ "title": "Played pawn sprint, round 3: the Arisen's Dash option on the pawn (DPC 0.9.172-dev13)",
+ "intro": "One controller (or keyboard). Open flat ground with room to run 10+ seconds, out of combat, full stamina, not possessing anyone, co-op off. About a minute. End (keyboard) ends any step early.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev13",
+  "TestGuide": "2.6"
+ },
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_pawn-dash-3.json",
+  "show": [
+   "pspd",
+   "pdash",
+   "psw",
+   "popt",
+   "pin"
+  ],
+  "probes": {
+   "pspd": "local D = _G.DPC_dbg; local c = D and D.state.active and D.state.pawn_chara; return c and H.speed(c, 'pawn')",
+   "aspd": "return H.speed()",
+   "on": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "pdash": "local D = _G.DPC_dbg; local h = D and D.state.pawn_human; return h ~= nil and h:call('get_IsDash') == true",
+   "adash": "local a = H.arisen(); local h = a and a:call('get_Human'); return h ~= nil and h:call('get_IsDash') == true",
+   "preq": "local D = _G.DPC_dbg; local q = D and D.native.pip; return q ~= nil and q:get_field('RequestDash') == true",
+   "psw": "local D = _G.DPC_dbg; local q = D and D.native.pip; return q ~= nil and q:get_field('DashSwitch') == true",
+   "pkeep": "local D = _G.DPC_dbg; local q = D and D.native.pip; return q and q:get_field('DashTriggerKeepTime')",
+   "pen": "local D = _G.DPC_dbg; local q = D and D.native.param; return q ~= nil and q:call('get_IsEnableDashAction') == true",
+   "pen_h": "local D = _G.DPC_dbg; local h = D and D.state.pawn_human; return h ~= nil and h:call('get_IsEnableDashAction') == true",
+   "pin": "local D = _G.DPC_dbg; local function fb(inp) local af = D.af(); local on = inp and inp:get_field('ButtonOnFlags') or 0; local trg = inp and inp:get_field('ButtonTriggerFlags') or 0; local s = ''; if (on & (af.Dash or 0)) ~= 0 then s = s .. 'D' end; if (trg & (af.Dash or 0)) ~= 0 then s = s .. 'd' end; if (on & (af.KeepDash or 0)) ~= 0 then s = s .. 'K' end; return s end; return D and D.state.pawn_input and fb(D.state.pawn_input) or ''",
+   "ain": "local D = _G.DPC_dbg; local function fb(inp) local af = D.af(); local on = inp and inp:get_field('ButtonOnFlags') or 0; local trg = inp and inp:get_field('ButtonTriggerFlags') or 0; local s = ''; if (on & (af.Dash or 0)) ~= 0 then s = s .. 'D' end; if (trg & (af.Dash or 0)) ~= 0 then s = s .. 'd' end; if (on & (af.KeepDash or 0)) ~= 0 then s = s .. 'K' end; return s end; return D and fb(H.ar_input()) or ''",
+   "pstam": "local D = _G.DPC_dbg; local c = D and D.state.pawn_chara; local m = c and c:call('get_StaminaManager'); return m and m:call('get_RemainingAmount')",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "aopt": "local i = H.ar_input(); local h = i and i:get_field('DashOptionHandle'); if not h then return 'nil' end; local ok, v = pcall(function() return h:call('get_CurrentValue') end); return ok and tostring(v) or 'err'",
+   "popt": "local D = _G.DPC_dbg; local i = D and D.state.pawn_input; local h = i and i:get_field('DashOptionHandle'); if not h then return 'nil' end; local ok, v = pcall(function() return h:call('get_CurrentValue') end); return ok and tostring(v) or 'err'",
+   "popt0": "local D = _G.DPC_dbg; local s = D and D.state.pawn_dash_opt0; return s and (s.v and 'set' or 'nil') or 'none'"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "native_dash_opt",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "native_dash_keep",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "As the ARISEN: hold sprint and keep running, straight or wide circles. 8 seconds (End moves on).",
+   "secs": 8
+  },
+  {
+   "text": "Taking over your main pawn. Stand still.",
+   "secs": 4,
+   "min_secs": 3,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "on",
+     "agg": "last",
+     "label": "pawn possessed",
+     "op": "==",
+     "value": true,
+     "must": true
+    },
+    {
+     "probe": "popt",
+     "agg": "last",
+     "label": "pawn has the Arisen's Dash option",
+     "op": "~=",
+     "value": "nil"
+    }
+   ]
+  },
+  {
+   "text": "FIX 1 (the game's Dash option on the pawn): hold sprint and keep running as the pawn. Does it hold? 10 seconds.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "pdash",
+     "agg": "frac",
+     "label": "pawn sprint held (share of samples)"
+    }
+   ]
+  },
+  {
+   "text": "Stop. Adding FIX 2 (KeepDash while Dash is held). Stand still.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "native_dash_keep",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "FIX 1 + 2: hold sprint and keep running as the pawn. Does it hold now? 10 seconds.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "pdash",
+     "agg": "frac",
+     "label": "pawn sprint held (share of samples)"
+    }
+   ]
+  },
+  {
+   "text": "Putting it back (FIX 2 off, back to the Arisen).",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "native_dash_keep",
+     "value": false
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: did the pawn hold the sprint after FIX 1, or only after FIX 2?",
+   "secs": 5
+  }
+ ]
+}

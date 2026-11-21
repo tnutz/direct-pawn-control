@@ -4,12 +4,12 @@ On-screen test runner for live tests of the DD2 mods. A plan file describes the 
 
 - Install: `reframework/autorun/TestGuide.lua`.
 - Plan: `reframework/data/test_guide/plan.json` (format in the script header; example in `examples/`).
-- **End** or **L3+R3** = ready (3 s countdown, then step 1). **Shift+End** = dismiss or abort.
+- **End** = ready (2.7.2: not L3+R3, which is co-op join) (3 s countdown, then step 1). **Shift+End** = dismiss or abort.
 - Status: `data/test_guide/status.json` (`waiting` / `countdown` / `running` / `done` / `aborted`, current step, finished ids).
 - Live values: `record.show` lists probe names to print on the overlay while a step runs (v1.1).
 - `record.at = "frame"` samples in `re.on_frame`, after the camera update, which is needed for `draw.world_to_screen` and the final camera pose (v1.2).
 - Queue (v1.5): plans in `data/test_guide/queue/*.json` run in file-name order after `plan.json`, each once by id; Shift+End skips the one waiting.
-- A step with `"wait": true` has no timer: it stays up until the player presses End or L3+R3 (v1.3). Use it for anything the player has to do in a menu or judge by eye.
+- A step with `"wait": true` has no timer: it stays up until the player presses End (v1.3). Use it for anything the player has to do in a menu or judge by eye.
 - `"each_frame": "<lua>"` on a step runs that chunk every frame of the step, before the game's LateUpdate, in the probe environment (v1.4). Use it for live experiments such as overriding a camera field.
 - Results: the plan's `record.out`, e.g. `data/test_guide/result_<id>.json` with one row per sample (`t`, `step`, each probe).
 - A plan id runs once; finished ids survive script resets. Step commands are queued 0.6 s apart because DPC reads `DPC_cmd.json` every 0.5 s.
@@ -28,3 +28,10 @@ On-screen test runner for live tests of the DD2 mods. A plan file describes the 
 
 ## 2.1
 - The list of finished plan ids kept only the last 20, so older files left in `queue/` started again. It now keeps 300. Clear a queue file by overwriting it with `{}` (files without an id are ignored).
+
+## 2.6: steps that last until done, manual step end
+- An `expect` item with `"must": true` keeps its step running until every must-have passes (checked live four times a second over the step's samples so far); the step then moves on 1.5 s later. The overlay shows the checklist (`[ ]` / `[x]`). `secs` is only a hint for such steps. `min_secs` (default 2) and `max_secs` (default 180; the must then fails) bound it.
+- End (keyboard only; L3+R3 is co-op join / leave) ends any running step at once. Its checks are still made.
+
+## 2.7: the test's own settings, in one place
+- A plan's `"settings"` list (`{"mod": "cd" | "dpc", "key": ..., "label": ..., "min": ..., "max": ..., "fmt": ...}`, or `"values"` / `"labels"` for a choice) is shown in a "Test settings" window while the REFramework menu is open, and first in TestGuide's own entry. `cd` goes through `CameraDistance_API`, `dpc` through `DPC_dbg` (dev builds). Changes save in the mod as usual; the values at the end go into the result file under `"settings"`.

@@ -40,9 +40,11 @@ An REFramework Lua mod for **Dragon's Dogma 2** that provides complete control o
   - **Gamepad Combo** (optional): Hold `L1 + R1` + `D-Pad Up/Down` to zoom in/out, `D-Pad Left` to swap shoulder, `D-Pad Right` to toggle RTS mode.
 
 - **Couch Co-op Framing (with DirectPawnControl)**:
-  - When DirectPawnControl's couch co-op is running, player 1 plays the Arisen and player 2 plays a pawn on a controller. The camera pulls back as the two drift apart and slides toward the point between them, so both stay on screen.
-  - Tunable in the "Couch Co-op Framing" section: when to start pulling back, how much per metre, the maximum, and where to centre (0 = Arisen, 0.5 = midpoint, 1 = pawn). The pull-back uses the game's own camera arm, so wall collision still applies.
-  - The `L1 + R1` gamepad zoom combo is ignored during co-op, because that controller belongs to player 2.
+  - When DirectPawnControl's couch co-op is running (any number of players), the "Classic" co-op camera aims at the middle of everyone and pulls back as players drift apart, so all stay on screen. It moves calmly: it slides and pulls back at a steady pace, and a player who runs too far gets an edge marker (player 1 gold, 2 light blue, 3 green, 4 magenta) instead of the camera whipping round.
+  - Climbing: the climbing camera pulls back so both players stay in view. Caves and tight spaces: it pulls back less and widens the view a little. Against a wall or cliff it cranes up and looks down, never tipping over. In the Rift the normal camera returns.
+  - Bow aiming widens to keep player 2 in view. Everything is tunable under "Couch co-op" in the menu.
+  - The `L1 + R1` gamepad zoom combo is ignored during co-op, because the controllers belong to the players.
+  - Upgrading from before 2.9.18: your own camera settings (distance, height, shoulder, field of view, combat distance, presets, hotkeys) are kept; the co-op settings start from the new defaults.
 
 ---
 

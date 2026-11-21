@@ -1,0 +1,106 @@
+{
+ "id": "cam-classic-1",
+ "title": "Classic co-op camera (Camera Distance 2.9.12): centred on both players, from above",
+ "intro": "Two controllers, both awake (press a button on each). A full party, open ground, playing the Arisen, co-op off. About 2 minutes. Press End (keyboard) when ready.",
+ "requires": {
+  "CameraDistance": "2.9.12-dev1",
+  "DirectPawnControl": "0.9.172-dev6"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_cam-classic-1.json",
+  "show": [
+   "style",
+   "mode"
+  ],
+  "probes": {
+   "style": "local a = rawget(_G, 'CameraDistance_API'); return a and a.get('coop_style') or 'no api'",
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until co-op starts. 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "~=",
+     "value": "off",
+     "label": "co-op on"
+    }
+   ]
+  },
+  {
+   "text": "CLASSIC camera on. Stand together: the camera should sit higher and further back, centred between you. 10 seconds.",
+   "secs": 10,
+   "each_frame": "if not _G['__tg_cam_a'] then _G['__tg_cam_a'] = true; local a = rawget(_G, 'CameraDistance_API'); if a then a.set('coop_style', 'classic') end end",
+   "expect": [
+    {
+     "probe": "style",
+     "agg": "last",
+     "op": "==",
+     "value": "classic",
+     "label": "classic style on"
+    }
+   ]
+  },
+  {
+   "text": "Walk apart (20-30 m), then come back together, a couple of times. The camera stays centred on both and zooms with the gap. 25 seconds.",
+   "secs": 25
+  },
+  {
+   "text": "Fight the air and run around each other. PLAYER 1: turn the camera with the right stick. 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no Camera Distance errors"
+    }
+   ]
+  },
+  {
+   "text": "The FOLLOW camera (the one you had): walk apart again to compare. 20 seconds.",
+   "secs": 20,
+   "each_frame": "if not _G['__tg_cam_b'] then _G['__tg_cam_b'] = true; local a = rawget(_G, 'CameraDistance_API'); if a then a.set('coop_style', 'follow') end end",
+   "expect": [
+    {
+     "probe": "style",
+     "agg": "last",
+     "op": "==",
+     "value": "follow",
+     "label": "back to follow"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: hold L3 + R3 for 3 seconds to end co-op.",
+   "secs": 12
+  },
+  {
+   "text": "Done. Tell Claude: which camera do you prefer? Angle, distance, too high / low? (Camera Distance settings -> Co-op camera has sliders for the classic one.)",
+   "secs": 5
+  }
+ ]
+}

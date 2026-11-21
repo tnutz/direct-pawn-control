@@ -1,0 +1,120 @@
+{
+ "id": "defaults-check-1",
+ "title": "New player defaults check (DPC 0.9.172-dev51, Camera Distance 2.9.18-dev4)",
+ "intro": "Settings reset to the defaults for this check (your own are saved and can be put back). Playing the Arisen, co-op off, a full party with an Archer pawn, a second controller for co-op. Each step waits for End.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev51",
+  "TestGuide": "2.7.2"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_defaults-check-1.json",
+  "show": [
+   "who",
+   "mode"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "fresh": "local D = _G.DPC_dbg; return D and (D.cfg.switch_cine_glow_s == 1.8 and D.cfg.coop_glow_keep == true and D.cfg.cheat_free_arrows == true) or false",
+   "who": "local D = _G.DPC_dbg; return D and (D.state.active and tostring(D.state.pawn_name) or 'Arisen') or ''",
+   "mode": "local D = _G.DPC_dbg; if not D then return '' end; if D.coop.active then return 'classic' end; return 'off'",
+   "dead": "local pm = sdk.get_managed_singleton('app.PawnManager'); local l = pm and pm:call('get_PawnCharacterList'); if not l then return 0 end; local n = 0; for i = 0, l:call('get_Count') - 1 do local c = l:call('get_Item', i); if c and c:call('get_IsDead') then n = n + 1 end end; return n"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready: playing the Arisen, co-op off, full party (one Archer pawn helps), open ground. Settings are back to the defaults (yours are saved). Press End.",
+   "wait": true,
+   "expect": [
+    {
+     "probe": "fresh",
+     "agg": "last",
+     "label": "settings are the defaults",
+     "op": "==",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYING A PAWN: take control of a pawn (L1 + left stick click, or F6). Watch the switch (camera move and green glow). Walk, sprint (hold), use a skill. Is the default switch nice? End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "BOW: switch to your Archer pawn (L1 + left stick click again) and try the special-arrow skills and Spiral Arrow / Heavenly Shot from the hip. They should all fire. Then go back to the Arisen. End when done.",
+   "secs": 3600
+  },
+  {
+   "text": "CO-OP: on the Arisen (controller or keyboard), a friend holds L3 + R3 on another controller. Glows, markers, both right sticks turn the camera, flick to switch targets. Walk to a wall or cliff and climb something if handy. Feel right out of the box? End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "co-op on",
+     "op": "==",
+     "value": "classic"
+    }
+   ]
+  },
+  {
+   "text": "DOWN: one of the other pawns is knocked down now: the game's chime and flash, and he lies there. Revive him straight away. End when done.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "down",
+     "idx": "other"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "dead",
+     "agg": "max",
+     "label": "a pawn was down",
+     "op": ">=",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "text": "End co-op (player 1: Ctrl + F6, or hold L3 + R3 for 3 s on player 1's controller). Anything you'd change as a new player? End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "co-op ended",
+     "op": "==",
+     "value": "off"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude anything that felt off with the defaults.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "label": "no Camera Distance errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  }
+ ]
+}

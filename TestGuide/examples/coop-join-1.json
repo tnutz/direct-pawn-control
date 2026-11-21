@@ -1,0 +1,82 @@
+{
+ "id": "coop-join-1",
+ "title": "Co-op join takes the next character (DPC 0.9.172-dev52)",
+ "intro": "Playing the Arisen, co-op off, two controllers (player 1's and a friend's). Each step waits for End.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev52",
+  "TestGuide": "2.7.2"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_coop-join-1.json",
+  "show": [
+   "chars"
+  ],
+  "probes": {
+   "chars": "local D = _G.DPC_dbg; if not D then return '' end; local c = D.R.cp; if not (c.on or D.coop.active) then return 'off' end; return 'P1 ' .. tostring(c.char[1]) .. ' / P2 ' .. tostring(c.char[2]) .. ' (' .. tostring(c.mode) .. ')'",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "1. PLAYER 1 ON A PAWN: take control of a pawn (L1 + left stick click / F6). Then the friend holds L3 + R3: they should get the Arisen, player 1 keeps the pawn. End co-op (player 1: Ctrl + F6, or L3 + R3 held 3 s on player 1's controller). End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "chars",
+     "agg": "any",
+     "label": "player 2 got the Arisen",
+     "op": "contains",
+     "value": "P2 arisen"
+    }
+   ]
+  },
+  {
+   "text": "2. A PICK: back on the Arisen, point the selection arrow at a pawn (F7 / D-pad left or right) so the yellow arrow shows, then within 10 s the friend holds L3 + R3: they get that pawn. End co-op. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "chars",
+     "agg": "last",
+     "label": "who plays what"
+    }
+   ]
+  },
+  {
+   "text": "3. A PICK WHILE ON A PAWN: take control of a pawn, point the arrow at another pawn, then the friend holds L3 + R3 within 10 s: they get the pointed pawn, player 1 keeps theirs. End co-op. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "chars",
+     "agg": "any",
+     "label": "both on pawns",
+     "op": "contains",
+     "value": "(pawns)"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude how each felt.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  }
+ ]
+}

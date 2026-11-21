@@ -1,0 +1,240 @@
+{
+ "id": "coop-4p-1",
+ "title": "Co-op with 3 and 4 players (DPC 0.9.172-dev2, Camera Distance 2.9.11-dev1)",
+ "intro": "Four controllers, all awake (press a button on each now). A full party (three pawns), open ground, no enemies, playing the Arisen, co-op off. Enough hands, or hand controllers round when a step asks. About 4 minutes. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev2",
+  "CameraDistance": "2.9.11-dev1"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-4p-1.json",
+  "show": [
+   "who",
+   "np"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or 'off')",
+   "np": "local D = _G.DPC_dbg; return D and D.R.np_count and D.R.np_count() or 0",
+   "who": "local D = _G.DPC_dbg; if not D then return '' end; local t = {}; for _, p in ipairs(_G.DPC_API.players()) do t[#t + 1] = 'P' .. p.player .. ' ' .. tostring(p.info and p.info.name or (p.info and p.info.is_arisen and 'Arisen') or '?') .. (p.controller_lost and ' (lost)' or '') end; return table.concat(t, ' / ')",
+   "nfr": "local D = _G.DPC_dbg; if not D then return 0 end; local m = nil; for _, sl in pairs(D.R.np.slots) do if sl.active then m = math.min(m or 1e9, sl.frames or 0) end end; return m or 0",
+   "nerr": "local D = _G.DPC_dbg; if not D then return 0 end; local e = 0; for _, sl in pairs(D.R.np.slots) do e = e + (sl.errors or 0) + ((sl.in_err and 1) or 0) + ((sl.failed and 100) or 0) end; return e + ((D.R.np.err and 1000) or 0)",
+   "lost": "local D = _G.DPC_dbg; if not D then return 0 end; local n = 0; for _, sl in pairs(D.R.np.slots) do if sl.pad_lost then n = n + 1 end end; return n",
+   "lway": "local D = _G.DPC_dbg; local L = D and D.R.lis; return L and (L.found or (L.failed and 'failed') or 'finding') or ''",
+   "ai0": "local p = H.pawn(0); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "ai1": "local p = H.pawn(1); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "ai2": "local p = H.pawn(2); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro): four controllers awake. Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_any",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until 'player 2 joined'. 20 seconds.",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "~=",
+     "value": "off",
+     "label": "co-op on with two controllers"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 3: hold L3 + R3 (both stick clicks) on your controller until 'player 3 joined'. 15 seconds.",
+   "secs": 15,
+   "expect": [
+    {
+     "probe": "np",
+     "agg": "max",
+     "op": ">=",
+     "value": 1,
+     "label": "player 3 joined"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 4: hold L3 + R3 until 'player 4 joined'. 15 seconds.",
+   "secs": 15,
+   "expect": [
+    {
+     "probe": "np",
+     "agg": "max",
+     "op": ">=",
+     "value": 2,
+     "label": "player 4 joined"
+    }
+   ]
+  },
+  {
+   "text": "EVERYONE: walk your own character around, attack, use a skill. Each controller moves only its own character? Camera keeps all four in view? 25 seconds.",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "nfr",
+     "agg": "max",
+     "op": ">",
+     "value": 300,
+     "label": "players 3 / 4's controls run every frame"
+    },
+    {
+     "probe": "nerr",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no errors in players 3 / 4's controls"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    },
+    {
+     "probe": "cerrs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no Camera Distance errors"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 3: press L1 + left stick click. Everyone's character is taken, so player 3 should stay ('nobody else to take').",
+   "secs": 10
+  },
+  {
+   "text": "Three tough goblins. Everyone fights for 25 seconds. Sound: can you hear everyone with the camera pulled back?",
+   "secs": 25,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 6.0,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "nerr",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no errors in the fight"
+    },
+    {
+     "probe": "lway",
+     "agg": "last",
+     "op": "~=",
+     "value": "failed",
+     "label": "the sound listener found a way to move"
+    }
+   ]
+  },
+  {
+   "text": "Removing the goblins.",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 4: hold L3 + R3 for 3 seconds: player 4 leaves (co-op goes on). 10 seconds.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "np",
+     "agg": "last",
+     "op": "==",
+     "value": 1,
+     "label": "player 4 left, player 3 still in"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 3: press L1 + left stick click: player 3 moves to the pawn player 4 left. 10 seconds.",
+   "secs": 10
+  },
+  {
+   "text": "Optional: switch PLAYER 3's controller off (or unplug it) for a few seconds, switch it on, press a button on it: player 3 gets it back ('controller is back'). 25 seconds.",
+   "secs": 25
+  },
+  {
+   "text": "PLAYER 1: hold L3 + R3 for 3 seconds to end co-op (players 2 and 3 end too).",
+   "secs": 12,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "==",
+     "value": "off",
+     "label": "co-op ended"
+    },
+    {
+     "probe": "np",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "players 3+ ended with co-op"
+    },
+    {
+     "probe": "ai0",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "pawn 1's AI back"
+    },
+    {
+     "probe": "ai1",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "pawn 2's AI back"
+    },
+    {
+     "probe": "ai2",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "pawn 3's AI back"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: did each controller drive only its own character? Camera with four? Bars for P3 / P4 readable? Sound?",
+   "secs": 5
+  }
+ ]
+}

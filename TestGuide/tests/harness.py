@@ -86,16 +86,18 @@ def run():
     plan = {"id": "h1", "title": "harness", "requires": {"FakeMod": "1.2.0"},
             "steps": [{"text": "a", "secs": 1, "expect": [{"probe": "x", "op": ">", "value": 4, "label": "x above 4"},
                                                           {"probe": "flag", "agg": "all", "label": "flag always true"},
-                                                          {"probe": "name", "op": "contains", "value": "Loco", "label": "in locomotion"}]},
+                                                          {"probe": "name", "op": "contains", "value": "Loco", "label": "in locomotion"},
+                                                          {"probe": "empty", "agg": "last", "op": "==", "value": "", "label": "last string (2.4.2)"},
+                                                          {"probe": "off", "agg": "last", "op": "==", "value": False, "label": "last boolean false (2.4.2)"}]},
                       {"text": "b", "wait": True, "expect": [{"probe": "x", "agg": "max", "op": "<", "value": 3, "label": "x below 3 (should fail)"}]}],
             "record": {"hz": 20, "out": "test_guide/result_h1.json",
-                       "probes": {"x": "return 5", "flag": "return true", "name": "return 'Locomotion.Idle'", "bad": "error('boom')"}}}
+                       "probes": {"empty": "return ''", "off": "return false", "x": "return 5", "flag": "return true", "name": "return 'Locomotion.Idle'", "bad": "error('boom')"}}}
     files = {"test_guide/plan.json": plan}
     state, step, press = make(files)
     step(n=30)
     st = files["test_guide/status.json"]
     check("plan loads and waits", st["state"] == "waiting", st)
-    check("own dev status written", files.get("dev_status/TestGuide.json", {}).get("version") == "2.1")
+    check("own dev status written", files.get("dev_status/TestGuide.json", {}).get("version") == __import__("re").search(r'local VERSION = "([^"]+)"', SRC).group(1))
     press(0x23); step(n=5)
     check("blocked while required mod is missing", files["test_guide/status.json"]["state"] == "waiting" and files["test_guide/status.json"].get("unmet"))
     files["dev_status/FakeMod.json"] = {"mod": "FakeMod", "version": "1.1.9", "t": state["clock"]}
@@ -107,21 +109,34 @@ def run():
     for _ in range(90): beat(); step()          # 3 s countdown + 1 s step
     st = files["test_guide/status.json"]
     check("reaches the wait step", st["state"] == "running" and st["step"] == 2, st)
-    check("3 verdicts after step 1, all pass", len(st.get("verdicts", [])) == 3 and all(v["pass"] for v in st["verdicts"]), st.get("verdicts"))
+    check("5 verdicts after step 1, all pass", len(st.get("verdicts", [])) == 5 and all(v["pass"] for v in st["verdicts"]), st.get("verdicts"))
     for _ in range(40): beat(); step()
     check("wait step does not time out", files["test_guide/status.json"]["step"] == 2)
     press(0x23)
     st = files["test_guide/status.json"]
     check("finishes on End", st["state"] == "done", st)
     v = st["verdicts"]
-    check("4th verdict fails as designed", len(v) == 4 and v[3]["pass"] is False, v)
+    check("last verdict fails as designed", len(v) == 6 and v[5]["pass"] is False, v)
     res = files["test_guide/result_h1.json"]
-    check("result file has rows, verdicts, versions", len(res["rows"]) > 10 and len(res["verdicts"]) == 4 and res["versions"].get("FakeMod") == "1.2.0")
+    check("result file has rows, verdicts, versions", len(res["rows"]) > 10 and len(res["verdicts"]) == 6 and res["versions"].get("FakeMod") == "1.2.0")
     check("probe errors are recorded, not fatal", str(res["rows"][0].get("bad", "")).startswith("ERR"))
     beat(); step()
     check("overlay shows the failed check", any("CHECKS FAILED" in t for t in state["texts"]), state["texts"][-6:])
     step(n=12); press(0x23); step(n=30)
     check("End closes the result screen", files["test_guide/status.json"]["state"] == "idle")
+
+    # 2.5: run a finished test again
+    check("finished plans are kept for running again", any(h.get("id") == "h1" for h in files.get("test_guide/history.json", [])))
+    press(0x21); step(n=5)
+    st = files["test_guide/status.json"]
+    check("Page Up runs the last test again under a new id", st.get("id") == "h1-again2" and st["state"] == "waiting", st)
+    press(0x23, shift=True); step(n=3)
+    check("dismissed", files["test_guide/status.json"]["state"] == "aborted")
+    press(0x21); step(n=5)
+    st = files["test_guide/status.json"]
+    check("Page Up on the end screen: again, next number", st.get("id") == "h1-again3" and st["state"] == "waiting", st)
+    press(0x23, shift=True); step(n=200)
+    check("back to idle", files["test_guide/status.json"]["state"] == "idle", files["test_guide/status.json"])
 
     # queue + HUD error line + flight recorder
     files["test_guide/queue/01.json"] = {"id": "q1", "steps": [{"text": "q", "secs": 1}]}
@@ -138,6 +153,25 @@ def run():
     check("Home saves a flight recording", bool(latest) and len(files[latest["file"]]["rows"]) > 50, latest)
     press(0x24, shift=True); step(n=100)
     check("Shift+Home hides the HUD", not any("FakeMod" in t for t in state["texts"]) and files["test_guide/config.json"]["hud"] is False, state["texts"])
+    # 2.6: must-have expects keep a step going; End ends a timed step
+    plan = {"id": "m1", "steps": [
+        {"text": "until", "secs": 1, "expect": [{"probe": "n", "agg": "last", "op": ">", "value": 60, "must": True, "label": "n above 60"}]},
+        {"text": "long", "secs": 30},
+        {"text": "never", "secs": 1, "max_secs": 4, "expect": [{"probe": "n", "agg": "last", "op": "<", "value": 0, "must": True, "label": "impossible"}]}],
+        "record": {"hz": 20, "out": "test_guide/result_m1.json", "probes": {"n": "_G.__n = (_G.__n or 0) + 1; return _G.__n"}}}
+    files = {"test_guide/plan.json": plan}
+    state, step, press = make(files)
+    step(n=10); press(0x23); step(n=70)  # countdown 3 s, then 0.5 s into step 1
+    st = files["test_guide/status.json"]
+    check("must step still running past its secs", st["state"] == "running" and st["step"] == 1, st)
+    check("overlay lists the must-have", any("[ ] n above 60" in t for t in state["texts"]), state["texts"])
+    step(n=200)
+    check("must step moves on once met (+1.5 s)", files["test_guide/status.json"]["step"] == 2, files["test_guide/status.json"])
+    step(n=20); press(0x23); step()
+    check("End ends a timed step early", files["test_guide/status.json"]["step"] == 3, files["test_guide/status.json"])
+    step(n=100)
+    st = files["test_guide/status.json"]
+    check("max_secs ends an unmet must step, failed", st["state"] == "done" and any(v["label"] == "impossible" and not v["pass"] for v in st["verdicts"]), st)
     print("\n%d failed" % len(fails))
     return 1 if fails else 0
 

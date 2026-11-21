@@ -1,0 +1,188 @@
+{
+ "id": "pawn-dash-1",
+ "title": "Played pawn sprint: keeps dash speed? new vs old dash setting (DPC 0.9.172-dev10)",
+ "intro": "One controller (or keyboard). Open flat ground with room to run 15+ seconds in a line or wide circles, out of combat, the Arisen with full stamina, not possessing anyone, co-op off. About 1 minute. Press End (keyboard) when ready. Page Up reruns a test. End (keyboard) ends any step early.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev10",
+  "TestGuide": "2.6"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_pawn-dash-1.json",
+  "show": [
+   "pspd",
+   "aspd",
+   "pdash",
+   "preq",
+   "flag"
+  ],
+  "probes": {
+   "pspd": "local D = _G.DPC_dbg; local c = D and D.state.active and D.state.pawn_chara; return c and H.speed(c, 'pawn')",
+   "aspd": "local D = _G.DPC_dbg; if D and D.state.active then return nil end; return H.speed()",
+   "pdash": "local D = _G.DPC_dbg; local h = D and D.state.pawn_human; return h ~= nil and h:call('get_IsDash') == true",
+   "adash": "local a = H.arisen(); local h = a and a:call('get_Human'); return h ~= nil and h:call('get_IsDash') == true",
+   "flag": "local D = _G.DPC_dbg; local h = D and D.state.pawn_human; local c = h and h:call('get_HumanCommonActionCtrl'); return c ~= nil and c:call('get_IsEnableDashToRequestedMoveSpeedOfNormalLocomotion') == true",
+   "req": "local D = _G.DPC_dbg; local h = D and D.state.pawn_human; local c = h and h:call('get_HumanCommonActionCtrl'); return c and c:call('get_RequestedMoveSpeedOfNormalLocomotion')",
+   "pstam": "local D = _G.DPC_dbg; local c = D and D.state.pawn_chara; local m = c and c:call('get_StaminaManager'); return m and m:call('get_RemainingAmount')",
+   "pnode": "local D = _G.DPC_dbg; return D and D.state.active and tostring(H.node(D.state.pawn_chara, 0)) or ''",
+   "native": "local D = _G.DPC_dbg; return D ~= nil and D.native.pip ~= nil",
+   "on": "local D = _G.DPC_dbg; return D ~= nil and D.state.active == true",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "preq": "local D = _G.DPC_dbg; local q = D and D.native.pip; return q ~= nil and q:get_field('RequestDash') == true",
+   "pswitch": "local D = _G.DPC_dbg; local q = D and D.native.pip; return q ~= nil and q:get_field('DashSwitch') == true",
+   "penable": "local D = _G.DPC_dbg; local q = D and D.native.param; return q ~= nil and q:call('get_IsEnableDashAction') == true"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "native_dash_to_req",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "As the ARISEN: hold sprint and run in a straight line (or wide circles) the whole time. 10 seconds. (Baseline speed.)",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "aspd",
+     "agg": "max",
+     "label": "Arisen sprint speed (baseline)",
+     "op": ">",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "Taking over your main pawn (new behaviour). Stand still. 5 seconds.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "on",
+     "agg": "last",
+     "label": "pawn possessed",
+     "op": "==",
+     "value": true,
+     "must": true
+    },
+    {
+     "probe": "flag",
+     "agg": "last",
+     "label": "dash-to-requested-speed as the game has it (false = was the cause)",
+     "op": "==",
+     "value": false
+    }
+   ],
+   "min_secs": 3
+  },
+  {
+   "text": "As the PAWN: hold sprint and run straight / wide circles the whole time. Does it keep sprinting? 12 seconds.",
+   "secs": 12,
+   "expect": [
+    {
+     "probe": "pdash",
+     "agg": "last",
+     "label": "pawn dash flag held",
+     "op": "==",
+     "value": true
+    },
+    {
+     "probe": "pspd",
+     "agg": "avg",
+     "label": "pawn sprint speed (should match the Arisen's)",
+     "op": ">",
+     "value": 0
+    },
+    {
+     "probe": "penable",
+     "agg": "frac",
+     "min_frac": 0.9,
+     "label": "processor allows dash (IsEnableDashAction)"
+    }
+   ]
+  },
+  {
+   "text": "Stop. Switching to the OLD behaviour for comparison (re-taking the pawn). Stand still. 6 seconds.",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "native_dash_to_req",
+     "value": true
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "flag",
+     "agg": "last",
+     "label": "dash-to-requested-speed forced on (old)",
+     "op": "==",
+     "value": true,
+     "must": true
+    }
+   ],
+   "min_secs": 3
+  },
+  {
+   "text": "As the PAWN again: hold sprint, same path. Does it drop back to run speed like before? 12 seconds.",
+   "secs": 12,
+   "expect": [
+    {
+     "probe": "pspd",
+     "agg": "avg",
+     "label": "pawn sprint speed, old behaviour",
+     "op": ">",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "Back to the new behaviour, and back to the Arisen. 6 seconds.",
+   "secs": 6,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "native_dash_to_req",
+     "value": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: did the pawn keep sprinting in the first run and drop off in the second?",
+   "secs": 5
+  }
+ ]
+}

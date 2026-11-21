@@ -1,0 +1,128 @@
+{
+ "id": "coop-extras-1",
+ "title": "joseau11's co-op extras (off by default in 0.9.170): aiming for both players, auto-resume, rumble",
+ "intro": "Needs two controllers and two people (or two hands), DPC 0.9.170. Co-op off, playing the Arisen, open ground. Tough goblins that cannot die are spawned. Press End (keyboard) when ready.",
+ "requires": {
+  "DirectPawnControl": "0.9.170"
+ },
+ "steps": [
+  {
+   "text": "Get ready: both controllers in hand. Press End to start.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_markers",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_p1",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_auto_resume",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_p2_rumble",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_start_bring",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until 'player 2 joined'. (L3 + R3 also moves this guide on; keep holding.)",
+   "secs": 20
+  },
+  {
+   "text": "Spawning three goblins that cannot die in front of you.",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 6.0,
+     "angle": 0,
+     "still": false,
+     "tough": true
+    }
+   ]
+  },
+  {
+   "text": "AIM, PLAYER 2: tap R3 to keep a target (a marker in your colour?), flick the right stick left / right to change target, tap R3 again to free it.",
+   "secs": 25
+  },
+  {
+   "text": "AIM, PLAYER 1: press R3 to keep the enemy nearest the screen centre (your colour marker). Then PLAYER 2: hold R3 to take player 1's target.",
+   "secs": 25
+  },
+  {
+   "text": "RUMBLE: player 2 attacks, uses a skill, and lets a goblin hit the pawn. Does player 2's controller rumble (and only theirs)?",
+   "secs": 20
+  },
+  {
+   "text": "AUTO-RESUME: open the map and fast travel / or rest at an inn or camp (anything with a load screen). After the load, does co-op start again by itself? Press End when back in the world.",
+   "wait": true
+  },
+  {
+   "text": "Removing the goblins, co-op off, everything back off.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_auto_resume",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_p2_rumble",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_start_bring",
+     "value": false
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude which parts worked: markers, R3 keep / flick / take, player 1's R3, rumble, auto-resume.",
+   "secs": 3
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_coop-extras-1.json",
+  "show": [
+   "x"
+  ],
+  "probes": {
+   "x": "local o = {}\nlocal R = _G.DPC_dbg and _G.DPC_dbg.R\nif R then\n  pcall(function() local st = R.api_table.state(); o[#o+1] = \"coop=\" .. tostring(st.coop.active) .. \" two=\" .. tostring(st.coop.two_pads) end)\n  pcall(function() o[#o+1] = \"p2pin=\" .. tostring(R.ta.pin ~= nil) .. \" p1tgt=\" .. tostring(R.ta.p1 ~= nil) end)\n  pcall(function() o[#o+1] = \"resume_want=\" .. tostring(R.cr.want) end)\n  pcall(function() o[#o+1] = string.format(\"rumble=%s err=%s\", tostring(os.clock() < (R.rb.until_t or 0)), tostring(R.rb.err)) end)\n  pcall(function() o[#o+1] = \"tp_err=\" .. tostring(R.tp.err) end)\nend\nreturn table.concat(o, \" \")"
+  }
+ }
+}

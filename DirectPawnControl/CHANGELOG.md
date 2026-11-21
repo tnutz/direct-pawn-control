@@ -8,13 +8,369 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 
 ## Changelog & Engineering Post-Mortem
 
+### 0.9.172 (2026-11-21): release
+- the tester: "I think we're good to ship it." Version 0.9.172 (Camera Distance 2.9.18). README: co-op section rewritten (joining, who is who, aiming, camera, Steam Input note), upgrade note; Camera Distance README co-op section. Changelog final.
+- Untested at release: the tavern lean report (plan tavern-lean-1, no fix made); case 3 of coop-join-1 (arrow pick while on a pawn).
+
+### 0.9.172-dev52: a friend's L3 + R3 takes the next character
+- the tester: "Co-op should probably jump in to whatever character is next. So if the solo player had jumped into another character, then the co-op player should get the Arisen. Only tweak there might be that if the solo player had selected a character (yellow arrow) recently, then the co-op player should jump into them instead".
+- `R.join_target()`: a character player 1 pointed at with the selection arrow in the last 10 s (`R.last_pick`, not the one he plays); else the Arisen when player 1 is playing a pawn; else the selected pawn as before. With player 1 on a pawn the session comes up through `R.cp_begin` + `R.cp_apply({ [1] = his pawn, [2] = target })` (player 2 on the Arisen, or both on pawns); with player 1 on the Arisen, `coop_start(target)`. Join glows cover player 1 on a pawn and player 2 on the Arisen.
+- Test: coop-join-1.
+- coop-join-1 (the tester: "it seems to have worked perfectly"): 1 (player 1 on a pawn, friend joins) gave player 2 the Arisen; 2 (arrow pick, then join) gave player 2 the picked pawn (step marked failed only because the plan's reading had no op: TestGuide 2.7.3). Case 3 (pick while on a pawn) not in the recording: step 2's session was still on when step 3 ran.
+
+### 0.9.172-dev51: settings from older versions start fresh (key bindings kept)
+- the tester: "Make sure the settings someone had from old version of the mod don't mess up the new much much better defaults. Can you set it up to maintain key bindings where they're applicable but come in fresh with most settings? I don't want their bad old settings to stealth-ruin gameplay for early adopters."
+- `settings_gen` (2 from 0.9.172). A saved file without it (0.9.170 and every earlier release, and dev builds before this one) keeps only `keys`, `pad` (controller combinations) and `test_keys`; everything else loads from the defaults, the old file is kept as `DirectPawnControl.before_0.9.172.json`, and a note says so once in game ("settings start from the new defaults (your key bindings are kept)"). Checked in the fake game with the tester's own file: a custom key kept, glow 1.8, selected pawn 0, the old keyboard tick off, backup written.
+- Camera Distance 2.9.18-dev4 does the same for its file.
+
+### 0.9.172-dev50: L3 + R3 joins in 0.6 s; the keyboard start no longer sticks
+- the tester: "The case where the player is playing Arisen solo with controller and another player joins with L3+R3 is not working. It is triggering as Player 1 is M and KB." After any Ctrl + F6 session, `R.tp.start_kb` stayed set (it was cleared only in R.tp_tick, which doesn't run once co-op is off), and R.p1_pick returns the keyboard while it is set. It now ends with every co-op session (and with the both-pawns arrangement).
+- "Can we shorten the time L3+R3 needs to be pressed to start up co-op/claim a controller? We can have the quit time still be long": joining / claiming takes `coop_join_hold_s` (0.6 s; was 1.0 s in co-op, 1.5 s from off); leaving stays 3 s. Exception: the controller the game had the Arisen on (snapshot: the active controller, in controller mode) still needs 1.5 s, so a solo player's own L3 + R3 (sprint + camera) doesn't start co-op by accident.
+- Test: coop-start-3.
+- Confirmed (the tester, coop-start-3): "that seemed to work perfectly" (all four starts, glow on claim, short join, 3 s leave, solo safety).
+
+### 0.9.172-dev49: player 2 lights up while still holding L3 + R3, and that hold can't end co-op
+- the tester: after Ctrl + F6, holding L3 + R3 "doesn't flash blue until let go, but then they don't know it has taken effect and keep going, then it turns red and undoes it". The glow waited for `R.tp_on()`, which waits for the claiming buttons to be released; and the 3 s leave hold counted from the same press. Now the glow follows the claim itself (`R.tp.p2` set), and the leave hold only counts after the buttons were let go once (`not t.wait_release`).
+
+### 0.9.172-dev48: player 2's glow waits for their L3 + R3
+- coop-start-2 (the tester): starts C and D worked; "Only issue I saw was ctrl+f6 made a pawn light up blue so it wasn't clear when they actually joined in with L3+R3". Ctrl + F6 hands player 2's pawn over at once and waits for a controller; the join glow lit it then. It now lights when player 2's controller is claimed (not while `R.kb_wait()`).
+
+### 0.9.172-dev47: a new co-op start decides the controllers afresh
+- coop-start-1: starts A (player 1 on a controller, friend L3 + R3) and B (player 1 on keyboard, friend L3 + R3) passed (the tester: "Previous ones did"). C (Ctrl + F6 with several controllers) did not wait: the recording shows co-op on at once with the previous session's pair (player 1 keyboard, player 2 5720B0). R.tp_tick only runs during co-op, so the roles outlived it. A co-op session a player ends now clears them (and DPC_two_pads.json); the auto-resume after a cutscene / load keeps its own copy as before.
+- Test: coop-start-2 (C and D only).
+
+### 0.9.172-dev46: player 1 keeps their device; no "player 1 on keyboard" setting
+- Agreed with the tester ([time]): the keyboard and mouse are always player 1's, plus whichever controller the Arisen was being played on.
+  - L3 + R3 on a controller (co-op off): player 2 on it; player 1 keeps the most recently used of the keyboard (the game in keyboard / mouse mode, `R.tp.kb_t`) and the other controllers (`R.tp.act`), as of the moment the hold started (`R.p1_snap`, since the joiner's own presses flip the game's input mode), ignoring input while the REFramework menu is open (`R.p1_track`). `R.p1_pick`. No more "player 1, press something on your controller first".
+  - Ctrl + F6 (`R.tp.start_kb`): player 1 on keyboard. With exactly one controller connected it is player 2's at once, unless it was used in the 5 s before Ctrl + F6 (then L3 + R3 decides). With several, co-op waits for L3 + R3 and no controller drives the Arisen meanwhile (dev44, now `R.kb_wait` from the start flag).
+  - Players 3+: L3 + R3 as before. One controller is enough everywhere (player 1 on the keyboard).
+  - The note says how to end: Ctrl + F6 for a keyboard player 1, L3 + R3 held 3 s for a controller player 1.
+- `coop_p1_kb` and its tick are gone (the saved value is ignored); `R.tp_kb()` = player 1 has no controller this session.
+- Test: coop-start-1.
+
+### 0.9.172-dev45: kept glows on by default, with a tick per player
+- the tester: "Keep glow on by default. Make sub-ticks for each player glow under the all keep glowing, so they can do all glow or do them individually." `coop_glow_keep` defaults on (one-time migration); `coop_glow_keep_p` ("p1", "p2", ... = false) leaves one player's glow out (`R.glow_keep_for`). Ticking the top box again switches every player back on.
+- "Camera seems to work now" (dev44: gates every frame, no getter hook).
+- Later (the tester): let each player choose their colour there, matched to their target circle and edge marker. The game's rim lights are fixed colours, so that means a per-player pick from the rim lights, with the dot and marker colours following it.
+
+### 0.9.172-dev44: Ctrl + F6 with keyboard player 1 waits cleanly for player 2; a minute of camera diagnostics
+- the tester: "ctrl+f6 when out of co-op starts co-op and changes the camera but everyone is just controlling the Arisen. It's in some half-done state". Co-op was on with no controller claimed for player 2 yet (waiting for L3 + R3), and in that state the controllers' input still reached the Arisen. With `coop_p1_kb`, `R.kb_wait()` (co-op on, no player 2 controller yet): the Arisen's pad buttons are zeroed, any controller's left stick gives him WASD only, and a controller's right stick doesn't turn the camera unless the mouse moved. The usual "player 2, hold L3 + R3" note shows meanwhile.
+- "60 frames is about half a second. Too short for me to get back here": the camera ring now keeps 10 samples a second for 60 s, every player's pushed stick with its gate state, the input mode, the mouse flag and what was written. Also: "it's not controller idle because I can move and do skills but right stick camera is the only thing not working" (fits dev43's latched gate).
+- Crash at [time] (dev42, co-op with four players; c0000005 in a game worker thread, light / haze filter update, RIP DD2.exe+0x52590e4, REFramework in the stack). Not tied to a bridge read (last one [time]). The one new hook since the morning on a method that may run on a worker thread was dev38's `get_IsMouseInputEnv` on the rotating cameras, and it never answered once: it is no longer installed (the controller-mode switch is what works). Watch: the ItemManager weight hooks (dev32) are the other recent hooks.
+
+### 0.9.172-dev43: a stick's camera share no longer sticks after a flick (keyboard player 1)
+- "Camera stopped for p4 at least". Bridge read right after: player 4's camera gate latched in "flick" (`fl` true) with his stick at rest. With player 1 on keyboard, R.cam_turn returns early on frames nobody pushes a stick, so the gates never saw the stick come back to rest; that player's next slow push read as the same flick and was ignored until someone else's push let his gate see the rest. That is also player 2's "sometimes doesn't work ... after P3 camera, P2 camera will work". Every gate now sees every frame.
+- Open (the tester): after Ctrl + F6 "every controller" drives the Arisen: outside co-op the controller-follow fix (`pad_active_follow`, dev13) hands him to whichever controller was used last.
+
+### 0.9.172-dev42: the Arisen glows amber in co-op; player 2 camera diagnostics
+- the tester: "Can we make arisen glow his orange when co-op starts (if option is set)?" Player 1's Arisen gets the amber "can interact" rim light (RimLightInteractLarge) with the join glow, kept with the keep option, like the other players (not while player 2 plays the Arisen).
+- "P2 camera sometimes doesn't work right now. And then when I do P3 camera, afterwards P2 camera will work. ... make sure it's clean." Read through the path (pad globals from poll_pad at UpdateBehavior, R.cam_turn in the Arisen's processor pre-hook, the gate, the write): nothing player 3 sets is read for player 2. A bridge read in the session: game input mode 0 (controller), the game's active controller = player 2's, one mode switch so far. Not found yet; `R.cct.p2ring` keeps the last 60 frames player 2's stick was pushed (stick, gate state, input mode, mouse flag) and `last_x / last_y` what was written, for a bridge read right after it happens.
+
+### 0.9.172-dev41: players 3+'s right sticks reach the camera; kept glow follows the tick box
+- coop-4p-7: "p3 and P4 cameras did not do anything". The step's counters stayed empty, and a bridge read showed `sl.pad` nil on both active slots: R.s2_tick consumes the slot's pad each frame, and the camera (and the Arisen's button / stick filters for players 3+, dev36) run later in the frame. `R.np_tick` now keeps a raw copy, `sl.pad_cam`, which those three read. So players 3+'s buttons and left sticks were never taken out of the Arisen's input either.
+- "Keep the glow ... needs to come back on if the checkbox is turned on while already playing": ticking it now lights every current player at once (the short join glow is dropped so its timer can't put the kept one out); unticking puts them out without a fresh join glow.
+- Test: coop-4p-8.
+
+### 0.9.172-dev40: join glows in each player's colour; diagnostics for players 3+'s camera sticks
+- coop-4p-6: player 2's right stick now turns the camera with keyboard player 1 ("the second Archer pawn P2 controller right stick works for camera"), players 3 and 4's don't. The recording shows stick frames written (639) but not whose; per-player counters added (`R.cct.np_dbg`: largest raw stick, frames pushed, frames that reached the camera).
+- the tester: "use one of the brighter highlights like astral for when a co-op player joins. Bonus points if we can color a highlight the color of their character target reticles/bookmarks (and maybe even leave that on for them to see who they are)". The game's rim lights have fixed colours, so each player gets the nearest to their marker: player 2 Astral (light blue), 3 Healing (green), 4 Summon (violet), 5 Berserker (red). `coop_join_glow` (on): on joining or changing character; `coop_glow_keep` (off): stays lit while they play (`R.pglow`). Kept glows go out on leaving, co-op off and Reset Scripts.
+- Test: coop-4p-7.
+
+### 0.9.172-dev39: controller sticks turn the camera with keyboard player 1 (second try)
+- coop-4p-5 (the tester): "Camera does not move at all with any right stick movement in this m+kb mode". The recording: 80 s on the camera step and the stick-speed hook never answered once. A pushed controller stick now wins over the mouse that frame, and the game is switched to controller mode (UserInputManager.HIDInputMode 0, what it does itself when a controller is touched; moving the mouse puts it back), at most every 0.25 s. Counters `R.cct.kb_frames / kb_pushed / hid_sets` for the test.
+- TestGuide 2.7.1: "!=" in a plan fell back to "==", so "co-op on" (op "!=", value "off") passed on "off" before anyone joined ("First co-op controller step keeps getting passed as though it already happened"). "!=" now works and an unknown op fails instead of comparing for equality. The plan also switches co-op off in its first step.
+- Test: coop-4p-6.
+
+### 0.9.172-dev38: stick camera with keyboard player 1, button names per player, tick boxes, leave glow, no riftstone prompt
+- coop-4p-4 (the tester): "Slow right stick pushes do nothing to the camera when M+KB is P1". The game is in mouse mode then, so the camera turned AxisR at the mouse rate. On frames a controller turns it, the Arisen's input says "stick moved, mouse didn't" and the rotating cameras' `get_IsMouseInputEnv` answers false (hook, `R.cam_env_n`).
+- "Skill palette is flipping between xbox and ps control display for everyone": the names followed the last controller used by anyone. Each list now follows its own player's controller (`R.dev_style`, the device's DeviceKindDetails, read once a second per controller).
+- "Turns camera checkboxes would not untick": `(not v) and false or nil` is always nil in Lua. Fixed.
+- "When each player leaves let's do one of the red glows": `coop_leave_glow` ("Berserker", a guess at red; "" = none) on the character of a player 3+ who leaves, and on player 2's when co-op ends (`R.glow_for`, timed like the switch glow).
+- "Let's get rid of our prompt there on riftstones": the played pawn's interact scan skips objects named "*rim*" or carrying app.InteractRimStone (`R.int_rift_skips`).
+- Camera Distance 2.9.18-dev3: the Rift switch is immediate.
+- Test: coop-4p-5.
+
+### 0.9.172-dev37: players 2+ are not carried off; smooth mouse camera with keyboard player 1; overlays hidden in the Rift
+- coop-4p-3-again2 (the tester): player 4 (Mommy) "seems to be trying to get somewhere and control is not handed off to the player". The path-following stop (0.9.131) and the action-command stop (0.9.132 / 0.9.162) only ran for player 1's pawn. `R.s2_carry_stop` does the same for player 2's and players 3+'s pawns, 10 x a second (`sl.navi_stops`, `sl.move_stops`).
+- "The camera seems very very rough when the mouse+kb player is in control": with `coop_p1_kb` the camera input was overwritten with the controllers' (zero) share on every frame the mouse didn't move, which breaks the game's mouse smoothing. Now it is left alone unless a controller's right stick is actually pushed (0.3+).
+- "Let's get rid of the co-op camera in the rift ... It does seem to hold co-op mode well even through a trip to the rift": co-op stays on; DPC's overlays hide while `app.FacilityManager.RimStateNow` is neither None (0) nor End (15) (the Rift is the game's "Rim"; `R.rift`, `R.rift_state`). Camera Distance 2.9.18-dev2 drops its co-op camera there.
+- Test: coop-4p-4.
+
+### 0.9.172-dev36: players 3+ get target dots, markers and camera turning; player 1 on keyboard with three controllers
+- coop-4p-2 (the tester): "P3 is missing a bookmark when off screen and no target circle ... P3 also has no camera control but should (have toggles for each player)". Also the 4p test only got three players in: player 1 had a controller claimed for him while he wanted keyboard and mouse.
+- Target dots for players 3+ in their own colour (P3 green, P4 magenta, P5 red, then white; `R.np_color`), side by side when several players target the same enemy. Players 3+ aim like player 2: a quick right-stick flick keeps the next enemy on that side (`R.np_side`, `sl.pin`, honoured by `R.s2_target`), R3 lets go; R3 alone no longer reaches their pawn (L3 + R3 still joins / leaves).
+- Camera: in "shared" and "auto" turning every player's right stick counts (players 3+ through `R.cam_gate` per slot). `coop_cam_from` ("p1", "p2", ... = false) leaves a player out: "Turns the camera: P1 P2 P3 P4" ticks under Camera turning.
+- `DPC_coop.json` lists `player_names` and `player_nums` for players 3+ so Camera Distance 2.9.18 draws their edge markers.
+- `coop_p1_kb` (off; "Player 1 on keyboard and mouse" under Two controllers): player 1's controller is a stand-in (`R.kb_dev`, address `R.KB_ADDR` = 1, reads as nothing pressed), so the first controller holding L3 + R3 is player 2 and every further one joins as 3, 4, .... The mouse turns the camera on frames it moved.
+- Fixes for 3+ players on the merged controller: players 3+'s buttons were not taken out of the Arisen's (only player 2's were) and their left sticks could walk him; both now count like player 2's.
+- Test: coop-4p-3.
+
+### 0.9.172-dev35: Pawn Tactical Wheel kept shut on controllers in co-op
+- the tester: player 2's L1 + R3 opened Pawn Tactical Wheel (another mod; it reads the game's merged controller, L1 hold + R3 press). All REFramework scripts share one Lua state, so `R.ptw_tick` sets its loaded module's `IN.BINDS.pad_open_trig` to 0 while co-op runs (its check treats 0 as unbound) and restores it after, unless the player rebound it meanwhile. Its saved config is a separate table, never written. `coop_block_ptw` (on), shown under Couch co-op only when Pawn Tactical Wheel is loaded. Test: coop-4p-2.
+- Player report to check: "I tried to control my main pawn in the tavern while he was posing, leaning against the wall, then the game crashes." Plan tavern-lean-1 records the pawns' actions (flight files too) while the tester reproduces it.
+- Changelog draft 0.9.172 brought up to date (dev21-35, Camera Distance 2.9.13-2.9.17).
+
+### 0.9.172-dev34: test down asks the ActionManager directly
+- dev33's selector request lost to the pawn's sit-to-stand (coop-checks-4: Liv.LivManual.LivSitOnTheGroundToStand). Now ActionManager.requestActionCore(Highest, name, layer 0), trying DieCollapse, DieDown, DieLoop 0.4 s apart until layer 0 is a Die action; `R.down_tries` records each try. Arrow weights confirmed perfect in coop-checks-4.
+- Confirmed (coop-checks-5): the first try, DieCollapse, took (layer 0 Damage.Damage_Root.DieCollapse); the pawn fell, lay down and was revived normally. the tester: "That worked perfectly in all tests".
+
+### 0.9.172-dev33: test down makes the pawn collapse
+- dev32's die handlers made the game count the pawn as down (skull, red bar, chime) but he kept standing. Now the test also requests the body's DieCollapse action (app.HumanActionID) when he isn't already in a Die action, and logs his action a second later (`R.down_node`). Test: coop-checks-4.
+
+### 0.9.172-dev32: given arrows weigh nothing for their carrier only; game's down chime instead of our alert; test downs look real
+- the tester: "the spawned arrows were no weight but that made all arrows no weight". The item weights are the game's again (dev29's change is put back). The arrows DPC gave are remembered per character id (only up to what that character still holds) and their weight is taken off that character's `ItemManager.getStorageWeight` (both overloads) and `getStorageWeightInt` (integer unit, scale read from the Arisen's two readings). Untested: whether the game's weight class and menu read these.
+- "The downed alert worked and I also got the big chime ... If there is the big chime and flash for downed pawns then we don't need our little notice. I prefer the in-game native version": `down_alert` defaults to false (one-time migration); the option stays.
+- "our test down has never actually physically downed the pawn, they are always standing calmly": after the fatal damage, `R.down_pawn` also calls the Human's `Hit_DieHandler` and `Hit_DieReactionHandler` with the same DamageInfo, as a real fatal hit would. Untested.
+- Camera Distance's calm camera (2.9.17) is on by default already; the tester: "That should be the new default".
+
+### 0.9.172-dev31: given arrows without the popup; test "down" picks a pawn nobody plays
+- coop-checks-1 (the tester): "All arrows did fire" (given arrows work), but the game showed an "obtained" popup for each. They are now given with `GetItemOption.Default` and IsNotice / IsHistory / IsNewMark / IsRecord off (the plain call if that overload refuses; `R.arrow_give.loud` counts those).
+- "No pawn was downed by the script": the plan's `down` with idx 1 hit the played pawn after the party order changed (the main pawn came back from the Rift), which down_pawn refuses. `idx: "other"` now downs the first pawn nobody plays. coop-checks-2.
+
+### 0.9.172-dev30: downed-party alert
+- the tester lost two pawns to the Rift without noticing they were down (co-op, camera pulled back). `down_alert` (on, top "How it plays" block): while a pawn is played or co-op runs, every party member that is down (get_IsDead, waiting for a revive; the Arisen too while a pawn is played) is named in a blinking red line at the top of the screen, with distance and direction (ahead / left / right / behind you, from the camera) from the character you play and the seconds since it went down. No countdown: the game's revive time limit is not known. Plan coop-checks-1.
+
+### 0.9.172-dev29: a played Archer is given special arrows it lacks (weightless)
+- the tester's idea after the "not needed in the bag" crashes (0.9.159-0.9.162): give the character a real arrow so the skill works the normal way, and make it weightless so the weight class never flips. `R.arrow_give_tick` (every 2 s, `free_arrows_give`, on with free arrows): for each played Archer (player 1's pawn, player 2's, players 3+), any of the four special arrows (ids 166-169) it has none of is added with `ItemManager.getItem(id, 1, character)`. Free arrows keeps it from being used up. While on, the four items' `ItemCommonParam._Weight` is 0; the game's values go back when it goes off or on Reset Scripts. Untested: whether getItem shows a pickup message, and that the skill then fires.
+
+### 0.9.172-dev28: special arrows not used up, on by default
+- the tester: "the arrow cheat should be default because it makes it look like the skills don't work for most people" (bow skills need special arrows the pawns rarely carry). `cheat_free_arrows` defaults to true (one-time migration), and the checkbox moved from Cheats to the top "How it plays" block as "Special arrows are not used up while you play a pawn". Note: it keeps arrows from running out; a pawn with none still cannot use those skills ("not needed in the bag", `cheat_free_arrows_nobag`, crashed the game once in 0.9.159 and stays off).
+
+### 0.9.172-dev27: co-op overlays on the game cameras where play goes on
+- Agreed with the tester 2026-11-21 (camera kinds from app.CameraDefine.ControlType, uses inferred from the names): DPC's co-op overlays (target markers, player 2's bars and skill list) show on Player / Usually / Combat / Narrow / Notice / Climbing / Aim / Ballista / Follow / Shot (`R.OVERLAY_CAMS`) and hide on the rest (cutscenes, talk, cinematic actions, watch / insert views, photo, character edit, airship, requirement). Camera Distance 2.9.14 logs which kinds actually occur.
+
+### 0.9.172-dev26: co-op overlays stay while climbing
+- the tester: the target circles "seemed to immediately disappear when P1 started climbing". In co-op DPC hides its overlays (target markers, player 2's bars and skill list) on any non-player camera except the bow aim; the climbing camera (control type 6) is one. It is now allowed like the bow aim.
+
+### 0.9.172-dev25: player 2's automatic target stays put
+- coop-climb-2 rerun on a cyclops: the target markers "popped in and out" (screenshots: the automatic target only while the second Archer pawn faced the cyclops). The automatic target was only picked inside a 75 degree cone in front of the pawn and dropped 0.6 s after leaving it, so an archer turning to move or shoot lost it.
+- The cone counts from a big body's nearest edge (its radius as seen from the pawn). Once chosen, the target stays while it is in range and within 150 degrees of where the pawn faces, and `coop_target_grace` seconds (1.5, was 0.6) when behind her.
+
+### 0.9.172-dev24: big monsters get an automatic co-op target from their body's edge
+- coop-climb-2 (the tester: "I am not seeing on step 3 the targeting circles ... at least for the second Archer pawn"; the recording: player 2's target "none" for 75 s next to a cyclops, then ch250000_00 once close). Distances were measured to the enemy's centre, metres inside a large monster. They are now measured to its edge: minus `get_OriginalCharaControllerRadius` (capped 8 m, cached per enemy). Untested in game; whether that radius is large for a cyclops is the open question.
+
+### 0.9.172-dev23: DPC_dbg.save for TestGuide 2.7 test settings
+- Dev builds only: `DPC_dbg.save()` saves the settings after TestGuide's "Test settings" window changes one.
+
+### 0.9.172-dev22: "Both sticks" camera turning by default (coop-cam-2)
+- the tester, after free play in each mode: mode 1 (player 1's stick) "keeps rotating the camera and not stop at the target", mode 2 (both sticks) "seems the only good candidate", mode 3 (automatic) "has not enough camera control".
+- `coop_cam_turn` defaults to "shared" (one-time migration: the test left "auto" saved); listed first in the menu.
+- Mode 1: the camera's own turn toward player 1's target is off (`coop_cam_p1_steer`, false); flicks still switch his target without spinning the camera.
+- Mode 3: a slow push on either stick turns the camera; its own turning waits 1.5 s after the last push.
+- Climbing (Camera Distance 2.9.13-dev2): the climbing camera is pulled back in co-op.
+
+### 0.9.172-dev21: settings window reorganised
+- Requested: hide or remove options that no longer make sense, fold away the rarely needed ones, put the high-impact "modes" at the top.
+- Top, "How it plays": one choice for the Arisen while you play a pawn (fights and follows / follows only / stays; was two checkboxes), he cannot die, the switching style (Instant / Establish / Bird's-eye / Custom; Instant replaces the separate on/off box) and the glow, sound loudness by distance from, the Arisen's bars.
+- "Couch co-op": the co-op camera style (Camera Distance's coop_style, through CameraDistance_API, shown only when it is installed), camera turning, aiming for both players, any combination, two controllers, rumble, auto-resume, the controller list and buttons.
+- Folded: "Co-op: details" (bars, skill list, bring, aiming details and colours, camera self-turning speed, rumble details), "Switching characters: timing", "Playing as the player: sound and feel", "Cheats", then Connected mods, Positions and sizes, Controls, Features as before.
+- Moved to "Show advanced, test and legacy options": the status panel, the 16:9 safe area, L3 + R3 join, the active-controller switch, the quick-flick fallback, the two-controller button / camera fallbacks, hit-stop and big-kill slow motion (experimental, off), the superseded co-op "ear" (shown only with the moving listener off), and every readout (pad hex, processButton counts, listener state, aim debug line, rumble errors).
+- Removed from the menu: the head-following co-op stamina bar (drifted; the fixed bars replaced it in 0.9.48). The setting still exists.
+- Fake game: tools/fakegame/ui_draw.py draws the whole window with every group open (alone, possessing, co-op): no errors, windows and trees balanced, every slider gets a number, the feel choices come first.
+
+### 0.9.172-dev20: player 1 flick targeting and three co-op camera turn modes
+- Requested: player 1 targets the way player 2 does, with a camera that follows both "in a predictable fashion"; asked which of three, the tester: "Implement all 3".
+- Player 1 (two controllers): quick right-stick flicks move his kept target to the next enemy on that side (`coop_aim_p1_flick`, `R.ta_p1_side`); the deliberate-flick detector is shared (`R.flick_step`).
+- `coop_cam_turn` (two controllers, co-op aiming on; written into the Arisen's AxisR in his processor pre-hook, `R.cam_turn`):
+  - "p1" (default, as before): player 1's stick turns the camera; while he has a target his flicks switch it (no camera spin) and with his stick at rest the camera turns toward him and the target.
+  - "shared": a slow push on either right stick turns the camera (summed); flicks only switch targets. `R.cam_gate`: no camera for 0.12 s after the stick leaves rest, none for a push that reaches full sideways within 0.2 s until it is back at rest.
+  - "auto": sticks only target; the camera turns itself toward the players' targets (from the group's centre), else the way the group moves (0.5 s of displacement).
+  - The camera's own turning learns which way a positive stick turns it (flips once if the error grows). `coop_cam_auto_speed` 0.5, `coop_cam_deadband` 8 deg. UI combo "Co-op camera turning".
+- Not tested in game. Plan coop-cam-1. Harness aim_flick.py: cam_gate checks.
+- Noted, not ours: PawnTacticalWheel opens on L1 + R3 read from the merged controller device, so player 2's R3 with L1 held on either controller opens it.
+
+### 0.9.172-dev19: switch glow 1.8 s by default
+- `switch_cine_glow_s` 1.8 (was 1.4), the tester's own value. The Archer aim point stays 30 m (his 25 came from the 0.9.34 migration).
+
+### 0.9.172-dev18: bow skills from the hip in co-op; two controllers and player 2 rumble on by default
+- Reported: in co-op player 2's Archer "keeps almost firing his Spiral Arrow but then aborts it, unless I also hold R1". The v0.9.167 hip-skill aim hold (aim flags held while a bow skill is in Prepare / Ready / charge, as the game does for the player) skipped co-op. It now runs in co-op too, and for player 2's / players 3+'s extra played pawns right before their processor update (`R.s2_pre`, with the KeepDash fix).
+- `data/DPC_reset.json` `{"reset": true}` makes DPC start from the defaults once (old file kept as DirectPawnControl.before_reset.json): the first reset attempt was overwritten because a running DPC saves on every change.
+- Defaults: `coop_two_pads = true`, `coop_p2_rumble = true` (and a duplicate `coop_p2_rumble` line in the defaults removed). `pad_mode_fix` and `cheat_free_arrows` stay off.
+
+### 0.9.172-dev17: 16:9 safe area off by default
+- `hud_safe_169` default false (was "auto"), matching Camera Distance's `safe_169`. the tester: the 16:9 safe area is mainly for his own recordings.
+- the tester's settings were recorded (project doc claude/the tester-settings.md, backups next to the config files) and reset to the defaults so he tests what a new player gets.
+
+### 0.9.172-dev16: co-op aiming on by default
+- coop-aim-3 passed every check; the tester: on by default. `cfg.coop_aim = true`; a one-time migration turns it on for configs the tests left at false.
+
+### 0.9.172-dev15: co-op kept target no longer jumps to the nearest enemy
+- coop-aim-3 went well (all checks passed); the tester saw the target jump to the enemy the Arisen was fighting at step 7. Recording: the kept target dropped (pin false, target none for 0.1 s) with no R3 tap, six times, and the automatic pick took over. Cause: kept and flicked targets are looked up in a candidate list limited to the lock-on range x 1.5, which for a short-range vocation is ~7.5 m; the goblins stood 9 - 13 m off, so once the pawn moved the kept one fell out of the list and was cleared.
+- The list now reaches `cfg.coop_aim_keep_range` (30 m) when co-op aiming is on. The automatic target still uses the lock-on range.
+
+### 0.9.172-dev14: played pawn keeps sprinting (KeepDash on by default)
+- pawn-dash-3: fix 1 alone (the Arisen's DashOptionHandle on the pawn's input; the option reads Trigger = 0 on the tester's game) did not help: IsDash 10 % of samples, median 5.8 m/s. Fix 2 (KeepDash added while Dash is held, right before the pawn's processor update): IsDash 70 %, median 8.1 m/s, the Arisen 8.2 m/s. the tester: "Fix 2 seems to keep them sprinting".
+- So the processor continues a sprint on KeepDash, which the game's own input pass adds for the player's CharacterInput only (isConvertDashToKeepDash) and so never reached a pawn's input. `cfg.native_dash_keep` now defaults to true; applies to the main played pawn, player 2's and players 3+'s. Fix 1 stays (harmless, keeps the option consistent).
+
+### 0.9.172-dev13: pawn sprint, round 3 (the game's Dash option on the played pawn)
+- pawn-dash-2 (dev12): Dash held throughout on the pawn's input (and the Arisen's). The pawn's processor set DashSwitch + IsDash on the press with DashTriggerKeepTime = 30 counting down, and dropped both when it ran out, every time; RequestDash never set, Param.IsEnableDashAction false. Same with the follow brain off, so the brain was not it. The Arisen held IsDash for seconds on the same held Dash (speed 8 - 9 m/s; pawn 7.5 - 8.5 peaks, then ~6).
+- app.CharacterInput carries `DashOptionHandle` (EnumOptionHandle<app.OptionTriggerType>: Trigger 0 / Hold 1, the player's Dash option) and `isConvertDashToKeepDash(flags, pad)` (Action KeepDash = 22). The pawn's own CharacterInput has no handle from the player's options. `cfg.native_dash_opt` (default on) gives it the Arisen's handle at possession / second-pawn take and puts the original back at release.
+- `cfg.native_dash_keep` (experiment, off): adds KeepDash to the pawn's input while Dash is held, right before its processor update.
+- pawn-dash-3 tests fix 1, then fix 1 + 2.
+
+### 0.9.172-dev12: pawn sprint still ends (pawn-dash-1), dev probe hook
+- pawn-dash-1 (dev11): the dash-to-requested-speed flag was off (as the game has it) and the pawn still lost its sprint. IsDash on the pawn flickered true for one sample at a time (speed peaks 7.6 - 8.1 m/s, then ~5.9) while the Arisen held IsDash for seconds. So the sprint ends on the input / processor side, not in locomotion. The flag change stays (it was the non-native part).
+- `DPC_dbg.af()` returns ACTION_FLAGS so plans can decode Dash / KeepDash bits. pawn-dash-2 records the pawn processor's RequestDash / DashSwitch / DashTriggerKeepTime, IsEnableDashAction, PlayerTrack dash cancel, the Dash bits on both inputs and the follow brain's own Dash, with and without the brain (it presses Dash, a toggle, when it falls behind).
+
+### 0.9.172-dev11: coop-aim-2 fixes (P1 walking pulled to target, double flicks, R3 release)
+- P1 still walked only toward his target: the "fighting" check took any pad bit, and the merged pad word carries the left stick as `Emu*` direction bits (EmuLup 0x100000 etc.) plus the d-pad, so walking counted as fighting (recording: p1set true all through the walk step). Now only face buttons and shoulders/triggers (and mouse buttons) count.
+- Deliberate flicks came in pairs 0.2-0.4 s apart (recording): the stick's spring-back past centre read as a second flick. A flick now needs 0.12 s at rest first and none starts within 0.3 s of the last. Harness `aim_flick.py` gained spring-back and same-way cases.
+- P1 R3 "on the same goblin" picked its neighbour (goblins 2.5 m apart), so the target never released. The current target counts as picked when nearly as central as the best (score within 1.5x distance) or within 12 % of screen height of centre.
+- Player 2's slow right stick doing nothing is expected in classic co-op (player 2 has no camera); the plan text said otherwise. coop-aim-3 fixes the wording.
+
+### 0.9.172-dev10: played pawn's sprint fades back to run speed (suspected cause, test pawn-dash-1)
+- Reported 2026-11-20: a possessed pawn sprints for a moment, then drops to normal speed; the Arisen (also when player 2 drives him) keeps sprinting.
+- Since v0.6 possession forced the pawn's `HumanCommonActionController.IsEnableDashToRequestedMoveSpeedOfNormalLocomotion` on (the puppeteer also requested the speed every frame). Under native controls nothing requests that speed, so the dash plausibly follows a stale or run-level `RequestedMoveSpeedOfNormalLocomotion` once the start-of-dash boost ends.
+- Now left as the game has it (`cfg.native_dash_to_req = false`; true = old). The original value is read at possession / second-pawn take and restored at release (it was never restored before). The puppeteer still sets it per frame.
+- pawn-dash-1 measures Arisen vs pawn sprint speed, IsDash, the flag and the requested speed, new vs old.
+
+### 0.9.172-dev9: P1 target no longer steers the Arisen's walking
+- In coop-aim-1 the Arisen walked toward player 1's target while the tester pushed up: the assist held the game's lock-on on that enemy every frame, and lock-on makes "up" mean "toward the target".
+- `R.ta_p1_tick` now sets the lock-on only while player 1 fights (any pad button other than L3/R3, or a mouse button) and for `cfg.coop_aim_p1_assist_secs` (1.0 s) after; otherwise it removes the target and clears the lock-on. The gold marker and kept target stay. `cfg.coop_aim_p1_assist_always` restores the old behaviour.
+
+### 0.9.172-dev8 (2026-11-20)
+- coop-aim-1 in play (co-op dropped early: the controller again): keep, player 1's target + lock-on assist, take
+  player 1's target and release all worked. the tester: the ring "didn't seem to prevent changing target with right
+  stick" (a flick moves the kept target, by design). Now player 2 switches only with a deliberate flick
+  (coop_aim_flick "deliberate", default): from rest to near-full sideways within 0.2 s, back to rest within 0.5 s;
+  slow pushes, a held stick or a resting thumb do nothing ("quick" = the old any-push-past-70 %). Fake game:
+  aim_flick.py.
+- Player 2's automatic target stays 0.6 s after leaving the pawn's view cone (coop_target_grace): the marker
+  blinked off for 0.1-0.2 s while the pawn turned to attack.
+
+### 0.9.172-dev7 (2026-11-20)
+- Keys straight to a character (the tester): Ctrl + F1 the Arisen, Ctrl + F2 / F3 / F4 pawns 1-3 (party order; pawn 1 =
+  the main pawn), pawns 4-8 settable for mods with a bigger party. All under Controls, with the pawns' names; a pawn
+  key can be cleared. In co-op with "Any combination" they are player 1's (a character another player holds is
+  refused, not taken); in co-op without it they say to use the take-control key. Fake game: jump_keys.py (9 checks).
+- Plans: cam-classic-1 (Camera Distance 2.9.12 classic co-op camera), coop-aim-1 (joseau11's co-op aiming).
+
+### coop-sound-2c in play (2026-11-20, dev6)
+- Passed: the listener way found is set_abs (setListenerPosition with the target point; 0.0 m off), 0.01 m off
+  target on average while apart, up to 28.8 m from the camera, no errors. the tester: "the audio worked much better".
+  Open: co-op was still on after the last step (player 1's L3 + R3 end; to check whether it was held).
+- Before it: the Xbox controller (Bluetooth) was listed by the game but sent nothing after a reconnect; only a game
+  restart fixed it (the game then picked up either controller).
+
+### 0.9.172-dev6 (2026-11-20 morning)
+- coop-sound-1 (dev5) in play: no way found. Measured: SoundListener.setListenerPosition(Transform, vec3) puts the
+  listener AT the vec3 (an offset there sent it ~170 m off); _Offset in camera space moved it the right distance the
+  wrong way (6.0 m off on 3.1 m). Candidates now set_abs (the target point), off_local_neg, off_world, off_local; a
+  candidate more than 30 m off is dropped at once. Fake game models both measured behaviours ("game", "local_neg").
+- Loudness from the same point (coop_listener_loudness, on): late in the frame, PlayerPositionForDistanceDecay = the
+  listener's target. the tester: footsteps maybe louder, swings not (the game works loudness out from the Arisen in
+  classic co-op).
+- coop-sound-1 started co-op by command before a second controller had joined, so the one-controller rules applied
+  (player 1 on the keyboard, the controller on the pawn): the tester "had to use m+kb". coop-sound-2 has player 2 join
+  with L3 + R3.
+
+### 0.9.172-dev5 (2026-11-20 overnight)
+- Players 3+ get a skill list above their bars (R.palette_draw, shared with player 2's; cfg.coop_np_palette).
+
+### 0.9.172-dev4 (2026-11-20 overnight)
+- Sound listener safety: the hooks act on the SoundListener the game is updating that frame (the hook's own object),
+  never a cached one a load may have destroyed; the offset is not put back during a load (a new listener starts
+  clean). Fake-game check: a load swaps the listener object; the new one is moved, the old one never written.
+
+### 0.9.172-dev3 (2026-11-20 overnight)
+- Player 2 on the Arisen gets player 2's bars and skill list (R.ar2_view: the Arisen's name, vocation, skills, HP and
+  stamina, refreshed 5 times a second in R.ar2_tick).
+- Mod API 1.1 (dev2): players(), players_max(), player_join / player_leave, add_character / remove_character
+  (characters other mods spawn, offered to players 3+; R.party_all). Co-op changes never take a player 3+'s pawn
+  (found in the fake game: asking player 2 for player 3's pawn broke the arrangement and left a pawn's AI off).
+- Test plans: coop-sound-1, coop-4p-1, p1-route-1 (what player 1's pawn receives under each feed, frame by frame).
+
+### 0.9.172-dev2 (2026-11-20 overnight)
+- Players 3 and up (design: project doc claude/dpc-coop-n.md). Each is a slot shaped like R.s2 (R.np.slots[n]); the
+  second-pawn functions take the slot (R.s2_start(idx, s), R.s2_stop(why, s), R.s2_tick(s), R.s2_drive(s),
+  R.s2_target(s)); the app.Player.update hook runs every slot. Join: L3 + R3 held 1.5 s on an unclaimed controller
+  while co-op runs on two claimed controllers (cfg.coop_max_players 8). Take-control combination: next free pawn.
+  L3 + R3 held 3 s: that player leaves. Every cycle (players 1 / 2 included, and classic co-op's player 2 switch)
+  skips characters held by anyone. A lost controller keeps the pawn; the next unclaimed controller used takes it
+  back (after players 1 / 2's own recovery). Bars P3, P4, ... beside player 2's. R.players, the API's character
+  info, DPC_coop.json ("players": pawn indices) and the sound listener include them. Pawns only for now.
+- Fake game: tools/fakegame/coop_n.py (four controllers, the Arisen + three pawns): 27 checks.
+
+### 0.9.172-dev1 (2026-11-20 overnight)
+- Co-op sound: the LISTENER moves toward the players (R.lis_*; cfg.coop_listener_move, on). Target: on the camera's
+  line to the middle of all players, pf_sound_ear_dist (5 m) from it; orientation stays the camera's. Runs in every
+  co-op arrangement (classic included). How the game applies SoundListener._Offset is found in play: candidates
+  off_world, off_local (camera axes), set_world / set_local (the component's setListenerPosition(Transform, vec3)
+  after its lateUpdate), each judged over 20 frames by Driver.getListenerPosition(0) against the target; kept if
+  within max(1 m, 15 %). Re-found if the kept way drifts (30 frames off). Gives up (and puts _Offset back) if none
+  lands. Settings window shows the way, the error and what was tried.
+- Fake game: the mock models the camera, scene, SoundListener and the driver (H.listener_model world / local /
+  setter / none); tools/fakegame/sound_listener.py checks all four and the camera-turn re-find.
+- TestGuide 2.4.2 ("last" on strings / booleans). Plan coop-sound-1.
+
+### 0.9.171-dev7 (2026-11-20)
+- Option: "The Arisen cannot die while player 2 plays him" (coop_p2_arisen_no_death, default on).
+- any-coop-3 (dev6): passed in play ("worked perfectly"). Its 3 listed failures are the plan's: a string probe
+  compared with "last" (no numeric samples), a boolean "last" read as 0.0, and co-op-ended at 0.496 of 0.5.
+- Sound, open: a hard cutoff with the camera pulled back, also in classic co-op (P1 on the Arisen), where loudness
+  is already worked out at the Arisen (CalcDistanceDecayAtPlayerPos true, position = the Arisen). So it is not
+  loudness: sounds far from the LISTENER (soundlib.SoundListener on MainCamera, listener 0) are dropped. The dev5
+  "ear" only moves the loudness point and only runs while a pawn is played. Next: move the listener itself toward the
+  players (SoundListener._Offset, or Driver.setListenerPosition(id, Transform, bool, bool, vec3)). A quick _Offset
+  write did not stick / could not be read back (game was in a menu); test in play with a stepping plan.
+
+### 0.9.171-dev6 (2026-11-20)
+- Player 2 on the Arisen (two controllers): player 1 keeps the camera. Requested: "Taking over the Arisen should not
+  take over the camera." Player 1 stays on his pawn as a normal possession (game input, camera = his controller);
+  the Arisen runs on player 2's controller through the brain's input path (R.ar2_tick -> R.ar2_src, the robot
+  route in brain_tick; that path leaves the Arisen's right stick alone). cfg.coop_any_p2_arisen "brain" (default) /
+  "classic" (the old swap: the Arisen takes player 2's controller and the camera). Camera Distance 2.9.10-dev2:
+  pawn index -1 = the Arisen.
+- Cycling skips the other player's character (requested: do not kick another player out; a both-press swap later).
+- Fake-game harness: the P2-on-Arisen arrangement (camera controller, P2's source, P1 skip, P2 leaving).
+
+### 0.9.171-dev5 (2026-11-20)
+- Co-op sound: with "loudness by distance from the camera", a camera pulled back to keep both players in view made
+  everything quiet. Loudness is now worked out from an "ear" on the camera's line of sight, 5 m (setting) from the
+  middle of the two players; panning still follows the camera (Wwise CalcDistanceDecayAtPlayerPos +
+  PlayerPositionForDistanceDecay, the game's own loudness/panning split). Switch + distance under Playing as the player.
+- any-coop-2b (dev4): Xbox controller (Bluetooth) reconnected twice under new addresses; the pair recovered.
+  Open: player 1 cannot reach the Arisen while player 2 holds it (step 9 text was wrong); the "pad" route for
+  player 1's pawn "didn't seem to work right" (details to get).
+
+### 0.9.171-dev4 (2026-11-20)
+- Two-controller co-op survives a controller sleeping / reconnecting. A reconnected controller comes back under a
+  new address (any-coop-2, step 8: the game then listed 3 controllers), and DPC forgot the pair until player 2 held
+  L3+R3 again; meanwhile the Arisen followed whichever controller was used last. Now the pair is remembered: the
+  controller still there keeps its role, the other role goes to the first other controller used (any button).
+- Fix: claiming with L3+R3 while player 2 is on the Arisen gave player 2's controller to the pawn side.
+- Fake-game harness: controller reconnect with a phantom third device, and the claim with player 2 on the Arisen.
+
+### 0.9.171-dev3 (2026-11-20)
+- Fix: the world-loss path forgot the test-enemy list without touching the enemies, so goblins that survived it
+  (it also fires on some menu screens) stayed unkillable and Reset Scripts could not find them. They are now made
+  killable before the list is dropped. Three were left this way on Thirteen; removed with dev/bridge/orphan1.lua.
+
+### 0.9.171-dev2 (2026-11-20)
+- Fix: player 2's skill palette (any-combination co-op) left its ImGui window open ("Missing End()"). It read
+  SLOT_BIND_LABELS, a local declared later in the file (nil there). Now reads R.SLOT_BIND_LABELS, and the window
+  body is in a pcall so end_window always runs. Fake-game harness now checks every begin_window is closed.
+
 #### Vocation runs (2026-11-15, 0.9.28, `party-matrix-2` / `-3`, robot in co-op, same party both times: Fighter, Archer, Warrior)
 - 0 script errors in both runs. Fighter: all checks. Warrior: move, attack, Tackle on L2, Crescent Slash on skill 1 (one run missed the "moves" check, the next passed it).
 - Archer: move and skill 1 (Threefold Arrow, skill state 13) pass; the "attacks" check failed in both runs, with layer 0 staying in `Strafe`. Probably the test's blind spot (bow shots may run on the upper-body layer), not confirmed. `party-matrix-4` also watches layer 1.
 - Sorcerer not covered yet.
 
+### v0.9.171-dev1 (2026-11-20 night, dev build, untested in game, not released): co-op, any combination
+Requested (the tester, [time]): "Implement what you can for the any combination in co-op. If you're not sure about something, create it multiple ways and develop tests". Built while he slept; nothing was run in his game (the live-test rule).
+- **Players model** `R.cp`: who each of the two people controls (`char[1]`, `char[2]`: "arisen" or a pawn index). Every change goes through `R.cp_apply`, which tears the old arrangement down and builds the new one with the existing start / release code.
+  - **classic**: one player on the Arisen, the other on a pawn (the co-op that existed). With two controllers either person can be the Arisen side: `R.tp.p1` is always the Arisen side's controller, `R.tp.p2` the pawn side's (`cp.arisen_side`), so the camera, the Arisen's button filter, rumble and the active controller follow the roles without changes.
+  - **pawns**: both on pawns, the Arisen on DPC's AI. Player 1's pawn is a normal single-player possession (camera, HUD, lock-on, sound as before); its input is the Arisen's game input, which only player 1's controller reaches (the game listens to one active controller; DPC keeps it on player 1's) or, with one controller, the keyboard (the controller is kept out of the Arisen's input with the existing processButton zeroing). Player 2's pawn is `R.s2`: its own `PlayerInputProcessor` and `LockOnController` (the same build as the co-op pawn's), input from player 2's controller through `coop.pad_input` (run with the second pawn's values lent to it), the co-op auto-target, AI suppressed, the sit-request filter, released before teardown, on loading and on Reset Scripts.
+- **Controls**: in co-op each player's take-control combination (L1 + left stick click; F6 = player 1) goes to that player's next character: pawns in party order, skipping the other player's, then the Arisen if free. With one controller player 2 cannot take the Arisen. After a change no combination counts until every button is let go (and 0.75 s), so a held combination cannot ripple through several changes (seen in the offline run). Ctrl+F6 / L3 + R3 held 3 s end co-op in either arrangement. D-pad down (or anything that lets go of player 1's pawn) puts player 1 back on the Arisen; player 2's pawn going down moves player 2 to the next free pawn (or the Arisen with two controllers).
+- **Two ways where unsure** (switches for the tests): where player 2's processor runs, `coop_any_drive` "auto" (app.Player.update, moving to pre-UpdateBehavior if that hook never fires or never sees the input, as the main pawn's v0.7.5 self-check) / "player" / "pre"; how player 1's pawn is fed with two controllers, `coop_any_p1_route` "game" (the Arisen's game input) / "pad" (player 1's controller read directly, as player 2's).
+- The active controller (who drives the Arisen's game input) is kept on the Arisen side's controller in classic co-op and on player 1's when both are on pawns, now also with "The controller you use drives the Arisen" switched off.
+- Camera Distance 2.9.10-dev1: DPC_coop.json gains `anchor_idx` (player 1's pawn when both are on pawns, -1 = the Arisen); the co-op framing measures from that pawn.
+- Not for player 2's second pawn yet (the main played pawn has them): bow aimed skills, hip-skill aim, looting / interact, the chord fix, the skill list overlay (bars and name are drawn). Player 2 cannot take the Arisen with one controller.
+- Checked offline: `tools/fakegame` (a fake REFramework + game in lupa) loads the script and runs every switch: classic to pawns and back, both directions of the swap with two controllers, each player's combination, F6 / Ctrl+F6, a pawn dying, loading, teardown. No Lua errors. Lint and the type-index check show only the old findings.
+- Test plans: `any-coop-1` (you on the keyboard, the robot as player 2: both on pawns, each pawn moves only for its player, attacks, a fight with the Arisen on AI, player 2's next, F6 back to the Arisen, co-op off and pawn AI restored) and `any-coop-2` (two controllers, two people, including the "pad" route A/B).
+
 ### v0.9.170 (2026-11-20): two controllers, the pawn feels like the player, mod API
-Release of dev1 to dev14 (details below). Tested: `release-check-6` (25 of 25), two DualSense and PS5 + Xbox co-op, joining and leaving with L3 + R3, controller hand-off, sound swap, skill slow motion, mod API, Camera Distance 2.9.9 (`cam-299-1`). Shipped off and untested: joseau11's co-op aiming, auto-resume and rumble; `pf_hitstop` and `pf_world_slow`. Open: the quit-to-title crash seen once with dev10 (not attributed; crash hunt job ready); big-kill slow motion for a played pawn.
+Release of dev1 to dev14 (details below). Tested: `release-check-6` (25 of 25), two DualSense and PS5 + Xbox co-op, joining and leaving with L3 + R3, controller hand-off, sound swap, skill slow motion, mod API, Camera Distance 2.9.9 (`cam-299-1`). Shipped off and untested: joseau11's co-op aiming, auto-resume and rumble; `pf_hitstop` and `pf_world_slow`. Published 2026-11-20: public repo 168ccee, both Nexus files at 0.9.170 (old ones archived), description updated (7 replacements on the live text, which the tester reviewed). Open: the quit-to-title crash seen once with dev10 (not attributed; crash hunt job ready); big-kill slow motion for a played pawn.
 
 ### v0.9.170-dev1 (2026-11-19, dev build, untested, not released): whoever you play is the player; mod API; two controllers
 Built while the tester was away from the game ("build whatever you can in reasonable groupings now including reasonable different attempts for likely issues"). Every new part is behind its own switch; with them off the mod plays as 0.9.169. Plans: `claude/dpc-player-feel-plan.md`, `claude/dpc-mod-api.md`, `claude/dpc-player-transfer-roadmap.md`.

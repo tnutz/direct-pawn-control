@@ -1,0 +1,222 @@
+{
+ "id": "coop-4p-5",
+ "title": "Four players, keyboard player 1: stick camera, button names per player, leave glow, riftstone, Rift (DPC 0.9.172-dev38, Camera Distance 2.9.18-dev3)",
+ "intro": "Player 1 on keyboard and mouse; the two PS5 controllers and the Xbox controller are players 2, 3 and 4, joining one at a time. All controllers awake (press a button on each now). A full party (three pawns), open ground, no enemies, playing the Arisen, co-op off. Every step waits for End (keyboard).",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev38",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-4p-5.json",
+  "show": [
+   "who",
+   "styles",
+   "camfrom",
+   "rimskip"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "cerrs": "local ok, d = pcall(json.load_file, 'dev_status/CameraDistance.json'); return ok and d and d.errors",
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or 'off')",
+   "np": "local D = _G.DPC_dbg; return D and D.R.np_count and D.R.np_count() or 0",
+   "who": "local D = _G.DPC_dbg; if not D then return '' end; local t = {}; for _, p in ipairs(_G.DPC_API.players()) do t[#t + 1] = 'P' .. p.player .. ' ' .. tostring(p.info and p.info.name or (p.info and p.info.is_arisen and 'Arisen') or '?') .. (p.controller_lost and ' (lost)' or '') end; return table.concat(t, ' / ')",
+   "nfr": "local D = _G.DPC_dbg; if not D then return 0 end; local m = nil; for _, sl in pairs(D.R.np.slots) do if sl.active then m = math.min(m or 1e9, sl.frames or 0) end end; return m or 0",
+   "nerr": "local D = _G.DPC_dbg; if not D then return 0 end; local e = 0; for _, sl in pairs(D.R.np.slots) do e = e + (sl.errors or 0) + ((sl.in_err and 1) or 0) + ((sl.failed and 100) or 0) end; return e + ((D.R.np.err and 1000) or 0)",
+   "lost": "local D = _G.DPC_dbg; if not D then return 0 end; local n = 0; for _, sl in pairs(D.R.np.slots) do if sl.pad_lost then n = n + 1 end end; return n",
+   "lway": "local D = _G.DPC_dbg; local L = D and D.R.lis; return L and (L.found or (L.failed and 'failed') or 'finding') or ''",
+   "ai0": "local p = H.pawn(0); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "ai1": "local p = H.pawn(1); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "ai2": "local p = H.pawn(2); local ok, v = pcall(function() return p:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_IsSkipThink') end); return ok and v",
+   "ptw": "local D = _G.DPC_dbg; local IN = package.loaded['PawnTacticalWheel.input']; if not IN then return 'not installed' end; return 'pad key ' .. tostring(IN.BINDS.pad_open_trig) .. (D and D.R.ptw.saved and ' (blocked by DPC)' or '')",
+   "tgts": "local D = _G.DPC_dbg; if not D then return '' end; local t = {}; for n, sl in pairs(D.R.np.slots) do t[#t + 1] = 'P' .. n .. ' ' .. (sl.tgt and 'target' or 'none') .. (sl.pin and ' (kept)' or '') end; table.sort(t); return table.concat(t, ' / ')",
+   "kb": "local D = _G.DPC_dbg; return D and (D.R.tp.p1 == D.R.KB_ADDR and 'player 1 on keyboard' or tostring(D.R.tp.p1)) or ''",
+   "camn": "local D = _G.DPC_dbg; return D and D.R.cct and D.R.cct.n or 0",
+   "rift": "local D = _G.DPC_dbg; return D and (tostring(D.R.rift) .. ' ' .. tostring(D.R.rift_state)) or ''",
+   "carry": "local D = _G.DPC_dbg; if not D then return '' end; local t = {}; for n, sl in pairs(D.R.np.slots) do t[#t + 1] = 'P' .. n .. ' navi ' .. (sl.navi_stops or 0) .. ' cmd ' .. (sl.move_stops or 0) end; table.sort(t); return table.concat(t, ' / ')",
+   "camenv": "local D = _G.DPC_dbg; return D and (D.R.cam_env_n or 0) or 0",
+   "camfrom": "local D = _G.DPC_dbg; if not D then return '' end; local t = {}; for k, v in pairs(D.cfg.coop_cam_from or {}) do t[#t + 1] = k .. '=' .. tostring(v) end; table.sort(t); return table.concat(t, ' ')",
+   "styles": "local D = _G.DPC_dbg; if not D then return '' end; local R = D.R; local t = { 'P2 ' .. tostring(R.dev_style(R.tp.p2)) }; for n, sl in pairs(R.np.slots) do t[#t + 1] = 'P' .. n .. ' ' .. tostring(R.dev_style(sl.dev)) end; table.sort(t); return table.concat(t, ' / ')",
+   "rimskip": "local D = _G.DPC_dbg; return D and (tostring(D.R.int_rift_skips or 0) .. ' | ' .. tostring(D.R.int_name)) or ''"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_p1_kb",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_any",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_cam_turn",
+     "value": "shared"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_block_ptw",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "FIRST CONTROLLER (player 2): hold L3 + R3 until 'player 2 joined'. Co-op starts; player 1 stays on keyboard and mouse. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "co-op on",
+     "op": "!=",
+     "value": "off",
+     "must": true
+    },
+    {
+     "probe": "kb",
+     "agg": "last",
+     "label": "player 1's controller",
+     "op": "==",
+     "value": "player 1 on keyboard"
+    }
+   ]
+  },
+  {
+   "text": "SECOND CONTROLLER (player 3): hold L3 + R3 until 'player 3 joined'. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "np",
+     "agg": "max",
+     "label": "player 3 joined",
+     "op": ">=",
+     "value": 1,
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "THIRD CONTROLLER (player 4): hold L3 + R3 until 'player 4 joined'. She should be under player 4's control straight away (not walking off somewhere). End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "np",
+     "agg": "max",
+     "label": "player 4 joined",
+     "op": ">=",
+     "value": 2,
+     "must": true
+    },
+    {
+     "probe": "carry",
+     "agg": "last",
+     "label": "commands / path-following ended for players 3+"
+    }
+   ]
+  },
+  {
+   "text": "CAMERA: each controller gives its right stick a SLOW push: the camera should turn now (with player 1 on keyboard and mouse). Mouse still smooth? End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "camenv",
+     "agg": "last",
+     "label": "frames the camera was told 'stick, not mouse'"
+    }
+   ]
+  },
+  {
+   "text": "BUTTON NAMES: each player's skill list shows their own controller's names (PS5 players Square / Triangle, the Xbox player X / Y) and doesn't flip when someone else presses a button. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "styles",
+     "agg": "last",
+     "label": "each player's button names"
+    }
+   ]
+  },
+  {
+   "text": "CAMERA TICKS: REFramework menu > Direct Pawn Control > Couch co-op > 'Turns the camera': untick P3. It should stay unticked and player 3's stick stops turning the camera. Tick it again. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "camfrom",
+     "agg": "min",
+     "label": "left out of camera turning at some point (want p3=false)"
+    }
+   ]
+  },
+  {
+   "text": "RIFTSTONE (if one is near): player 2 walks their pawn up to the riftstone: no '[Interact] Gather / Use' prompt now. Then player 1 can go into the Rift and back out: the camera should switch at once both ways. End when done (or straight away to skip).",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "rimskip",
+     "agg": "last",
+     "label": "riftstones skipped | last object the prompt looked at"
+    },
+    {
+     "probe": "rift",
+     "agg": "last",
+     "label": "Rift state seen"
+    }
+   ]
+  },
+  {
+   "text": "LEAVING: PLAYER 4 holds L3 + R3 for 3 seconds: her pawn glows red as she leaves. Then PLAYER 3 the same. End when done.",
+   "secs": 3600
+  },
+  {
+   "text": "PLAYER 1: press Ctrl + F6 to end co-op: player 2's pawn glows as they leave. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "co-op ended",
+     "op": "==",
+     "value": "off"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: slow stick camera? Button names? Ticks? Riftstone prompt gone? Rift camera? Red glows (and is that the right red)?",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  }
+ ]
+}

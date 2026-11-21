@@ -1,0 +1,208 @@
+{
+ "id": "coop-cam-1",
+ "title": "Co-op camera turning: player 1 flicks, three camera modes (DPC 0.9.172-dev20)",
+ "intro": "Two controllers, both awake. A full party, open ground, playing the Arisen, co-op off. Six tough goblins will be spawned. About 3 minutes. Steps with a checklist last until done; End (keyboard) ends any step early.",
+ "requires": {
+  "DirectPawnControl": "0.9.172-dev20",
+  "TestGuide": "2.6"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-cam-1.json",
+  "show": [
+   "cam",
+   "dbg",
+   "f1",
+   "yaw"
+  ],
+  "probes": {
+   "mode": "local D = _G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "aim": "local D = _G.DPC_dbg; return D ~= nil and D.cfg.coop_aim == true",
+   "dbg": "local D = _G.DPC_dbg; return D and tostring(D.R.ta_dbg or '')",
+   "p2t": "local D = _G.DPC_dbg; return D and tostring(D.coop.tgt_name or 'none')",
+   "pin": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.pin ~= nil",
+   "p1": "local D = _G.DPC_dbg; return D ~= nil and D.R.ta.p1 ~= nil",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "flicks": "local D = _G.DPC_dbg; return D and (D.R.ta.flick_n or 0) or 0",
+   "cam": "local D = _G.DPC_dbg; return D and tostring(D.cfg.coop_cam_turn)",
+   "camn": "local D = _G.DPC_dbg; return D and (D.R.cct.n or 0) or 0",
+   "flips": "local D = _G.DPC_dbg; return D and (D.R.cct.flips or 0) or 0",
+   "f1": "local D = _G.DPC_dbg; return D and D.R.ta.f1 and (D.R.ta.f1.flick_n or 0) or 0",
+   "yaw": "local D = _G.DPC_dbg; local y = D and D.R.cam_yaw(); return y and math.floor(math.deg(y) + 0.5)"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_auto_target",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_p1",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_p1_flick",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_cam_turn",
+     "value": "p1"
+    }
+   ]
+  },
+  {
+   "text": "PLAYER 1: press something on your controller. PLAYER 2: hold L3 + R3 until co-op starts (player 1 the Arisen).",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "label": "classic co-op on",
+     "op": "==",
+     "value": "classic",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "Six tough goblins: left, ahead, right. MODE 1 (player 1's camera): PLAYER 1 turns the camera as normal. Then R3 on a goblin to keep it.",
+   "secs": 15,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 2,
+     "dist": 9.0,
+     "angle": -50,
+     "still": true,
+     "tough": true
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 2,
+     "dist": 13.0,
+     "angle": 0,
+     "still": true,
+     "tough": true
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 2,
+     "dist": 9.0,
+     "angle": 50,
+     "still": true,
+     "tough": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "p1",
+     "agg": "any",
+     "label": "player 1 has a target",
+     "must": true
+    }
+   ]
+  },
+  {
+   "text": "MODE 1: PLAYER 1 quick FLICKS left and right: his marker moves one goblin per flick, the camera doesn't spin. Leave the stick alone a moment: the camera turns toward his target. End when happy.",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "f1",
+     "agg": "last",
+     "label": "player 1 flicks counted",
+     "op": ">=",
+     "value": 2
+    }
+   ]
+  },
+  {
+   "text": "MODE 2 (both sticks): BOTH players push the right stick SLOWLY: either one turns the camera (both together add up). Quick flicks only switch your own target. End when happy.",
+   "secs": 30,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_cam_turn",
+     "value": "shared"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "camn",
+     "agg": "last",
+     "label": "camera written by both sticks",
+     "op": ">",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "MODE 3 (automatic): sticks only target now. Both keep targets on different goblins and walk around: the camera turns by itself toward your targets. End when happy.",
+   "secs": 30,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_cam_turn",
+     "value": "auto"
+    }
+   ]
+  },
+  {
+   "text": "MODE 3: PLAYER 1 click R3 on his target to release; PLAYER 2 tap R3 to go automatic. Walk somewhere together: the camera should turn to the way you're going.",
+   "secs": 25,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  },
+  {
+   "text": "Back to MODE 1. PLAYER 1: hold L3 + R3 for 3 seconds to end co-op. Tell Claude which mode felt best, and whether the automatic turning went the right way.",
+   "secs": 12,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_cam_turn",
+     "value": "p1"
+    }
+   ]
+  }
+ ]
+}

@@ -5,7 +5,8 @@
 -- Each step can send commands to DirectPawnControl (data/DPC_cmd.json), and the plan can record probes
 -- (Lua expressions) at a fixed rate into a result file. Progress goes to test_guide/status.json.
 --
--- Controls:  End (keyboard) or L3+R3 (controller) = ready / start.   Shift+End = abort or dismiss.
+-- Controls:  End (keyboard) = ready / start (2.7.2: not L3+R3, which is DPC's co-op join). Shift+End = abort or dismiss.
+--            Page Up = run the last finished test again (2.5; also the REFramework menu: any of the last 12).
 --
 -- Plan format (JSON):
 -- {
@@ -15,7 +16,7 @@
 --   "steps": [
 --     { "text": "Hold W", "secs": 5, "cmds": [ {"cmd": "set", "key": "coop_arisen_kb_stick", "value": true} ] },
 --     { "text": "Let go of W, push the controller's left stick", "secs": 5 },
---     { "text": "Untick X in the menu, then press End", "wait": true }   (v1.3: no timer; End / L3+R3 moves on)
+--     { "text": "Untick X in the menu, then press End", "wait": true }   (v1.3: no timer; End moves on)
 --     { "text": "...", "secs": 4, "each_frame": "lua chunk" }   (v1.4: run every frame of the step, before the game's
 --                                   LateUpdate, with the probe env (H, and globals that persist across steps/probes))
 --   ],
@@ -49,13 +50,21 @@
 --   "auto_secs" (default 3); a finished plan clears after 3 s. status.json also carries wall = os.time() and auto.
 --   Plans written for the bench should not need a person (no "wait" steps that need a real action).
 --
+-- v2.6 (requested 2026-11-20: "make each step last until you get the known objective must-have, and allow manual
+--   ending of each step"):
+--   expect items with "must": true make the step last until all of them pass (checked live 4x a second over the
+--       step's samples so far); the step then moves on 1.5 s later. "secs" is then only the hint shown on screen.
+--       "min_secs" (default 2) keeps it from ending sooner; "max_secs" (default 180) ends it anyway (the must fails).
+--   End (keyboard, not the pad: L3+R3 is co-op join / leave) ends any running step now; its checks are still made.
+--
 -- Each recorded row gets t (seconds since start), step (1-based) and every probe value (errors -> "ERR: ...").
 
-local VERSION = "2.4.1"
+local VERSION = "2.7.3"
 local DIR = "test_guide/"
 local PLAN_FILE, STATUS_FILE = DIR .. "plan.json", DIR .. "status.json"
 local KEY_READY, KEY_SHIFT = 0x23, 0x10           -- End, Shift
 local KEY_FLIGHT = 0x24                           -- Home
+local KEY_AGAIN = 0x21                            -- Page Up (2.5): run the last finished test again
 local PAD_FLIGHT = 0x4000 | 0x1000                -- CLeft (Create/Share) + LStickPush
 local DEV_DIR = "dev_status/"
 local CONFIG_FILE = DIR .. "config.json"
@@ -194,6 +203,8 @@ local OPS = {
     [">"] = function(a, b) return a > b end, [">="] = function(a, b) return a >= b end,
     ["<"] = function(a, b) return a < b end, ["<="] = function(a, b) return a <= b end,
     ["=="] = function(a, b) return a == b end, ["~="] = function(a, b) return a ~= b end,
+    ["!="] = function(a, b) return a ~= b end, -- 2.7.1: plans wrote "!=", which fell back to "==" (a must step "co-op on"
+                                                -- passed on "off" before anyone joined)
     contains = function(a, b) return type(a) == "string" and a:find(tostring(b), 1, true) ~= nil end,
 }
 local function truthy(v) return v == true or (type(v) == "number" and v ~= 0) end
@@ -205,10 +216,24 @@ local function eval_expect(e, step_i)
     end
     local label = e.label or (tostring(e.probe) .. " " .. tostring(e.op or "==") .. " " .. tostring(e.value))
     if #vals == 0 then return { step = step_i, label = label, pass = false, got = "no samples" } end
-    local op = OPS[e.op or "=="] or OPS["=="]
+    -- 2.7.3: an expectation with neither op nor value is a reading, not a check (it compared with true and showed
+    -- "failed" for every string, e.g. coop-join-1's "who plays what"): it records the last value and always passes
+    if e.op == nil and e.value == nil and not e.must and type(vals[#vals]) ~= "boolean" then -- a true / false probe still checks for true
+        local last = vals[#vals]
+        return { step = step_i, label = label, pass = true, info = true, got = type(last) == "number" and last or tostring(last), agg = "last", op = "info" }
+    end
+    local op = OPS[e.op or "=="]
+    if not op then return { step = step_i, label = label, pass = false, got = "unknown op " .. tostring(e.op) } end -- 2.7.1: never a silent "=="
     local want = e.value; if want == nil then want = true end
     local agg = e.agg or ((type(vals[1]) == "boolean" or type(want) == "boolean" or e.op == "contains") and "any" or "avg")
     local got, pass
+    if agg == "last" and (type(vals[#vals]) ~= "number" or type(want) ~= "number") then
+        -- 2.4.2: "last" of a string or boolean probe compares the value itself (was: numbers only, so a string
+        -- probe gave "no numeric samples" and a boolean read as 0 / 1 never equalled false / true)
+        got = vals[#vals]
+        local ok, r = pcall(op, got, want)
+        return { step = step_i, label = label, pass = ok and r == true, got = tostring(got), agg = agg, op = e.op or "==", value = want }
+    end
     if agg == "any" or agg == "all" or agg == "frac" then
         local hits = 0
         for _, v in ipairs(vals) do
@@ -275,17 +300,111 @@ local function flush_cmds(now)
     gs.next_cmd_t = now + CMD_GAP
 end
 
+-- 2.7 (the tester 2026-11-21: "There are so many options now they are very hard to find ... always copy testing options
+-- to the top"): a plan's "settings" list, e.g. { "mod": "cd", "key": "coop_climb_extra", "label": "...", "min": 0,
+-- "max": 15 } (mod "cd" = Camera Distance through CameraDistance_API, "dpc" = Direct Pawn Control through DPC_dbg),
+-- is shown in a "Test settings" window while the REFramework menu is open, and at the top of TestGuide's entry.
+-- Changes save in the mod as usual; the values at the end go into the result file ("settings").
+local function setting_access(s)
+    if s.mod == "cd" then
+        local A = rawget(_G, "CameraDistance_API")
+        if A and A.get then return function() return A.get(s.key) end, function(v) A.set(s.key, v) end end
+    elseif s.mod == "dpc" then
+        local D = rawget(_G, "DPC_dbg")
+        if D and D.cfg then return function() return D.cfg[s.key] end, function(v) D.cfg[s.key] = v; if D.save then pcall(D.save) end end end
+    end
+    return nil
+end
+local function settings_values()
+    local out = {}
+    local p = gs.plan
+    for _, s in ipairs(p and p.settings or {}) do
+        local get = setting_access(s)
+        if get then local ok, v = pcall(get); out[(s.mod or "?") .. "." .. tostring(s.key)] = ok and v or nil end
+    end
+    return out
+end
+local function settings_rows(list)
+    for i, s in ipairs(list or {}) do
+        local get, set = setting_access(s)
+        local lbl = tostring(s.label or s.key) .. "##tgs" .. i
+        if not get then
+            imgui.text(tostring(s.label or s.key) .. " (" .. tostring(s.mod) .. " not loaded)")
+        else
+            local v = get()
+            if type(s.values) == "table" then
+                local cur, labels = 1, {}
+                for j, x in ipairs(s.values) do labels[j] = tostring((s.labels or {})[j] or x); if x == v then cur = j end end
+                local c, nv = imgui.combo(lbl, cur, labels)
+                if c then set(s.values[nv]) end
+            elseif type(v) == "boolean" then
+                local c, nv = imgui.checkbox(lbl, v)
+                if c then set(nv) end
+            elseif type(v) == "number" then
+                local c, nv = imgui.slider_float(lbl, v, tonumber(s.min) or 0.0, tonumber(s.max) or 10.0, s.fmt or "%.2f")
+                if c then set(nv) end
+            else
+                imgui.text(tostring(s.label or s.key) .. ": " .. tostring(v))
+            end
+        end
+    end
+end
+
 local function save_results(final_state)
     local p = gs.plan
     if p and p.record and p.record.out then
         pcall(json.dump_file, p.record.out, { id = p.id, state = final_state, verdicts = gs.verdicts, versions = (function()
-            local v = {}; for mod, d in pairs(gs.dev) do v[mod] = d.version end; return v end)(), rows = gs.rows })
+            local v = {}; for mod, d in pairs(gs.dev) do v[mod] = d.version end; return v end)(), settings = settings_values(), rows = gs.rows })
     end
+end
+
+local load_plan_ref -- set below (load_plan comes after finish)
+-- 2.5: finished plans are kept (history.json, the last 12) so any of them can be run again from the game
+local HISTORY_FILE = DIR .. "history.json"
+local function plan_copy(p)
+    if type(p) ~= "table" then return p end
+    local c = {}
+    for k, v in pairs(p) do
+        if not (type(k) == "string" and k:sub(1, 1) == "_") and type(v) ~= "function" then c[k] = plan_copy(v) end
+    end
+    return c
+end
+local function history_load()
+    if gs.history then return gs.history end
+    local ok, h = pcall(json.load_file, HISTORY_FILE)
+    gs.history = (ok and type(h) == "table") and h or {}
+    return gs.history
+end
+local function history_add(p)
+    if type(p) ~= "table" or type(p.id) ~= "string" then return end
+    local h = history_load()
+    for i = #h, 1, -1 do if h[i].id == p.id then table.remove(h, i) end end
+    h[#h + 1] = plan_copy(p)
+    while #h > 12 do table.remove(h, 1) end
+    pcall(json.dump_file, HISTORY_FILE, h)
+end
+-- the same steps under a new id ("<id>-again2", "-again3", ...), results in their own file
+local function rerun(p)
+    if type(p) ~= "table" then return false end
+    local c = plan_copy(p)
+    local base = c.redo_of or c.id
+    local taken = {}
+    for _, id in ipairs(gs.finished) do taken[id] = true end
+    local n = 2
+    while taken[base .. "-again" .. n] do n = n + 1 end
+    c.redo_of, c.id = base, base .. "-again" .. n
+    if type(c.record) == "table" then c.record.out = "test_guide/result_" .. c.id .. ".json" end
+    gs.plan, gs.state = nil, "idle"
+    load_plan_ref(c)
+    gs.queue_file = "(run again)"
+    log.info("[TestGuide] running " .. base .. " again as " .. c.id)
+    return true
 end
 
 local function finish(state, msg)
     gs.state, gs.msg, gs.done_t = state, msg, os.clock()
     save_results(state)
+    if gs.plan then history_add(gs.plan) end
     if gs.plan and gs.plan.id then gs.finished[#gs.finished + 1] = gs.plan.id end
     if #gs.finished > 300 then table.remove(gs.finished, 1) end -- 2.1: was 20, so old queue files ran again
     write_status()
@@ -312,8 +431,32 @@ local function load_plan(p)
     write_status()
 end
 
+load_plan_ref = load_plan
+
+local function step_musts(st)
+    local m = {}
+    if type(st.expect) == "table" then for _, e in ipairs(st.expect) do if e.must then m[#m + 1] = e end end end
+    return m
+end
+
+-- 2.6: live check of a step's must-have expects; returns all_passed, list of { label, pass }
+local function check_musts(st, step_i, now)
+    if gs.must_t and now - gs.must_t < 0.25 then return gs.must_ok, gs.must_list end
+    gs.must_t = now
+    local all, list = true, {}
+    for _, e in ipairs(step_musts(st)) do
+        local ok, v = pcall(eval_expect, e, step_i)
+        local pass = ok and v.pass == true
+        list[#list + 1] = { label = (ok and v.label) or tostring(e.label or e.probe), pass = pass, got = ok and v.got }
+        if not pass then all = false end
+    end
+    gs.must_ok, gs.must_list = all, list
+    return all, list
+end
+
 local function start_step(i, now)
     gs.step, gs.step_t0 = i, now
+    gs.must_t, gs.must_ok, gs.must_list, gs.must_done_t = nil, nil, nil, nil
     queue_cmds(gs.plan.steps[i].cmds)
     write_status()
 end
@@ -344,8 +487,11 @@ end
 local function ready_pressed()
     -- v2.3: Ctrl+End belongs to CaptureGuide (arm / disarm capture mode)
     local k = reframework:is_key_down(KEY_READY) and not reframework:is_key_down(0x11)
-    local pd = (H.pad_buttons() & PAD_READY) == PAD_READY
-    local hit = (k and not gs.key_prev) or (pd and not gs.pad_prev)
+    -- 2.7.2 (the tester: "let's make our tests start with END only and not L3+R3 since that is co-op start"): the
+    -- controller no longer starts or moves on a test; End only
+    local pd = false
+    local hit = (k and not gs.key_prev)
+    gs.key_edge = k and not gs.key_prev -- 2.6: keyboard End alone (manual step end)
     gs.key_prev, gs.pad_prev = k, pd
     return hit
 end
@@ -392,6 +538,20 @@ local function tick()
         end
     end
     flush_cmds(now)
+    -- 2.5: Page Up = run the last finished test again (not while one runs); the REFramework menu can pick any of
+    -- the last 12 (gs.rerun_req)
+    local again = reframework:is_key_down(KEY_AGAIN)
+    local again_edge = again and not gs.again_prev
+    gs.again_prev = again
+    if gs.state ~= "running" and gs.state ~= "countdown" and not gs.auto then
+        local want = gs.rerun_req
+        gs.rerun_req = nil
+        if not want and again_edge then
+            local h = history_load()
+            want = (gs.state == "done" or gs.state == "aborted") and gs.plan or h[#h]
+        end
+        if want then rerun(want) return end
+    end
     local pressed = ready_pressed()
     local shift = reframework:is_key_down(KEY_SHIFT)
     -- v2.2: Shift only counts for Shift+End when it went down in the last 5 s. On 2026-11-17 a Shift+F10 pressed
@@ -423,9 +583,20 @@ local function tick()
         if st.wait then
             advance = pressed and not shift and (now - gs.step_t0) > 0.3
             if gs.auto and now - gs.step_t0 >= (tonumber(st.auto_secs) or 3) then advance = true end -- v2.4
+        elseif #step_musts(st) > 0 then
+            local el = now - gs.step_t0
+            local all = check_musts(st, gs.step, now)
+            if all and el >= (tonumber(st.min_secs) or 2) then
+                gs.must_done_t = gs.must_done_t or now
+                advance = now - gs.must_done_t >= 1.5
+            else
+                gs.must_done_t = nil
+            end
+            if el >= (tonumber(st.max_secs) or 180) then advance = true end
         else
             advance = now - gs.step_t0 >= (tonumber(st.secs) or 5)
         end
+        if not st.wait and gs.key_edge and not shift and now - gs.step_t0 > 0.5 then advance = true end -- 2.6 manual end
         if advance then
             eval_step(gs.step)
             if gs.step < #gs.plan.steps then start_step(gs.step + 1, now)
@@ -567,6 +738,12 @@ local function draw_hud(now)
 end
 
 re.on_frame(function()
+    -- 2.7: a small window with this test's settings while the REFramework menu is open
+    if gs.plan and type(gs.plan.settings) == "table" and #gs.plan.settings > 0 and reframework:is_drawing_ui() then
+        imgui.begin_window("Test settings: " .. tostring(gs.plan.id), nil, 0)
+        pcall(settings_rows, gs.plan.settings)
+        imgui.end_window()
+    end
     if _G.CAPTURE_GUIDE_ACTIVE then return end -- v2.3
     local now0 = os.clock()
     local okf, ferr = pcall(flight_tick, now0)
@@ -587,7 +764,7 @@ re.on_frame(function()
         if p.intro then text(font_mid, WHITE, p.intro) end
         imgui.spacing()
         for i, st in ipairs(p.steps) do
-            local len = st.wait and "you press End" or string.format("%ds", math.floor(tonumber(st.secs) or 5))
+            local len = st.wait and "you press End" or (#step_musts(st) > 0 and "until done") or string.format("%ds", math.floor(tonumber(st.secs) or 5))
             text(font_mid, GREY, string.format("%d. %s  (%s)", i, st.text or "", len))
         end
         imgui.spacing()
@@ -595,9 +772,14 @@ re.on_frame(function()
             for _, u in ipairs(gs.unmet) do text(font_mid, RED, u) end
             text(font_big, RED, "Can't start yet")
         else
-            text(font_big, YELLOW, "Press END (or L3+R3) when ready")
+            text(font_big, YELLOW, "Press END when ready")
         end
         text(nil, GREY, "Shift+End dismisses this test")
+        do
+            local h = history_load()
+            local last = h[#h]
+            if last and last.id ~= p.id then text(nil, GREY, "Page Up runs " .. tostring(last.id) .. " again instead") end
+        end
     elseif gs.state == "countdown" then
         text(font_big, YELLOW, string.format("Starting in %d...", math.ceil(gs.t0 - now)))
         local st = p.steps[1]
@@ -607,10 +789,22 @@ re.on_frame(function()
         text(font_mid, GREY, string.format("Step %d of %d", gs.step, #p.steps))
         text(font_big, GREEN, tostring(st.text))
         if st.wait then
-            text(font_big, YELLOW, "Press END (or L3+R3) when done")
+            text(font_big, YELLOW, "Press END when done")
+        elseif #step_musts(st) > 0 then
+            local all, list = check_musts(st, gs.step, now)
+            if all and gs.must_done_t then
+                text(font_big, GREEN, "Got it - moving on")
+            else
+                text(font_big, YELLOW, string.format("Until done (%.0fs)", now - gs.step_t0))
+            end
+            for _, m in ipairs(list or {}) do
+                text(font_mid, m.pass and GREEN or WHITE, string.format("%s %s", m.pass and "[x]" or "[ ]", tostring(m.label)))
+            end
+            text(nil, GREY, "End (keyboard) moves on")
         else
             local left = (tonumber(st.secs) or 5) - (now - gs.step_t0)
             text(font_big, YELLOW, string.format("%.0f", math.max(0, math.ceil(left))))
+            text(nil, GREY, "End (keyboard) moves on now")
         end
         local nxt = p.steps[gs.step + 1]
         if nxt then text(font_mid, GREY, "Next: " .. tostring(nxt.text)) end
@@ -636,7 +830,7 @@ re.on_frame(function()
                 text(font_mid, v.pass and GREEN or RED, string.format("%s  step %d: %s  (got %s)", v.pass and "PASS" or "FAIL",
                     v.step, tostring(v.label), tostring(v.got)))
             end
-            text(nil, GREY, "End closes this")
+            text(nil, GREY, "End closes this   -   Page Up runs this test again")
         end
     end
     -- checks already decided while the test is still running
@@ -672,3 +866,26 @@ do
     if not ok or type(a) ~= "table" then pcall(json.dump_file, DIR .. "auto.json", { on = false }) end
 end
 log.info("[TestGuide] v" .. VERSION .. " loaded: drop a plan in reframework/data/test_guide/plan.json")
+
+-- 2.5: run a finished test again, from the REFramework menu (the last 12)
+re.on_draw_ui(function()
+    -- 2.7: this test's settings, first
+    if gs.plan and type(gs.plan.settings) == "table" and #gs.plan.settings > 0 then
+        imgui.text_colored("TestGuide: settings for " .. tostring(gs.plan.id), 0xFF66DDFF)
+        pcall(settings_rows, gs.plan.settings)
+    end
+    if not imgui.tree_node("TestGuide: run a test again") then return end
+    pcall(function()
+        local h = history_load()
+        if #h == 0 then imgui.text("No finished tests yet.") end
+        for i = #h, 1, -1 do
+            local p = h[i]
+            if imgui.button("Run again##tg_again_" .. i) then gs.rerun_req = p end
+            imgui.same_line()
+            imgui.text(tostring(p.id) .. "  -  " .. tostring(p.title or ""))
+        end
+        imgui.text("Or press Page Up on the end screen (or while the next test waits) to run the last one again.")
+    end)
+    imgui.tree_pop()
+end)
+

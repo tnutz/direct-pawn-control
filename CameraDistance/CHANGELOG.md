@@ -1,6 +1,82 @@
 # MODLOG: Camera Distance & Framing Studio (Dragon's Dogma 2)
 
 
+### 2.9.18 (2026-11-21): release, with DirectPawnControl 0.9.172
+
+### 2.9.18-dev5 (2026-11-21): crane defaults are the tester's own
+- the tester: "Whatever I had crane set at is what I want defaults to be" (replaces dev4's 50). From his saved file: `coop_crane_max` 60 (was 25), `coop_crane_view_max` 60, per metre 6, rate 10 (those two already the defaults).
+
+### 2.9.18-dev4 (2026-11-21): crane look-down 50 degrees; old settings start fresh
+- the tester: "Increase the crane never look down to 50 degrees for the default". `coop_crane_view_max` 50 (was 60).
+- "Make sure the settings someone had from old version of the mod don't mess up the new much much better defaults ... maintain key bindings": `config_version` 4. A file from before (3 or less) keeps only the player's own camera feel and keys (distance, extra distance, height, shoulder, pitch, forward lead, FOV, combat distance, presets, RTS, hotkeys and the zoom / wheel / gamepad switches); every co-op, climbing, crane and other setting starts from the new defaults. The old file is kept as `camera_distance_config.before_2.9.18.json`. Checked in the fake game with the tester's file: distance 1.5 / height 0.2 / combat 3.5 / preset 3 kept, co-op climbing 6, crane 25 / 50.
+
+### 2.9.18-dev3 (2026-11-21): the Rift switch is immediate
+- the tester: entering and leaving the Rift worked, but "there was a bit of time when first entering the rift where the camera was pulled back and glitchy before it fixed itself". The Rift check rode on the 1 s co-op poll and the pull-back then eased out at the calm-camera speed. It now runs 10 x a second, drops the co-op pull-back and slide at once on entering, and re-reads DPC's co-op status straight away on leaving.
+
+### 2.9.18-dev2 (2026-11-21): no co-op camera in the Rift
+- the tester: "let's get rid of the co-op camera in the rift" (co-op itself stays on through a Rift visit, which he wants). The Rift is the game's "Rim": while `app.FacilityManager.RimStateNow` is anything but None (0) or End (15) the co-op camera, crane and markers are off, as if co-op were off. Read with the 1 s co-op poll. Untested: which RimState values the walk-around Rift uses.
+
+### 2.9.18-dev1 (2026-11-21): edge markers for players 3 and up
+- coop-4p-2 (the tester): "P3 is missing a bookmark when off screen". Players 3+ (DPC_coop.json `players`, with `player_names` / `player_nums` from DPC 0.9.172-dev36) get edge markers named after their character: P3 green, P4 magenta, P5 red, then white, the same colours as DPC's target dots.
+
+### 2.9.17-dev1 (2026-11-21): calmer co-op camera, marker colours
+- the tester: "both have yellow markers" (draw colours are 0xAABBGGRR; 2.9.16's light blue and gold were both yellow-orange): player 2 is now light blue 0xFFFFC040, player 1 gold 0xFF30C8FF.
+- "Cliff code seems to favor P1 so as they run it tilts, but the camera should probably give up and bookmark any player that would cause the camera to suddenly have to move like that ... favor safer more cinematic movements": `coop_calm` (on): the co-op pull-back and sideways slide change by at most `coop_max_pull_speed` / `coop_max_slide_speed` (3 m/s each) after their smoothing; a player who outruns that leaves the frame and gets the edge marker. The crane needs a wall for 0.4 s before it rises and turns at most `coop_crane_rate` (10 deg/s) up, two thirds of that down. Sliders in the Couch co-op block.
+
+### 2.9.16-dev1 (2026-11-21): crane no longer flips the view; player 1 gets an edge marker
+- the tester against a tight rock wall: the view went almost straight down and flipped while turning ("I can see almost nothing", before/after screenshots a little rotation apart). The crane's extra pitch now stops at `coop_crane_view_max` (60 deg) of total look-down, judged from the camera's view before the orbit, and `coop_crane_max` is 25 deg (was 35). The readout shows the view's look-down.
+- "Camera does not bookmark P1 when out of frame as it should": the edge marker is drawn for player 1 too (gold; player 2 stays light blue), at the camera's anchor (the Arisen, or player 1's pawn when both play pawns); not when player 2 is on the Arisen.
+
+### 2.9.15-dev1 (2026-11-21): co-op crane against walls
+- the tester: against a wall "only angling the camera down seems to keep us in view"; trees: live with it. When the player camera controller reports `IsHitTerrain` (a wall pushed it in), the distance it lost (against the distance while unblocked) becomes extra pitch through the native pitch orbit: the camera rises and looks down. `coop_crane` (on, co-op only), `coop_crane_per_m` 6 deg per metre, `coop_crane_max` 35 deg; rises quickly, settles slowly. Readout in the Couch co-op block. Untested: whether IsHitTerrain is the wall push-in is the first thing to check (the readout shows it).
+
+### 2.9.14-dev1 (2026-11-21): game cameras, caves, camera log
+- The co-op framing now works on the game cameras agreed with the tester (app.CameraDefine.ControlType; uses inferred from the names): Player, Usually, Combat, Narrow, Climbing, Follow (`CT_FRAME`). The off-screen marker also shows on Notice, Aim, Ballista and Shot (`CT_MARKER`). Everything else (cutscenes, talk, cinematic actions, photo, ...) stays hands off.
+- Narrow (likely caves and corridors): the game pushes the camera in at walls, so a full pull-back only fights it. In co-op the Narrow camera takes `coop_narrow_pull` (0.4) of the pull-back and widens the view by `coop_narrow_fov` (8 deg) instead. Sliders in the Couch co-op block, with the current game camera's name. The game's own see-through (app.SeeThroughController) only fades foliage between the camera and the Arisen; walls are handled by camera collision, not transparency.
+- Camera log (`camera_log`, on): every change of game camera kind is written to data/camera_types_log.json (kind, seconds, co-op or not, time; totals per kind), to replace the inferred uses with what play shows.
+
+### 2.9.13-dev6 (2026-11-21): climbing distance default 6 m
+- coop-climb-2 rerun: player 2 "mostly stays in frame, but can nudge off", and the edge marker shows. `coop_climb_extra` defaults to 6 m (the tester found 6 matched the co-op camera). Saved configs keep their value (the tester's is 4 from the test).
+
+### 2.9.13-dev5 (2026-11-21): climbing distance from the first moment, and the off-screen marker while climbing
+- coop-climb-2 (the tester): when the climb started player 2 was off screen with no edge marker; moving "Climbing camera further back" to 6 brought him in, and back to 4 kept him in; later, out of frame again, the marker came back.
+- Marker: the off-screen marker was hidden on any non-player camera, the climbing camera included. It now shows while climbing in co-op.
+- Distance: the climbing camera appears to take ClimbingCameraSetting._BaseDistance when it starts and re-read it only when it changes, which is why moving the slider helped. The distance is now also set before onStart / onTransition, and on the first 0.3 s of a new climb it alternates +0.05 m so the camera re-reads it. Guess from the report, untested.
+
+### 2.9.13-dev4 (2026-11-21): climbing options next to the co-op camera
+- the tester could not find the climbing slider (it was under the suspend options). "Keep both players in view while climbing a monster" and "Climbing camera further back" now sit in the Couch co-op block under the co-op camera choice; the always-on climbing distance stays with the suspend options.
+
+### 2.9.13-dev3 (2026-11-21): no joint offsets while climbing
+- the tester: "during climbing, labels are glitchy, jumping around upward. We solved this issue before with the camera." Since dev1 the climbing camera is no longer suspended, so the late hook ran on it. The native offsets live on the player camera controller (updatePog / onUpdate), which does not run while climbing, so the classic co-op pitch fell back to the camera joint, the path that caused the 2.9.1 nametag flicker. While the climbing controller updates (within 0.25 s), the late hook now leaves the joint alone; the climbing camera only gets its distance.
+
+### 2.9.13-dev2 (2026-11-20): climbing camera pulled back
+- coop-cam-2: with the climbing camera no longer counted as a cutscene, it still "is too tight" (screenshot: player 1 on a cyclops's back, player 2 out of view). The climbing camera is its own controller (app.ClimbingCameraController), which ignores DistanceOffset and the player controller's _Pog. Its distance is ClimbingCameraSetting._BaseDistance (damped by _DistanceDamper). While climbing in co-op it is now the game's value + `coop_climb_extra` (4 m) + the co-op pull-back; `climb_extra` (0) applies always. The game's value is put back on Reset Scripts. Sliders under the suspend options, with a readout. Untested in game.
+
+### 2.9.13-dev1 (2026-11-20): co-op framing while climbing
+- the tester: "climbing with P1 at least makes the camera not try very hard to keep P2 in view". Climbing a monster is camera control type 6 (app.CameraDefine.ControlType.Climbing), which answers get_CurrentPlayerCamera false, so the suspend check treated it as a cutscene camera and the co-op framing let go. In co-op it now counts as a player camera (`coop_frame_climbing`, on; checkbox under the suspend options). Untested in game: whether the game's climbing camera follows the distance it is given is the open question.
+
+### 2.9.12-dev2 (2026-11-20): co-op defaults from the tests
+- Defaults now match the settings the tester used in coop-aim-3 ("it seemed to keep us both on screen well"): `coop_style = "classic"`, `coop_classic_pitch = 5.0` (was 38), `coop_classic_height = 1.5` (was 2.0), `coop_aim_zoom_limit = true`. Saved configs keep their own values.
+
+### 2.9.12-dev1 (2026-11-20)
+- "Classic" co-op camera (the tester, from the r/DragonsDogma "DD2 couch co op prototype" video): Co-op camera = Follow
+  player 1 (as before) / Classic: aimed at the middle of every player (no player off-centre more than the others),
+  looks down 38 degrees more, 6 m further back and 2 m higher with everyone together, then pulls back with the
+  spread (the frustum solver around the middle, no slide). Sliders for all four. tests/coop_solve.py: classic groups
+  all in view with no slide (500 cases).
+- _G.CameraDistance_API (get / set a setting, version): TestGuide plans switch settings with it.
+
+### 2.9.11-dev1 (2026-11-20 overnight)
+- Co-op framing for any number of players (DPC 0.9.172 lists players 3+ in DPC_coop.json "players"). The frustum
+  solver is now coop_solve(rel, o): the smallest pull-back with one sideways slide that keeps every player in view
+  (the window of slides that fit everyone; pulls back further if the window is empty). With one other player it is
+  the 2.9.10 formula exactly. tests/coop_solve.py: 500 random one-player cases equal to 2.9.10, 500 groups of 3-8
+  all in view, adding players never brings the camera in.
+- 2.9.10-dev2: pawn index -1 = the Arisen (DPC 0.9.171, player 2 on the Arisen).
+
+### 2.9.10-dev1 (2026-11-20, dev): framing when both co-op players are on pawns
+- DirectPawnControl 0.9.171 writes `anchor_idx` in DPC_coop.json when both players are on pawns (the camera follows player 1's pawn); the co-op framing then measures from that pawn instead of the Arisen. -1 (or missing) = the Arisen, as before. Untested in game.
+
 ### 2.9.9 (2026-11-19): joseau11's co-op changes
 - `coop_ahead_per_m` (0 = off, his setting about 0.35): the frustum fit did not pull back when player 2 ran ahead, since a pawn far down the view line still fits on screen, just small. The camera now also pulls back by this much per metre player 2 is ahead past `coop_start_dist`, up to `coop_fit_cap`. Slider under the fit settings.
 - The off-screen player 2 marker is hidden while a menu, shop, talk or a non-player camera is up.
