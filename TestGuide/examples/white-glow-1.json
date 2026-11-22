@@ -1,0 +1,164 @@
+{
+ "id": "white-glow-1",
+ "title": "Find a white glow for the White player colour (28 of the game's rim lights, 3 s each)",
+ "intro": "About 2 minutes, hands off. Stand somewhere fairly dark if you can (dusk or indoors) with the camera close on your character. Each step lights your character in one of the game's glows; the number and name are on the overlay. Note the numbers that look white. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.173-dev1"
+ },
+ "steps": [
+  {
+   "text": "1 of 28: AstralBody  (the current White, for comparison)",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 1 then G_wg = 1; G_wgn = 'AstralBody'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'AstralBody', 2.6) end\nend"
+  },
+  {
+   "text": "2 of 28: RimLightSpellStockLight",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 2 then G_wg = 2; G_wgn = 'RimLightSpellStockLight'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightSpellStockLight', 2.6) end\nend"
+  },
+  {
+   "text": "3 of 28: MultipleChant_Light1",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 3 then G_wg = 3; G_wgn = 'MultipleChant_Light1'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'MultipleChant_Light1', 2.6) end\nend"
+  },
+  {
+   "text": "4 of 28: MultipleChant_Light2",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 4 then G_wg = 4; G_wgn = 'MultipleChant_Light2'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'MultipleChant_Light2', 2.6) end\nend"
+  },
+  {
+   "text": "5 of 28: MultipleChant_Normal2",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 5 then G_wg = 5; G_wgn = 'MultipleChant_Normal2'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'MultipleChant_Normal2', 2.6) end\nend"
+  },
+  {
+   "text": "6 of 28: MultipleChant",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 6 then G_wg = 6; G_wgn = 'MultipleChant'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'MultipleChant', 2.6) end\nend"
+  },
+  {
+   "text": "7 of 28: RimLightSpellStock",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 7 then G_wg = 7; G_wgn = 'RimLightSpellStock'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightSpellStock', 2.6) end\nend"
+  },
+  {
+   "text": "8 of 28: RimLightInteract",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 8 then G_wg = 8; G_wgn = 'RimLightInteract'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightInteract', 2.6) end\nend"
+  },
+  {
+   "text": "9 of 28: RimLightInteractGimmic",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 9 then G_wg = 9; G_wgn = 'RimLightInteractGimmic'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightInteractGimmic', 2.6) end\nend"
+  },
+  {
+   "text": "10 of 28: RimLightHead",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 10 then G_wg = 10; G_wgn = 'RimLightHead'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightHead', 2.6) end\nend"
+  },
+  {
+   "text": "11 of 28: RimLightRevival",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 11 then G_wg = 11; G_wgn = 'RimLightRevival'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightRevival', 2.6) end\nend"
+  },
+  {
+   "text": "12 of 28: RimLightCh03cs16Revive",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 12 then G_wg = 12; G_wgn = 'RimLightCh03cs16Revive'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCh03cs16Revive', 2.6) end\nend"
+  },
+  {
+   "text": "13 of 28: RimLightPlStoneLv1",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 13 then G_wg = 13; G_wgn = 'RimLightPlStoneLv1'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightPlStoneLv1', 2.6) end\nend"
+  },
+  {
+   "text": "14 of 28: RimLightPlStoneLv2",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 14 then G_wg = 14; G_wgn = 'RimLightPlStoneLv2'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightPlStoneLv2', 2.6) end\nend"
+  },
+  {
+   "text": "15 of 28: PawnRimStone",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 15 then G_wg = 15; G_wgn = 'PawnRimStone'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'PawnRimStone', 2.6) end\nend"
+  },
+  {
+   "text": "16 of 28: ReturnalStone",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 16 then G_wg = 16; G_wgn = 'ReturnalStone'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'ReturnalStone', 2.6) end\nend"
+  },
+  {
+   "text": "17 of 28: PrimitiveReturnalStone",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 17 then G_wg = 17; G_wgn = 'PrimitiveReturnalStone'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'PrimitiveReturnalStone', 2.6) end\nend"
+  },
+  {
+   "text": "18 of 28: RimLightCheerOfTheGod",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 18 then G_wg = 18; G_wgn = 'RimLightCheerOfTheGod'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCheerOfTheGod', 2.6) end\nend"
+  },
+  {
+   "text": "19 of 28: RimLightHideRing",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 19 then G_wg = 19; G_wgn = 'RimLightHideRing'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightHideRing', 2.6) end\nend"
+  },
+  {
+   "text": "20 of 28: RimLightCh00Invincible_Physical",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 20 then G_wg = 20; G_wgn = 'RimLightCh00Invincible_Physical'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCh00Invincible_Physical', 2.6) end\nend"
+  },
+  {
+   "text": "21 of 28: RimLightCh00Invincible_Magic",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 21 then G_wg = 21; G_wgn = 'RimLightCh00Invincible_Magic'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCh00Invincible_Magic', 2.6) end\nend"
+  },
+  {
+   "text": "22 of 28: ReflectShield",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 22 then G_wg = 22; G_wgn = 'ReflectShield'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'ReflectShield', 2.6) end\nend"
+  },
+  {
+   "text": "23 of 28: RimLightPawnLift",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 23 then G_wg = 23; G_wgn = 'RimLightPawnLift'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightPawnLift', 2.6) end\nend"
+  },
+  {
+   "text": "24 of 28: RimLightMagicBowIce",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 24 then G_wg = 24; G_wgn = 'RimLightMagicBowIce'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightMagicBowIce', 2.6) end\nend"
+  },
+  {
+   "text": "25 of 28: RimLightSpellStockIce",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 25 then G_wg = 25; G_wgn = 'RimLightSpellStockIce'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightSpellStockIce', 2.6) end\nend"
+  },
+  {
+   "text": "26 of 28: MultipleChant_Ice1",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 26 then G_wg = 26; G_wgn = 'MultipleChant_Ice1'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'MultipleChant_Ice1', 2.6) end\nend"
+  },
+  {
+   "text": "27 of 28: RimLightCh06cs17Frozen",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 27 then G_wg = 27; G_wgn = 'RimLightCh06cs17Frozen'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCh06cs17Frozen', 2.6) end\nend"
+  },
+  {
+   "text": "28 of 28: SetunanoHiseki",
+   "secs": 3.4,
+   "each_frame": "if G_wg ~= 28 then G_wg = 28; G_wgn = 'SetunanoHiseki'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'SetunanoHiseki', 2.6) end\nend"
+  },
+  {
+   "text": "Done. Tell Claude the number(s) that looked white (or closest to white). Press End.",
+   "wait": true
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_white-glow-1.json",
+  "show": [
+   "glow"
+  ],
+  "probes": {
+   "glow": "return tostring(G_wg) .. ' ' .. tostring(G_wgn)"
+  }
+ }
+}

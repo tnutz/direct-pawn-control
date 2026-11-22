@@ -1,6 +1,10 @@
 # MODLOG: Camera Distance & Framing Studio (Dragon's Dogma 2)
 
 
+### 2.9.19 (2026-11-22): release, with DirectPawnControl 0.9.173
+### 2.9.19-dev1 (2026-11-21): off-screen markers in each player's chosen colour
+- With DirectPawnControl 0.9.173-dev1: DPC_coop.json `colors` ("p<n>" = 0xAABBGGRR) colours the Player 1, Player 2 and players 3+ markers; without it (older DPC) the fixed colours as before.
+
 ### 2.9.18 (2026-11-21): release, with DirectPawnControl 0.9.172
 
 ### 2.9.18-dev5 (2026-11-21): crane defaults are the tester's own

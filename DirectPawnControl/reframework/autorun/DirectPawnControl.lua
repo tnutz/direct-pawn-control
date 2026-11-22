@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.172"
+local VERSION = "0.9.173"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -145,6 +145,7 @@ local cfg = {
     coop_leave_glow = "Berserker",  -- 0.9.172-dev38: the game's rim light on a character whose player leaves co-op ("" = none; the tester asked for a red one)
     coop_join_glow = true,          -- 0.9.172-dev40: a co-op player's character glows in their colour when they join or change character
     coop_glow_keep = true,          -- 0.9.172-dev40: ... and keeps glowing while they play it (who is who at a glance). dev45: on by default (the tester)
+    coop_colors = {},               -- 0.9.173-dev1: ["p<n>"] = colour number (R.ta_colors) for players 3+; players 1 and 2 use coop_aim_p1_color / coop_aim_p2_color
     coop_glow_keep_p = {},          -- dev45: ["p<n>"] = false: that player's glow is not kept (each player's tick under "keep glowing")
     coop_join_hold_s = 0.6,         -- dev50: seconds of L3 + R3 to join co-op / claim a controller (leaving stays 3 s)
     settings_gen = 2,               -- 0.9.172: settings saved before this release (no settings_gen) start from the new defaults; keys kept
@@ -286,8 +287,8 @@ local cfg = {
     coop_aim_flick = "deliberate",    -- 0.9.172: player 2 switches target with a quick out-and-back flick ("quick" = any push past 70 %)
     coop_aim_p1 = true,
     coop_aim_p1_assist = true,
-    coop_aim_p1_color = 1,
-    coop_aim_p2_color = 2,
+    coop_aim_p1_color = 2,            -- 0.9.173: Cyan (R.ta_colors numbers; the menu shows them in R.COLOR_ORDER)
+    coop_aim_p2_color = 6,            -- 0.9.173: White
     coop_aim_size = 1.0,
     coop_zero_pad_for_arisen = true,  -- feed the Arisen's processButton an empty pad (auto-off if it kills the keyboard)
     coop_mask_p2_flags = false,       -- v0.9.5: also strip player 2's actions from the Arisen's buttons (blocks shared actions)
@@ -404,6 +405,7 @@ local cfg = {
     swap_player_comp_refs = false,
     swap_manual_player = false,
     set_human_is_arisen = false,
+    hotkeys_on = true,              -- 0.9.173: master switch for every DPC keyboard shortcut (controller combinations stay)
     keys = {
         toggle_possess = 0x75,      -- F6
         party_heal     = 0x6E,      -- Numpad . : heal / revive every pawn (v0.9.15, from PawnCommander)
@@ -504,6 +506,13 @@ end
 load_cfg()
 if (cfg.pf_defaults_v or 0) < 1 then -- dev4: a config saved before the sound defaults changed gets them once
     cfg.pf_sound_voice, cfg.pf_sound_listener, cfg.pf_sound_space, cfg.pf_defaults_v = true, 1, true, 1
+    save_cfg()
+end
+-- 0.9.173: new default colours (player 1 Cyan, player 2 White). A config still on the old default pair (Gold, Cyan)
+-- moves to the new one once; any other pick is the player's own and stays.
+if (cfg.colors_v or 0) < 1 then
+    if cfg.coop_aim_p1_color == 1 and cfg.coop_aim_p2_color == 2 then cfg.coop_aim_p1_color, cfg.coop_aim_p2_color = 2, 6 end
+    cfg.colors_v = 1
     save_cfg()
 end
 -- v0.9.16 release hygiene: the developer tooling (command file, robot player, test spawner commands, telemetry
@@ -3512,7 +3521,33 @@ end
 R.ta_colors = { { "Gold", 0x20B0FF }, { "Cyan", 0xFFD040 }, { "Green", 0x50E050 }, { "Magenta", 0xF050E0 },
                  { "Red", 0x4040FF }, { "White", 0xF0F0F0 } }
 R.ta = { pin = nil, r3_t = nil, flick = 0, req = nil }
-R.np_color = function(n) return ({ [3] = 3, [4] = 4, [5] = 5 })[n] or 6 end -- index into R.ta_colors
+-- 0.9.173 (the tester: "Gold is probably the weakest one. Let's make them in order of Cyan, White, Green, Magenta, Red,
+-- Gold"): the default per player and the menu order. The numbers in R.ta_colors stay as they were, because saved
+-- settings store them; only the order shown and the defaults change.
+R.COLOR_ORDER = { 2, 6, 3, 4, 5, 1 }
+R.np_color = function(n) return R.COLOR_ORDER[n] or 1 end -- index into R.ta_colors
+-- 0.9.173-dev1 (the tester: "let them each choose a color there and match it to their target circle/bookmark"): one colour
+-- per player drives their target dot, their join / kept glow and Camera Distance's off-screen marker. Players 1 and 2
+-- keep the marker-colour settings they already had; players 3+ are in cfg.coop_colors["p<n>"].
+R.player_color = function(n)
+    local v
+    if n == 1 then v = cfg.coop_aim_p1_color elseif n == 2 then v = cfg.coop_aim_p2_color
+    else v = (cfg.coop_colors or {})["p" .. n] end
+    v = math.tointeger(tonumber(v) or 0)
+    if not v or not R.ta_colors[v] then v = R.np_color(n) end
+    return v
+end
+R.set_player_color = function(n, v)
+    if n == 1 then cfg.coop_aim_p1_color = v elseif n == 2 then cfg.coop_aim_p2_color = v
+    else cfg.coop_colors = cfg.coop_colors or {}; cfg.coop_colors["p" .. n] = v end
+end
+R.player_abgr = function(n) return 0xFF000000 | R.ta_colors[R.player_color(n)][2] end
+-- The game's rim lights come in fixed colours: each marker colour gets the closest one. White: Counterslash, "a perfect
+-- white" and steady (the tester, white-glow-2, 2026-11-22). Tried before: AstralBody (not white), RimLightInteractGimmic
+-- (white but flashing, too much for co-op). The Preview button in the settings shows each one.
+R.COLOR_GLOWS = { [1] = "RimLightInteractLarge", [2] = "AstralPlayer", [3] = "ChRecovery", [4] = "RimLightSummon",
+                  [5] = "Berserker", [6] = "Counterslash" }
+R.player_glow = function(n) return R.COLOR_GLOWS[R.player_color(n)] or "AstralPlayer" end
 R.ta_note = function(text) R.note = { text = text, t_end = os.clock() + 1.5 } end
 R.ta_p1_target = function()
     local c = nil
@@ -3711,10 +3746,10 @@ R.ta_draw = function(hh)
     -- 0.9.172-dev36: players 3+ get their dots too (P3 green, P4 magenta, P5 red, then white); dots on the same
     -- enemy sit side by side
     local list = {}
-    if t1 then list[#list + 1] = { t1, cfg.coop_aim_p1_color, false } end
-    if t2 then list[#list + 1] = { t2, cfg.coop_aim_p2_color, R.ta.pin ~= nil } end
+    if t1 then list[#list + 1] = { t1, R.player_color(1), false } end
+    if t2 then list[#list + 1] = { t2, R.player_color(R.s2 and R.s2.active and R.s2.player or 2), R.ta.pin ~= nil } end
     for n, sl in pairs(R.np and R.np.slots or {}) do
-        if sl.active and sl.tgt and brain_alive(sl.tgt) then list[#list + 1] = { sl.tgt, R.np_color(n), sl.pin ~= nil } end
+        if sl.active and sl.tgt and brain_alive(sl.tgt) then list[#list + 1] = { sl.tgt, R.player_color(n), sl.pin ~= nil } end
     end
     local per = {}
     for _, it in ipairs(list) do
@@ -4856,15 +4891,23 @@ R.pglow_tick = function()
         -- dev41 (the tester: the kept glow "needs to come back on if the checkbox is turned on while already playing"):
         -- a player with only the short join glow gets the kept one as soon as the box is ticked
         local g0 = R.pglow[n]
-        if g0 and R.glow_keep_for(n) and not g0.kept then
+        -- 0.9.173-dev1: a new colour picked mid-play: the old light goes out and the new one comes on
+        if g0 and g0.name ~= R.player_glow(n) then
+            if g0.kept then pcall(R.cine_glow, g0.chara, g0.name, false) end
+        end
+        if g0 and (g0.name ~= R.player_glow(n) or (R.glow_keep_for(n) and not g0.kept)) then
+            local recolour = g0.name ~= R.player_glow(n)
             for i = #R.glows_timed, 1, -1 do
                 local t = R.glows_timed[i]
-                if t.name == g0.name and t.chara:get_address() == g0.addr then table.remove(R.glows_timed, i) end
+                if t.name == g0.name and t.chara:get_address() == g0.addr then
+                    table.remove(R.glows_timed, i)
+                    if recolour then pcall(R.cine_glow, t.chara, t.name, false) end
+                end
             end
             R.pglow[n] = nil
         end
         if not R.pglow[n] then
-            local name = R.PLAYER_GLOWS[n] or "AstralPlayer"
+            local name = R.player_glow(n)
             if R.glow_keep_for(n) then
                 pcall(R.cine_glow, c, name, true)
                 R.pglow[n] = { chara = c, addr = c:get_address(), name = name, kept = true }
@@ -4877,6 +4920,19 @@ R.pglow_tick = function()
 end
 re.on_frame(function() pcall(R.pglow_tick) end)
 re.on_script_reset(function() for _, g in pairs(R.pglow) do if g.kept then pcall(R.cine_glow, g.chara, g.name, false) end end end)
+-- 0.9.173-dev1: the Preview button beside each player's colour. Not on a character already lit in that light (the
+-- preview's end would put the kept glow out too).
+R.color_preview = function(n)
+    local cur = R.pglow_now()
+    -- dev4: state.arisen_chara is only set while a pawn is played, so with nobody taken over there was nothing to light
+    local ch = cur[n] or (state.active and state.pawn_chara) or state.arisen_chara or R.real_player()
+    if not ch then return end
+    local name = R.player_glow(n)
+    for _, g in pairs(R.pglow) do
+        if g.name == name and g.addr == ch:get_address() then R.ta_note("Already glowing in that colour"); return end
+    end
+    R.glow_for(ch, name, 2.5)
+end
 R.leave_glow = function(chara)
     if cfg.coop_leave_glow and cfg.coop_leave_glow ~= "" then pcall(R.glow_for, chara, cfg.coop_leave_glow) end
 end
@@ -4901,7 +4957,10 @@ end
 R.cine_begin = function(chara)
     if coop.active or not chara then return end
     if R.api_claimed and R.api_claimed("camera.transition") then return end -- v0.9.170: another mod does the transition
-    if not cfg.switch_cine or (cfg.switch_cine_profile or 2) == 1 then -- no camera move; the glow still plays
+    -- 0.9.173: a mod that holds camera.follow places the camera itself, so the transition does not move it either
+    -- (only the glow plays). Seen as a question from a mod author: holding follow alone left DPC's glide fighting his camera.
+    local follow_claimed = R.api_claimed and R.api_claimed("camera.follow")
+    if follow_claimed or not cfg.switch_cine or (cfg.switch_cine_profile or 2) == 1 then -- no camera move; the glow still plays
         if cfg.switch_glow and cfg.switch_glow ~= "" then
             R.cine_glow_off()
             R.cine_glow(chara, cfg.switch_glow, true)
@@ -6041,9 +6100,13 @@ local function coop_write_status()
     local extra, extra_names, extra_n = {}, {}, {}
     if R.np_charas then for _, e in ipairs(R.np_charas()) do extra[#extra + 1] = e.idx; extra_names[#extra_names + 1] = tostring(e.name or ""); extra_n[#extra_n + 1] = e.player end end
     if #extra > 0 and R.cp and R.cp.on then on = true end
+    -- 0.9.173-dev1: each player's colour (0xAABBGGRR) for Camera Distance's off-screen markers
+    local colors, ckey = {}, {}
+    for n = 1, 6 do colors["p" .. n] = R.player_abgr(n); ckey[n] = R.player_color(n) end
     if R.dev then
         R.dump("DPC_coop.json", {
             active = on, pawn_idx = idx, pawn_name = name, anchor_idx = anchor, players = extra, player_names = extra_names, player_nums = extra_n,
+            colors = colors,
             np = R.np and { n = R.np_count(), log = R.np.log, err = R.np.err } or nil,
             cp = R.cp and { on = R.cp.on, mode = R.cp.mode, kb = R.cp.kb, p1 = R.cp.char[1], p2 = R.cp.char[2], arisen_side = R.cp.arisen_side, applies = R.cp.applies, log = R.cp.log } or nil,
             s2 = R.s2 and { active = R.s2.active, idx = R.s2.idx, frames = R.s2.frames, errors = R.s2.errors, err = R.s2.err, in_err = R.s2.in_err, on = R.s2.last_on, mag = R.s2.last_mag, tgt_sets = R.s2.tgt_sets } or nil,
@@ -6053,10 +6116,10 @@ local function coop_write_status()
         })
         return
     end
-    local key = tostring(on) .. ":" .. tostring(idx) .. ":" .. tostring(anchor) .. ":" .. table.concat(extra, ",")
+    local key = tostring(on) .. ":" .. tostring(idx) .. ":" .. tostring(anchor) .. ":" .. table.concat(extra, ",") .. ":" .. table.concat(ckey, ",")
     if key == coop.status_key then return end
     coop.status_key = key
-    pcall(json.dump_file, "DPC_coop.json", { active = on, pawn_idx = idx, pawn_name = name, anchor_idx = anchor, players = extra, player_names = extra_names, player_nums = extra_n, version = VERSION })
+    pcall(json.dump_file, "DPC_coop.json", { active = on, pawn_idx = idx, pawn_name = name, anchor_idx = anchor, players = extra, player_names = extra_names, player_nums = extra_n, colors = colors, version = VERSION })
 end
 
 local function coop_apply_overrides()
@@ -7148,6 +7211,7 @@ end
 -- v0.9.151: every key of the mod can carry Ctrl (cfg.keys.<id>_ctrl, taken from whether Ctrl was held when the key
 -- was chosen). A key without Ctrl does nothing while Ctrl is held, and the other way round.
 R.key_hit = function(id)
+    if cfg.hotkeys_on == false then return false end -- 0.9.173: master switch (a player keeps DPC controller-only)
     local vk = cfg.keys[id]
     if not vk or vk == 0 or not key_pressed(vk) then return false end
     return is_key_down_safe(0x11) == (cfg.keys[id .. "_ctrl"] == true)
@@ -13302,7 +13366,8 @@ re.on_application_entry("LateUpdateBehavior", function() pcall(R.pf_listener_pos
 -- ----------------------------------------------------------------------------
 R.api = { regs = {}, on = {}, claims = {}, overrides = {}, next_id = 1 }
 R.API_FEATURES = { events = true, claims = true, overrides = true, players = true, coop2pads = true,
-    players_n = true, characters = true } -- 1.1 (0.9.172): players 3+, characters offered by other mods
+    players_n = true, characters = true, -- 1.1 (0.9.172): players 3+, characters offered by other mods
+    control = true } -- 1.2 (0.9.173): possess / release_pawn
 R.api_run = function(reg, ...)
     if reg.off or reg.disabled then return false end
     local t0 = os.clock()
@@ -13405,7 +13470,7 @@ R.api_who = function() -- the payload name of the character the last event is ab
 end
 
 R.api_build = function()
-    local api = { version = "1.1", major = 1, minor = 1, dpc_version = VERSION }
+    local api = { version = "1.2", major = 1, minor = 2, dpc_version = VERSION }
     api.has = function(f) return R.API_FEATURES[f] == true end
     api.state = function()
         local pl = R.players()
@@ -13526,7 +13591,100 @@ R.api_build = function()
         return reg
     end
     api.clear_override = function(h) R.api_drop(h) end
+    -- 1.2 (0.9.173): ask DPC to switch who player 1 plays, the same as the take-control key. Asked for by a mod author
+    -- whose command wheel switches characters. The checks below run at once; the switch itself runs on DPC's next
+    -- game frame (the "possess" / "release" events confirm it; "control_failed" says why if it could not happen).
+    -- Returns true, or nil and a reason; never throws.
+    api.possess = function(target, opts)
+        local mod = type(opts) == "table" and tostring(opts.mod or "a mod") or "a mod"
+        local why = R.api_control_refusal()
+        if why then return nil, why end
+        -- the pawn list itself, not get_party(): that one toggles in_internal_query, which the game-thread hooks
+        -- read, and a mod may call this from its UI (render thread)
+        local party = R.api_pawn_list()
+        if #party == 0 then return nil, "no party" end
+        local entry = nil
+        if type(target) == "number" then
+            for _, e in ipairs(party) do if e.idx == target then entry = e end end
+            if not entry then return nil, "no such slot" end
+        elseif target ~= nil and type(target) ~= "string" and select(2, pcall(sdk.is_managed_object, target)) == true then
+            local a = target:get_address()
+            local ar = state.arisen_chara or R.real_player()
+            if ar and ar:get_address() == a then -- the Arisen: same as release_pawn
+                return api.release_pawn(opts)
+            end
+            for _, e in ipairs(party) do if e.chara and e.chara:get_address() == a then entry = e end end
+            if not entry then return nil, "not in the party" end
+        else
+            return nil, "expected an app.Character or a party slot number"
+        end
+        if state.active and state.pawn_idx == entry.idx then return true end -- already played
+        local by = api.player_of(entry.chara)
+        if by then return nil, "played by player " .. by end
+        local okd, down = pcall(function()
+            return entry.chara:call("get_IsDead") == true or (entry.chara:call("get_IsDown") == true and (entry.chara:call("get_Hp") or 1) <= 0)
+        end)
+        if okd and down then return nil, "downed" end
+        local want_addr = entry.chara:get_address()
+        local losses = R.world_losses or 0
+        enqueue_game_thread("API possess (" .. mod .. ")", function()
+            local again = R.api_control_refusal()
+            if not again and (R.world_losses or 0) ~= losses then again = "loading" end -- a load came in between
+            local idx = nil
+            for _, e in ipairs(R.api_pawn_list()) do if e.chara:get_address() == want_addr then idx = e.idx end end
+            if not again and idx == nil then again = "not in the party" end
+            if again then pcall(R.api_fire, "control_failed", { what = "possess", reason = again, mod = mod }); return end
+            log_msg("Mod API: " .. mod .. " asks to play slot " .. tostring(idx))
+            cfg.selected_pawn_idx = idx
+            if start_possession(idx) == false then
+                pcall(R.api_fire, "control_failed", { what = "possess", reason = "refused", mod = mod })
+            end
+        end)
+        return true
+    end
+    api.release_pawn = function(opts)
+        local mod = type(opts) == "table" and tostring(opts.mod or "a mod") or "a mod"
+        local why = R.api_control_refusal()
+        if why then return nil, why end
+        if not state.active then return true end -- already on the Arisen
+        local losses = R.world_losses or 0
+        enqueue_game_thread("API release (" .. mod .. ")", function()
+            if not state.active then return end
+            local again = R.api_control_refusal()
+            if not again and (R.world_losses or 0) ~= losses then again = "loading" end
+            if again then pcall(R.api_fire, "control_failed", { what = "release", reason = again, mod = mod }); return end
+            release_possession("mod API: " .. mod)
+        end)
+        return true
+    end
     R.api_table = api
+end
+-- { idx, chara } for each pawn in the party, read straight from the game's list (safe from any thread)
+R.api_pawn_list = function()
+    local out = {}
+    pcall(function()
+        local pm = sdk.get_managed_singleton("app.PawnManager")
+        local list = pm and pm:call("get_PawnCharacterList")
+        local n = list and list:call("get_Count") or 0
+        for i = 0, n - 1 do
+            local c = list:call("get_Item", i)
+            if c then out[#out + 1] = { idx = i, chara = c } end
+        end
+    end)
+    return out
+end
+-- why a mod may not switch control right now (nil = it may). Reads only.
+R.api_control_refusal = function()
+    if R.world == false or R.world_now == false then return "loading" end
+    if coop.active or (R.cp and R.cp.on) or (R.s2 and R.s2.active) then return "coop" end
+    if R.np then for _, sl in pairs(R.np.slots) do if sl.active then return "coop" end end end
+    local okc, cut = pcall(function()
+        local ar = state.arisen_chara or R.real_player()
+        return ar ~= nil and ar:call("get_IsCutSceneMode") == true
+    end)
+    if okc and cut then return "cutscene" end
+    if R.cap then return "busy" end
+    return nil
 end
 R.api_build()
 
@@ -14202,6 +14360,21 @@ re.on_frame(function()
             end
         end
     end
+    -- 0.9.173-dev1: one colour per player for their target marker, glow and Camera Distance's off-screen marker
+    if imgui.tree_node("Player colours (target marker, glow, off-screen marker)") then
+        local names, pos_of = {}, {}
+        for i, id in ipairs(R.COLOR_ORDER) do names[i] = R.ta_colors[id][1]; pos_of[id] = i end
+        local top = math.max(4, (R.np_count and R.np_count() or 0) + 2)
+        for n = 1, top do
+            local c, v = imgui.combo("Player " .. n .. "##pcol" .. n, pos_of[R.player_color(n)] or 1, names)
+            v = R.COLOR_ORDER[v]
+            if c and v and R.ta_colors[v] then R.set_player_color(n, v); save_cfg(); coop.status_key = nil; coop.tgt_status_due = true end -- rewrite DPC_coop.json next frame (Camera Distance)
+            imgui.same_line()
+            if imgui.button("Preview##pcolprev" .. n) then pcall(R.color_preview, n) end
+        end
+        imgui.text_colored("Preview lights up that player's character (or yours) for 2.5 s.", GREY)
+        imgui.tree_pop()
+    end
     if package.loaded["PawnTacticalWheel.input"] then cb("Pawn Tactical Wheel (another mod) doesn't open from controllers in co-op (its keyboard key still works)", "coop_block_ptw") end
     cb("Resume co-op by itself after cutscenes, loading or a downed pawn", "coop_auto_resume")
     if R.cr.want then
@@ -14237,13 +14410,10 @@ re.on_frame(function()
                 cb("      and the Arisen's attacks aim at it while he fights", "coop_aim_p1_assist")
                 cb("      player 1's flicks move it too (two controllers)", "coop_aim_p1_flick")
             end
-            local names = {}
-            for i, c in ipairs(R.ta_colors) do names[i] = c[1] end
-            local c1, c2, c3
-            c1, cfg.coop_aim_p1_color = imgui.combo("   Player 1 colour", cfg.coop_aim_p1_color or 1, names)
-            c2, cfg.coop_aim_p2_color = imgui.combo("   Player 2 colour", cfg.coop_aim_p2_color or 2, names)
+            local c3
             c3, cfg.coop_aim_size = imgui.slider_float("   Marker size", cfg.coop_aim_size or 1.0, 0.5, 2.0)
-            if c1 or c2 or c3 then save_cfg() end
+            if c3 then save_cfg() end
+            imgui.text("   (each player's marker colour is under \"Player colours\")")
         end
         if cfg.coop_cam_turn == "p1" then cb("   Player 1's stick mode: the camera turns toward his target by itself", "coop_cam_p1_steer") end
         if cfg.coop_cam_turn == "auto" or (cfg.coop_cam_turn == "p1" and cfg.coop_cam_p1_steer) then
@@ -14331,7 +14501,17 @@ re.on_frame(function()
             elseif imgui.button("Change##" .. kind .. id) then
                 R.cap, R.cap_msg = { kind = kind, id = id, t0 = os.clock() }, nil
             end
+            -- 0.9.173: any key can be left unset (a player asked to free the numpad for other mods)
+            if kind == "key" and (cfg.keys[id] or 0) ~= 0 then
+                imgui.same_line()
+                if imgui.button("Clear##k" .. id) then
+                    cfg.keys[id], cfg.keys[id .. "_ctrl"] = 0, false
+                    R.clash_logged, R.cap_msg = nil, label .. ": no key"
+                    save_cfg()
+                end
+            end
         end
+        cb("Keyboard shortcuts on (untick to use DPC from the controller only)", "hotkeys_on")
         imgui.text_colored("Keyboard (hold Ctrl while you press the new key to make it Ctrl + that key)", GREY)
         row("Take control / go back", "key", "toggle_possess", R.key_label("toggle_possess"))
         row("Select the next character", "key", "cycle_pawn", R.key_label("cycle_pawn"))
@@ -14345,10 +14525,6 @@ re.on_frame(function()
         for k = 1, nshow do
             local nm = R.jump_names and R.jump_names[k]
             row(string.format("Go straight to: pawn %d%s", k, nm and (" (" .. nm .. ")") or ""), "key", "jump_pawn" .. k, R.key_label("jump_pawn" .. k))
-            if (cfg.keys["jump_pawn" .. k] or 0) ~= 0 then
-                imgui.same_line()
-                if imgui.button("Clear##jp" .. k) then cfg.keys["jump_pawn" .. k] = 0; cfg.keys["jump_pawn" .. k .. "_ctrl"] = false; save_cfg() end
-            end
         end
         for n = 1, 6 do row("Order: skill slot " .. n, "key", "skill" .. n, R.key_label("skill" .. n)) end
         cb("   an ordered skill is kept until it is done (the pawn's own AI waits meanwhile)", "quick_skill_hold_ai")
@@ -14361,6 +14537,7 @@ re.on_frame(function()
         row("Start / stop couch co-op", "pad", "coop", (tonumber(cfg.pad.coop) or 0) ~= 0 and tostring(R.combo_name(cfg.pad.coop)) or "none")
         if R.cap_msg then imgui.text_colored("Last change: " .. R.cap_msg, GREY) end
         if imgui.button("Reset all controls to the defaults") then
+            cfg.hotkeys_on = true
             for k in pairs(cfg.keys) do if tostring(k):sub(-5) == "_ctrl" then cfg.keys[k] = false end end
             for k, v in pairs(R.KEY_DEFAULTS) do cfg.keys[k] = v end
             cfg.pad.take, cfg.pad.back, cfg.pad.coop = 0, 0, 0

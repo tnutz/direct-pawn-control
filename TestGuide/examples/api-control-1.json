@@ -1,0 +1,135 @@
+{
+ "id": "api-control-1",
+ "title": "Mod API 1.2: possess / release_pawn, camera.follow, keyboard switch",
+ "intro": "About 5 minutes. Set up first: play as the Arisen (no pawn taken over, no co-op), outdoors with at least two pawns in the party, no enemies around. Most steps run by themselves; two ask you to press F6. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.173-dev2"
+ },
+ "steps": [
+  {
+   "text": "A mod asks DPC to play the main pawn (slot 0). The usual transition should play, then you control the main pawn.",
+   "secs": 6,
+   "each_frame": "if not G_ac1 then G_ac1 = true\nlocal ok, why = _G.DPC_API.possess(0, { mod = 'api-control-1' })\nG_res = tostring(ok) .. ' ' .. tostring(why or '')\nend",
+   "expect": [
+    {
+     "probe": "active",
+     "agg": "last",
+     "op": "==",
+     "value": true,
+     "label": "a pawn is played"
+    },
+    {
+     "probe": "res",
+     "agg": "last",
+     "op": "contains",
+     "value": "true",
+     "label": "possess(0) accepted"
+    }
+   ]
+  },
+  {
+   "text": "Now by character: the second pawn in the party list. Same transition, you control that pawn.",
+   "secs": 6,
+   "each_frame": "if not G_ac2 then G_ac2 = true\nlocal ok, why = (function() local p = _G.DPC_API.party(); local e = p[2]; if not e then return nil, 'only one pawn' end; return _G.DPC_API.possess(e.chara, { mod = 'api-control-1' }) end)()\nG_res = tostring(ok) .. ' ' .. tostring(why or '')\nend",
+   "expect": [
+    {
+     "probe": "slot",
+     "agg": "last",
+     "op": "~=",
+     "value": 0,
+     "label": "switched off the main pawn"
+    }
+   ]
+  },
+  {
+   "text": "The test now holds camera.follow and goes back to the Arisen by passing his character. The camera must NOT glide or move: it stays where it is (with this claim a camera mod would place it). Only a glow plays.",
+   "secs": 6,
+   "each_frame": "if not G_ac3 then G_ac3 = true\nG_cl = _G.DPC_API.claim('camera.follow', { mod = 'api-control-1' })\nlocal ok, why = _G.DPC_API.possess(_G.DPC_API.state().arisen.chara, { mod = 'api-control-1' })\nG_res = tostring(ok) .. ' ' .. tostring(why or '')\nend",
+   "expect": [
+    {
+     "probe": "active",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "back on the Arisen"
+    },
+    {
+     "probe": "cine",
+     "agg": "all",
+     "op": "==",
+     "value": false,
+     "label": "no camera transition ran"
+    }
+   ]
+  },
+  {
+   "text": "Claim given back. Main pawn again, then release_pawn: both with the normal transition, and the camera back behind the Arisen at the end.",
+   "secs": 9,
+   "each_frame": "if not G_ac4 then G_ac4 = os.clock(); if G_cl then _G.DPC_API.release(G_cl); G_cl = nil end; _G.DPC_API.possess(0, { mod = 'api-control-1' }) end\nif not G_ac4b and os.clock() - G_ac4 > 4.5 then G_ac4b = true; local ok, why = _G.DPC_API.release_pawn({ mod = 'api-control-1' }); G_res = tostring(ok) .. ' ' .. tostring(why or '') end",
+   "expect": [
+    {
+     "probe": "active",
+     "agg": "last",
+     "op": "==",
+     "value": false,
+     "label": "released"
+    },
+    {
+     "probe": "cine",
+     "agg": "any",
+     "op": "==",
+     "value": true,
+     "label": "transition ran"
+    }
+   ]
+  },
+  {
+   "text": "Keyboard shortcuts are now OFF (for this session only). Press F6 once: NOTHING should happen. Then press End.",
+   "wait": true,
+   "each_frame": "if not G_ac5 then G_ac5 = true\nG_ov = _G.DPC_API.override('hotkeys_on', false, { mod = 'api-control-1' })\nend",
+   "expect": [
+    {
+     "probe": "active",
+     "agg": "all",
+     "op": "==",
+     "value": false,
+     "label": "F6 did nothing (no pawn taken)"
+    }
+   ]
+  },
+  {
+   "text": "Keyboard shortcuts back ON. Press F6: you take control of the selected pawn. Press F6 again to go back to the Arisen, then End.",
+   "wait": true,
+   "each_frame": "if not G_ac6 then G_ac6 = true\nif G_ov then _G.DPC_API.clear_override(G_ov); G_ov = nil end\nend",
+   "expect": [
+    {
+     "probe": "active",
+     "agg": "any",
+     "op": "==",
+     "value": true,
+     "label": "F6 works again"
+    }
+   ]
+  },
+  {
+   "text": "Optional look, change nothing: REFramework menu > DPC settings > Controls has 'Keyboard shortcuts on' at the top and a Clear button next to every key. Press End to finish.",
+   "wait": true
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_api-control-1.json",
+  "show": [
+   "who",
+   "res"
+  ],
+  "probes": {
+   "active": "local d = _G.DPC_dbg; return d and d.state.active == true",
+   "slot": "local d = _G.DPC_dbg; return d and d.state.active and d.state.pawn_idx or -1",
+   "cine": "local d = _G.DPC_dbg; return d ~= nil and d.R.cine ~= nil",
+   "who": "local d = _G.DPC_dbg; if not d then return 'no DPC' end; return d.state.active and ('playing ' .. tostring(d.state.pawn_name)) or 'the Arisen'",
+   "res": "return tostring(G_res)",
+   "keys": "local d = _G.DPC_dbg; return d and tostring(d.cfg.hotkeys_on)"
+  }
+ }
+}

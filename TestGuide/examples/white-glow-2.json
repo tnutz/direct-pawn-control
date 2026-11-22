@@ -1,0 +1,119 @@
+{
+ "id": "white-glow-2",
+ "title": "White glow, second pass: steady (not pulsing) candidates, 6 s each",
+ "intro": "About 2 minutes, hands off. Same setup as before: darker spot, camera close on your character. Number 1 is last time's pick (flashing) for comparison. Note the numbers that are white AND steady. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.173-dev1"
+ },
+ "steps": [
+  {
+   "text": "1 of 19: RimLightInteractGimmic  (no. 9 from last time: white but flashing). White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 1 then G_wg2 = 1; G_wg2n = 'RimLightInteractGimmic'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightInteractGimmic', 6.0) end\nend"
+  },
+  {
+   "text": "2 of 19: RimLightHasteSpot. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 2 then G_wg2 = 2; G_wg2n = 'RimLightHasteSpot'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightHasteSpot', 6.0) end\nend"
+  },
+  {
+   "text": "3 of 19: RimLightSupportArrow. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 3 then G_wg2 = 3; G_wg2n = 'RimLightSupportArrow'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightSupportArrow', 6.0) end\nend"
+  },
+  {
+   "text": "4 of 19: RimLightEmRecovery. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 4 then G_wg2 = 4; G_wg2n = 'RimLightEmRecovery'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightEmRecovery', 6.0) end\nend"
+  },
+  {
+   "text": "5 of 19: ChStatusRecovery. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 5 then G_wg2 = 5; G_wg2n = 'ChStatusRecovery'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'ChStatusRecovery', 6.0) end\nend"
+  },
+  {
+   "text": "6 of 19: ChStaminaRecovery. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 6 then G_wg2 = 6; G_wg2n = 'ChStaminaRecovery'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'ChStaminaRecovery', 6.0) end\nend"
+  },
+  {
+   "text": "7 of 19: RimLightCh258002HeartBright. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 7 then G_wg2 = 7; G_wg2n = 'RimLightCh258002HeartBright'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCh258002HeartBright', 6.0) end\nend"
+  },
+  {
+   "text": "8 of 19: RimLightPlChargeLow. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 8 then G_wg2 = 8; G_wg2n = 'RimLightPlChargeLow'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightPlChargeLow', 6.0) end\nend"
+  },
+  {
+   "text": "9 of 19: RimLightPlChargeHigh. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 9 then G_wg2 = 9; G_wg2n = 'RimLightPlChargeHigh'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightPlChargeHigh', 6.0) end\nend"
+  },
+  {
+   "text": "10 of 19: JustCharge. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 10 then G_wg2 = 10; G_wg2n = 'JustCharge'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'JustCharge', 6.0) end\nend"
+  },
+  {
+   "text": "11 of 19: Counterslash. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 11 then G_wg2 = 11; G_wg2n = 'Counterslash'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'Counterslash', 6.0) end\nend"
+  },
+  {
+   "text": "12 of 19: RimLightEXTrigger. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 12 then G_wg2 = 12; G_wg2n = 'RimLightEXTrigger'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightEXTrigger', 6.0) end\nend"
+  },
+  {
+   "text": "13 of 19: RimLightGungnir. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 13 then G_wg2 = 13; G_wg2n = 'RimLightGungnir'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightGungnir', 6.0) end\nend"
+  },
+  {
+   "text": "14 of 19: RimLightMagicBow. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 14 then G_wg2 = 14; G_wg2n = 'RimLightMagicBow'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightMagicBow', 6.0) end\nend"
+  },
+  {
+   "text": "15 of 19: ArisenWeponEmissive. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 15 then G_wg2 = 15; G_wg2n = 'ArisenWeponEmissive'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'ArisenWeponEmissive', 6.0) end\nend"
+  },
+  {
+   "text": "16 of 19: UseItem. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 16 then G_wg2 = 16; G_wg2n = 'UseItem'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'UseItem', 6.0) end\nend"
+  },
+  {
+   "text": "17 of 19: RimLightCh01cs14Aura. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 17 then G_wg2 = 17; G_wg2n = 'RimLightCh01cs14Aura'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCh01cs14Aura', 6.0) end\nend"
+  },
+  {
+   "text": "18 of 19: RimLightCh05cs14Aura1. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 18 then G_wg2 = 18; G_wg2n = 'RimLightCh05cs14Aura1'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCh05cs14Aura1', 6.0) end\nend"
+  },
+  {
+   "text": "19 of 19: RimLightCh223004Aura. White? Steady or pulsing?",
+   "secs": 6.5,
+   "each_frame": "if G_wg2 ~= 19 then G_wg2 = 19; G_wg2n = 'RimLightCh223004Aura'\nlocal d = _G.DPC_dbg; local c = d and ((d.state.active and d.state.pawn_chara) or d.state.arisen_chara or d.R.real_player())\nif c then pcall(d.R.glow_for, c, 'RimLightCh223004Aura', 6.0) end\nend"
+  },
+  {
+   "text": "Done. Tell Claude the numbers that were white and steady (or the closest). Press End.",
+   "wait": true
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_white-glow-2.json",
+  "show": [
+   "glow"
+  ],
+  "probes": {
+   "glow": "return tostring(G_wg2) .. ' ' .. tostring(G_wg2n)"
+  }
+ }
+}

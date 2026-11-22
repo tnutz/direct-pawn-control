@@ -1,0 +1,152 @@
+{
+ "id": "colors-1",
+ "title": "Player colours: marker, glow and off-screen marker follow each player's pick (DPC 0.9.173-dev1, CD 2.9.19-dev1)",
+ "intro": "You need: the Arisen and at least two pawns, out of combat on open ground. Keyboard and mouse plus two controllers (player 1 keyboard, players 2 and 3 on controllers). Weak goblins that can't die appear ahead, standing still. Each step lasts until you press End. Colours go back to the defaults at the end.",
+ "requires": {
+  "DirectPawnControl": "0.9.173-dev1",
+  "TestGuide": "2.7.3"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_colors-1.json",
+  "show": [
+   "cols"
+  ],
+  "probes": {
+   "cols": "local D = _G.DPC_dbg; if not D then return '' end; local t = {}; local nm = {}; for i, c in ipairs(D.R.ta_colors) do nm[i] = c[1] end; for n = 1, 4 do t[n] = 'P' .. n .. ' ' .. tostring(nm[D.R.player_color(n)]) end; return table.concat(t, ', ')",
+   "file": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); if not (ok and d and d.colors) then return 'none' end; return string.format('p2 %08X p3 %08X', d.colors.p2 or 0, d.colors.p3 or 0)",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready (see the intro). Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_join_glow",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_glow_keep",
+     "value": true
+    }
+   ]
+  },
+  {
+   "text": "1. START: Ctrl + F6, then each controller holds L3 + R3 to join (players 2 and 3). Each character should glow in the default colours: you amber, P2 light blue, P3 green. End when everyone is in.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 9.0,
+     "angle": 0,
+     "still": true,
+     "tough": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "cols",
+     "agg": "last",
+     "label": "colours now"
+    }
+   ]
+  },
+  {
+   "text": "2. PREVIEW: open the REFramework menu > Direct Pawn Control > co-op > Player colours. Press Preview for each player row, including P5 (red) and P6 (white). Note what colour each glow really looks like, especially White. End when done.",
+   "secs": 3600
+  },
+  {
+   "text": "3. CHANGE P2: set Player 2 to Red. Player 2's glow should switch to red at once, their target dot (lock onto a goblin) red, and their off-screen marker red when they walk out of view. End when checked.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "cols",
+     "agg": "any",
+     "label": "P2 picked red",
+     "op": "contains",
+     "value": "P2 Red"
+    },
+    {
+     "probe": "file",
+     "agg": "last",
+     "label": "Camera Distance file: P2 red",
+     "op": "contains",
+     "value": "p2 FF4040FF"
+    }
+   ]
+  },
+  {
+   "text": "4. CHANGE P3: set Player 3 to White. Same checks: glow, target dot, off-screen marker. End when checked.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "cols",
+     "agg": "any",
+     "label": "P3 picked white",
+     "op": "contains",
+     "value": "P3 White"
+    },
+    {
+     "probe": "file",
+     "agg": "last",
+     "label": "Camera Distance file: P3 white",
+     "op": "contains",
+     "value": "p3 FFF0F0F0"
+    }
+   ]
+  },
+  {
+   "text": "5. Colours back to the defaults (Gold, Cyan, Green, Magenta), goblins gone. End co-op when you like.",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_p1_color",
+     "value": 1,
+     "save": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_aim_p2_color",
+     "value": 2,
+     "save": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_colors",
+     "value": {},
+     "save": true
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude how each colour looked, and whether White should be a different light.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  }
+ ]
+}

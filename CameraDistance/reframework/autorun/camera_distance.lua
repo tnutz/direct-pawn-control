@@ -20,7 +20,7 @@
 -- ==============================================================================
 
 local MOD_NAME = "Camera Distance & Framing"
-local MOD_VERSION = "2.9.18"
+local MOD_VERSION = "2.9.19"
 local CONFIG_FILE = "camera_distance_config.json"
 
 -- ==============================================================================
@@ -773,6 +773,14 @@ local function poll_coop_status(now)
         state.coop_anchor_idx = tonumber(d.anchor_idx) or -1 -- 2.9.10: DPC 0.9.171, both players on pawns: the camera's pawn
         state.coop_players = {} -- 2.9.11: DPC 0.9.172, players 3+ (pawn indices)
         state.coop_player_names, state.coop_player_nums = {}, {} -- 2.9.18: DPC 0.9.172-dev36, for their edge markers
+        -- 2.9.19: DPC 0.9.173: each player's chosen colour ("p<n>" = 0xAABBGGRR); missing = the old fixed colours
+        state.coop_colors = {}
+        if type(d.colors) == "table" then
+            for k, v in pairs(d.colors) do
+                local n = tonumber(v)
+                if n and n >= 0 and n <= 0xFFFFFFFF then state.coop_colors[tostring(k)] = math.tointeger(math.floor(n)) end
+            end
+        end
         if type(d.players) == "table" then
             for i, v in ipairs(d.players) do
                 if tonumber(v) then
@@ -1881,9 +1889,10 @@ local function draw_coop_marker()
     if marker_hidden() then return end
     local p2 = get_coop_pawn_position()
     -- colours are 0xAABBGGRR: player 2 light blue, player 1 gold (2.9.16 had both yellow-orange)
-    if p2 then draw_edge_marker(p2, (state.coop_name ~= "" and state.coop_name) or "Player 2", 0xFFFFC040) end
+    local cc = state.coop_colors or {}
+    if p2 then draw_edge_marker(p2, (state.coop_name ~= "" and state.coop_name) or "Player 2", cc.p2 or 0xFFFFC040) end
     local p1 = ((state.coop_anchor_idx or -1) >= 0 and get_coop_pawn_position(state.coop_anchor_idx)) or get_player_position()
-    if p1 and (state.coop_idx or 0) ~= -1 then draw_edge_marker(p1, "Player 1", 0xFF30C8FF) end
+    if p1 and (state.coop_idx or 0) ~= -1 then draw_edge_marker(p1, "Player 1", cc.p1 or 0xFF30C8FF) end
     -- 2.9.18: players 3+ (the tester: "P3 is missing a bookmark when off screen"); colours match DPC's target dots:
     -- P3 green, P4 magenta, P5 red, then white
     local cols = { [3] = 0xFF50E050, [4] = 0xFFF050E0, [5] = 0xFF4040FF }
@@ -1892,7 +1901,7 @@ local function draw_coop_marker()
         if q then
             local n = (state.coop_player_nums or {})[i] or (i + 2)
             local nm = (state.coop_player_names or {})[i]
-            draw_edge_marker(q, (nm and nm ~= "") and nm or ("Player " .. n), cols[n] or 0xFFF0F0F0)
+            draw_edge_marker(q, (nm and nm ~= "") and nm or ("Player " .. n), cc["p" .. n] or cols[n] or 0xFFF0F0F0)
         end
     end
 end

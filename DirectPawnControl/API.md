@@ -1,4 +1,4 @@
-# Direct Pawn Control: mod API (`_G.DPC_API`, version 1.1)
+# Direct Pawn Control: mod API (`_G.DPC_API`, version 1.2)
 
 Other REFramework Lua mods can ask Direct Pawn Control who is being played, react when control changes hands, and
 take over a few things DPC would otherwise do itself. Available since DPC 0.9.170.
@@ -28,8 +28,9 @@ end
 Always pass `{ mod = "Your mod's name" }` in `opts`: that is the name players see under Connected mods.
 
 Check for a feature before you rely on it: `DPC_API.has("events")`, `"claims"`, `"overrides"`, `"players"`,
-`"coop2pads"`, `"players_n"` (1.1: co-op with players 3 and up), `"characters"` (1.1: offering characters to players).
-`DPC_API.version` is the API version ("1.1"), `DPC_API.dpc_version` the mod's version.
+`"coop2pads"`, `"players_n"` (1.1: co-op with players 3 and up), `"characters"` (1.1: offering characters to players),
+`"control"` (1.2: `possess` / `release_pawn`). `DPC_API.version` is the API version ("1.2"), `DPC_API.dpc_version`
+the mod's version.
 
 ## Questions
 
@@ -49,6 +50,27 @@ Character info (in `state()`): `{ chara, name, job, job_name, slot, is_main_pawn
 
 Compare characters by address (`a:get_address() == b:get_address()`), never with `==`.
 
+## Switching who is played (1.2)
+
+The same as the player pressing DPC's take-control key: player 1 goes to that character.
+
+| Call | Does |
+|---|---|
+| `possess(target, { mod = "My Mod" })` | Play a pawn. `target` is the pawn's `app.Character` (compared by address) or its party slot number (`slot` in `party()`). Passing the Arisen's character does the same as `release_pawn` |
+| `release_pawn({ mod = "My Mod" })` | Go back to the Arisen |
+
+Both return `true` when the request is accepted (also when that character is already the one played), or
+`nil, reason`; they never throw. Reasons: `"loading"`, `"cutscene"`, `"coop"` (any co-op session: in co-op each player
+picks with their own controller), `"downed"`, `"played by player N"`, `"not in the party"`, `"no such slot"`,
+`"no party"`, `"busy"` (the player is choosing a key in DPC's settings), `"expected an app.Character or a party slot
+number"`.
+
+The checks run at once and may be called from any thread, your UI included. The switch itself happens on DPC's next
+game frame, with DPC's own transition (see `camera.transition` below). The `possess` / `release` events confirm it. If
+something changed in between (a load started, the pawn left the party), nothing switches and `control_failed` fires.
+
+`release_pawn` is not `release`: `release(h)` gives a claim back.
+
 ## Events
 
 `local h = DPC_API.on(event, function(e) ... end, { mod = "My Mod" })`, and `DPC_API.off(h)` to stop.
@@ -64,6 +86,7 @@ Compare characters by address (`a:get_address() == b:get_address()`), never with
 | `transition_start` / `transition_end` | `{ style, chara }` / `{ to_name, interrupted }`: DPC's camera transition when control changes hands. An interrupted transition ends before the next one starts |
 | `arisen_ai_target` | `{ target, target_name }`: DPC's Arisen AI picked a new enemy |
 | `world_loading` / `world_back` | `{}`: a load screen started / the world is back |
+| `control_failed` | 1.2: `{ what, reason, mod }`: a `possess` (`what = "possess"`) or `release_pawn` (`"release"`) that was accepted could not be carried out on the game frame |
 
 ## Characters for players 3 and up (1.1)
 
@@ -89,7 +112,10 @@ or `nil, "held by <mod>"`. A higher priority takes a claim over; the old owner's
 | Resource | While you hold it |
 |---|---|
 | `camera.transition` | DPC does not run its camera transition when control changes hands (a running one stops). Use the transition events to run your own |
-| `camera.follow` | DPC does not move the main camera to follow the played pawn. For a split-screen or custom camera mod |
+| `camera.follow` | DPC does not move the main camera at all: it does not retarget it to the played character, and (1.2) its transition does not move it either; only the glow on the new character still plays. For a split-screen or custom camera mod |
+
+Holding `camera.follow` is enough to keep DPC's hands off the camera. Hold `camera.transition` as well to drop the
+glow and slow motion too. Before DPC 0.9.173, `camera.follow` alone left the transition's camera glide running.
 
 ## Overrides: a setting for this session only
 

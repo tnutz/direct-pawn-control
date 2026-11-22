@@ -26,11 +26,13 @@ Take direct control of your pawns. Possess your main pawn or a hired pawn and pl
 | **Numpad 7** | | Warp all pawns to you |
 | **Numpad .** | | Heal / revive all pawns and the Arisen. A cheat, **off by default**: tick it under Cheats in the settings |
 
+Every key can be changed or cleared (Clear button) in the settings under Controls. Untick **Keyboard shortcuts on** there to use DPC from the controller only; the controller combinations keep working.
+
 - **Bow skills just work (on by default):** special arrows are not used up while you play a pawn, and a played Archer that has none of one kind is quietly given one. Given arrows weigh nothing for whoever carries them, so the weight class never changes; everyone else's arrows weigh what they always did. Switches under Cheats.
 
 ### Couch co-op
 - **Joining:** whoever plays the Arisen keeps what they play on (keyboard and mouse, or their controller). A friend holds L3 + R3 on another controller for half a second and joins as player 2, then players 3 and 4 the same way. The friend takes the next character: a character player 1 just pointed at with the selection arrow, else the Arisen if player 1 is on a pawn, else the selected pawn. Holding L3 + R3 for 3 s leaves.
-- **Who is who:** each player's character glows in their colour when they join (player 1 amber, 2 light blue, 3 green, 4 violet) and keeps glowing while they play it (a tick per player under Couch co-op). A player who leaves flashes red. Each player has a target circle and an off-screen marker in their colour, their own bars and skill list, with their own controller's button names.
+- **Who is who:** each player's character glows in their colour when they join (by default player 1 cyan, 2 white, 3 green, 4 magenta; each player can pick their colour under Couch co-op > Player colours, with a Preview button) and keeps glowing while they play it (a tick per player under Couch co-op). A player who leaves flashes red. Each player has a target circle and an off-screen marker in their colour, their own bars and skill list, with their own controller's button names.
 - **Changing characters:** each player's take-control combination (L1 + left stick click; F6 for player 1) goes to their next free character, the Arisen included.
 - **Aiming (on by default):** tap R3 to keep a target, flick the right stick to move to the next enemy on that side, hold R3 to take player 1's target.
 - **Camera:** every player's right stick turns it (a slow push; a quick flick switches target). Ticks per player under Couch co-op. With Camera Distance installed the camera keeps everyone in view, climbs and cranes up against walls, and drops back to the normal camera in the Rift.
@@ -89,7 +91,7 @@ Wait and To Me orders tell him to stay or follow again. A caster Arisen answers 
 - **Thief** pawns had crashes in early versions; none since. If you do get crashes while playing a Thief pawn, the advanced options have a switch that puts Thief pawns on simpler fallback controls.
 
 ## For mod authors
-Other REFramework mods can ask who is being played, react when control changes hands, and take over DPC's camera transition or camera follow through `_G.DPC_API`. See `API.md` in the source.
+Other REFramework mods can ask who is being played, react when control changes hands, switch who is played (`possess` / `release_pawn`, API 1.2), and take over DPC's camera transition or camera follow through `_G.DPC_API`. See `API.md` in the source.
 
 ## Uninstall
 Remove the mod and delete `reframework/data/DirectPawnControl.json` and `DPC_*.json` if you want a clean slate.

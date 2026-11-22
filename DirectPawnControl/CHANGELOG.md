@@ -8,8 +8,47 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 
 ## Changelog & Engineering Post-Mortem
 
+### 0.9.173 (2026-11-22): release, with Camera Distance 2.9.19
+- the tester chose a normal release over a beta. Confirmed in game: mod API 1.2 (`api-control-1`, 9 of 9), Red's glow and White's (`Counterslash`) by eye, the colour Preview on a played pawn. **Not run in game:** the new colour order and its one-time move of the old default pair, the Clear buttons and the "Keyboard shortcuts on" checkbox itself (the switch was tested through an override), Preview on the Arisen with nobody played, Gold / Cyan / Green / Magenta glows one by one, Camera Distance 2.9.19's markers in the chosen colours. All covered by the fake game (`colors.py`, `api_control.py`).
+
+### 0.9.173-dev6 (2026-11-22): colour order Cyan, White, Green, Magenta, Red, Gold
+- the tester: "Gold is probably the weakest one. Let's make them in order of Cyan, White, Green, Magenta, Red, Gold." Defaults per player follow that order (player 1 Cyan, 2 White, 3 Green, 4 Magenta, 5 Red, 6 Gold) and the menu lists them in it (`R.COLOR_ORDER`).
+- The colour numbers in `R.ta_colors` (and so in saved settings and the glow table) are unchanged; Camera Distance only reads the ABGR values in `DPC_coop.json`. A config still on the old default pair (player 1 Gold, player 2 Cyan) moves to the new pair once (`colors_v`); other picks stay.
+- Earlier in this cycle, confirmed by the tester: Red's glow; White steady (`Counterslash`). Gold, Cyan, Green, Magenta not checked one by one (colors-1 was skipped).
+
+### 0.9.173-dev5 (2026-11-22): White's glow is Counterslash (steady white)
+- `white-glow-2`, no. 11: the tester, "11 is a perfect white". `Counterslash` replaces `RimLightInteractGimmic` (white but flashing).
+
+### 0.9.173-dev4 (2026-11-22): colour Preview works on the Arisen
+- the tester: Preview only lit anything once a pawn was selected. `R.color_preview` fell back to `state.arisen_chara`, which is only set while a pawn is played; it now falls back to the real player too.
+- the tester: White's new glow (`RimLightInteractGimmic`) flashes, too much for co-op. The pulse is in each preset's own data (`app.MaterialInterpolation` mode data), shared with every use of that effect in the game, so the fix is a steady preset, not editing the curve: `white-glow-2` shows no. 9 again for reference, then 18 presets not in the first test, 6 s each.
+
+### 0.9.173-dev3 (2026-11-22): White player colour glows white
+- `api-control-1` passed 9 of 9 on 0.9.173-dev2 (possess by slot and by character, possess(Arisen), camera.follow with no transition, release_pawn with the transition, F6 dead with the keyboard switch off and working again after).
+- the tester: Red's glow works, White's did not. White was `AstralBody`, an untried guess. `white-glow-1` lit his character in 28 candidate rim lights (names from the type index, `app.MIRimLightHash`; the colours are in asset data); he picked no. 9, **`RimLightInteractGimmic`**, now White's glow.
+
+### 0.9.173-dev2 (2026-11-22): mod API 1.2 (possess / release_pawn), keyboard master switch, Clear on every key
+- Requested by the author of Tactical Command System (a command wheel; uses DPC's camera-attach method with credit): calls to switch who is played. His wheel had been built against a `_G.DPC.possess` / `release` / `active` entry point that no released DPC build had; API 1.2 gives the same thing on `DPC_API`.
+- **API 1.2** (`has("control")`): `possess(chara_or_slot, opts)` and `release_pawn(opts)`. Named `release_pawn`, not `release`, because `release(h)` gives a claim back (his suggestion). Takes an `app.Character` (by address) or a slot number; the Arisen's character = `release_pawn`. Returns `true` or `nil, reason` (loading, cutscene, coop, downed, played by player N, not in the party, no such slot, busy), never throws.
+  - The checks read the game's pawn list directly (`R.api_pawn_list`), not `get_party()`: that one toggles `in_internal_query`, which the game-thread hooks read, and a mod may call from its UI.
+  - The switch runs on DPC's next game frame through `start_possession` / `release_possession`, exactly like the take-control key (transition, events). If a load came in between (counted by `R.world_losses`), or the pawn left the party, nothing switches and the new `control_failed` event fires. Found by the fake game: without that check, a request made just before a load ran after it.
+  - Co-op of any kind refuses both calls for now (each player picks with their own controller).
+- **`camera.follow` now also keeps the switch transition off the camera** (only the glow plays). His question: with follow held, does DPC still run its own transition? It did: `R.cine_begin` only checked `camera.transition`, so the glide wrote `_CameraJoint` while his mod placed the camera. Holding `camera.transition` as well still drops glow and slow motion.
+- **Keyboard shortcuts master switch** (`hotkeys_on`, default on; Settings > Controls): off = no DPC keyboard shortcut does anything (`R.key_hit`); controller combinations and the API are unaffected. His request: run many script mods, the numpad is crowded, wants DPC controller-only.
+- **Clear on every key** in Settings > Controls (was only on the "go straight to pawn 4+" rows). A cleared key reads "none". "Reset all controls" turns the master switch back on.
+- His other two reports were on 0.9.165 and match fixes already released: native lock-on lost on the played pawn (shared `LockOnController`, `arisen_own_lockon` since 0.9.168) and hit sounds missing far from the Arisen (distance from the Arisen, `pf_sound_listener` = camera since 0.9.170). Asked him to confirm on 0.9.172.
+- Fake game: `tools/fakegame/api_control.py`, 24 checks (all pass); the other suites unchanged. `API.md` and the example mod (Play / Back buttons, `control_failed` logged) updated. Not tested in game yet.
+
+### 0.9.173-dev1 (2026-11-21): each player picks their colour
+- the tester (dev45 note): "we can let them each choose a color there and match it to their target circle/bookmark"; 2026-11-21: "Do color choice".
+- One colour per player (Gold, Cyan, Green, Magenta, Red, White) drives their target dot, their join / kept glow and Camera Distance's off-screen marker. Settings > co-op > "Player colours": a row per player (4, or more with more players) with a Preview button that lights that player's character (or yours) for 2.5 s. Players 1 and 2 keep their old marker-colour settings (`coop_aim_p1_color` / `coop_aim_p2_color`; the two combos under Aiming moved here); players 3+ are `coop_colors["p<n>"]`, defaults as before (green, magenta, red, then white).
+- The glows are the game's rim lights, so each colour maps to the closest one: Gold RimLightInteractLarge, Cyan AstralPlayer, Green ChRecovery, Magenta RimLightSummon, Red Berserker, White AstralBody (a guess, not yet seen). A colour changed mid-play swaps the light at once (kept and short glows). Player 2's dot uses player 2's colour even when the second player is a later number.
+- DPC_coop.json gains `colors` ("p1".."p6", 0xAABBGGRR) and is rewritten the frame after a colour change (the old status key ignored colours, so Camera Distance would have waited for the next co-op change).
+- Fake game: tools/fakegame/colors.py (defaults, bad saved values, kept and short glow recolour, Preview, the file). Test: colors-1.
+
 ### 0.9.172 (2026-11-21): release
 - the tester: "I think we're good to ship it." Version 0.9.172 (Camera Distance 2.9.18). README: co-op section rewritten (joining, who is who, aiming, camera, Steam Input note), upgrade note; Camera Distance README co-op section. Changelog final.
+- Published 2026-11-21: public repo commit e3fa521 (TDizzle13); Nexus files "with Camera Studio" (primary, mod version 0.9.172) and "only" updated, old ones archived, changelogs added; description updated (7 replacements the tester approved: co-op joining / any character / who is who / aiming, camera, controls line, bow skills on by default, known limits, upgrade note), checked against the page after reload.
 - Untested at release: the tavern lean report (plan tavern-lean-1, no fix made); case 3 of coop-join-1 (arrow pick while on a pawn).
 
 ### 0.9.172-dev52: a friend's L3 + R3 takes the next character

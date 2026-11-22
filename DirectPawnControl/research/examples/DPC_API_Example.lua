@@ -26,7 +26,7 @@ with_dpc(function(api)
     note("got DPC_API " .. api.version .. " (DPC " .. tostring(api.dpc_version) .. ")")
     -- 2. events
     for _, ev in ipairs({ "ready", "possess", "release", "switch", "coop_start", "coop_stop", "transition_start",
-                          "transition_end", "arisen_ai_target", "world_loading", "world_back" }) do
+                          "transition_end", "arisen_ai_target", "world_loading", "world_back", "control_failed" }) do
         ex.h[ev] = api.on(ev, function(p)
             local parts = {}
             for k, v in pairs(p) do
@@ -88,6 +88,20 @@ re.on_draw_ui(function()
     if c then ex.set_override("switch_cine_slowmo", v and 1.0 or nil) end
     c, v = imgui.checkbox("Add a handler that always fails", ex.bad ~= nil)
     if c then ex.set_bad(v) end
+    -- 1.2: switching who is played
+    if ex.api.possess then
+        for _, e in ipairs(ex.api.party()) do
+            if imgui.button("Play " .. tostring(e.name) .. "##ex" .. tostring(e.slot)) then
+                local ok, why = ex.api.possess(e.chara, { mod = MOD })
+                note("possess " .. tostring(e.name) .. ": " .. tostring(ok) .. " " .. tostring(why or ""))
+            end
+            imgui.same_line()
+        end
+        if imgui.button("Back to the Arisen##ex") then
+            local ok, why = ex.api.release_pawn({ mod = MOD })
+            note("release_pawn: " .. tostring(ok) .. " " .. tostring(why or ""))
+        end
+    end
     for i = math.max(1, #ex.log - 12), #ex.log do imgui.text(ex.log[i]) end
     imgui.tree_pop()
 end)
