@@ -1,0 +1,167 @@
+{
+ "id": "skill-mods-4",
+ "title": "Dullahan Rearmament paused while a pawn is played (DPC 0.9.175-dev3)",
+ "intro": "Fix check, second try (the first one looked for the option in the wrong place): DPC now pauses Dullahan's Rearmament option while you play a pawn (it was cancelling the Archer pawn's skills). Outdoors, Arisen, co-op off, dummy ahead. About 3 minutes. End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.175-dev3",
+  "TestGuide": "2.7"
+ },
+ "steps": [
+  {
+   "text": "1/4 Arisen weapon SHEATHED, standing idle. You play your SECOND pawn (the Archer). Use all 4 skills on the dummy. Note any that don't fire. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "possess",
+     "idx": 1
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 8,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pcs",
+     "agg": "max",
+     "label": "skill presses that went through the pawn's input processor"
+    },
+    {
+     "probe": "pcs_last",
+     "agg": "last",
+     "label": "last skill id pressed"
+    },
+    {
+     "probe": "ar",
+     "agg": "last",
+     "label": "Arisen as Dullahan sees him"
+    },
+    {
+     "probe": "skills",
+     "agg": "last",
+     "label": "pawn's skills"
+    },
+    {
+     "probe": "sk_now",
+     "agg": "max",
+     "label": "a skill ran (max skill id seen)"
+    },
+    {
+     "probe": "rearm",
+     "agg": "last",
+     "label": "Rearmament while playing the pawn (should be false)"
+    }
+   ]
+  },
+  {
+   "text": "2/4 Back on the Arisen now: DRAW your weapon (stay in combat stance), then press End. Nothing else.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "ar",
+     "agg": "last",
+     "label": "Arisen as Dullahan sees him"
+    }
+   ]
+  },
+  {
+   "text": "3/4 You play the Archer again (the Arisen keeps his weapon out). Use all 4 skills. Note any that don't fire, and whether the Arisen swaps weapons. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pcs",
+     "agg": "max",
+     "label": "skill presses that went through the pawn's input processor"
+    },
+    {
+     "probe": "pcs_last",
+     "agg": "last",
+     "label": "last skill id pressed"
+    },
+    {
+     "probe": "ar",
+     "agg": "last",
+     "label": "Arisen as Dullahan sees him"
+    },
+    {
+     "probe": "skills",
+     "agg": "last",
+     "label": "pawn's skills"
+    },
+    {
+     "probe": "sk_now",
+     "agg": "max",
+     "label": "a skill ran (max skill id seen)"
+    },
+    {
+     "probe": "rearm",
+     "agg": "last",
+     "label": "Rearmament while playing the pawn (should be false)"
+    }
+   ]
+  },
+  {
+   "text": "4/4 Done, back to the Arisen. Tell Claude what didn't fire, if anything. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "rearm",
+     "agg": "last",
+     "label": "Dullahan Rearmament after going back to the Arisen (should be true again)"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_skill-mods-4.json",
+  "show": [
+   "who",
+   "rearm",
+   "sk_now"
+  ],
+  "probes": {
+   "who": "local D=_G.DPC_dbg; return D and (D.state.active and ('playing '..tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "pcs": "if not _G.__dpc_pcs then _G.__dpc_pcs={n=0,last=-1}; local td=sdk.find_type_definition('app.PlayerInputProcessorDetail'); for _,m in ipairs(td:get_methods()) do if m:get_name()=='processCustomSkill' then local np=m:get_num_params(); pcall(sdk.hook,m,function(args) local s=_G.__dpc_pcs; local D=_G.DPC_dbg; if D and D.state.active then s.n=s.n+1; s.last=sdk.to_int64(args[np==8 and 3 or 4]) & 0xFFFFFFFF end end,function(r) return r end) end end end return _G.__dpc_pcs.n",
+   "pcs_last": "return _G.__dpc_pcs and _G.__dpc_pcs.last or -1",
+   "ar": "local P=package.loaded['_NickCore/Properties']; if not P then return 'no NickCore' end; local ok,s=pcall(function() local t=P.human.Track; return 'job '..tostring(P.job)..' weapon '..tostring(P.weaponJob)..' track.All '..tostring(t.All)..' track.Skill '..tostring(t.Skill) end); return ok and s or 'err'",
+   "rearm": "local c=package.loaded['Dullahan/Config']; c=c and c.WARFARER; return c and tostring(c.REARMAMENT) or 'nil'",
+   "skills": "local D=_G.DPC_dbg; if not D then return '' end; local t={}; for s=1,4 do t[#t+1]=tostring(D.state.pawn_skills and D.state.pawn_skills[s] or '-') end; return table.concat(t,',')",
+   "sk_now": "local D=_G.DPC_dbg; local pc=D and D.state.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ }
+}

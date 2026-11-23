@@ -8,6 +8,19 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 
 ## Changelog & Engineering Post-Mortem
 
+### 0.9.175 (2026-11-23): release (Camera Distance stays 2.9.19)
+- the tester: ship it. Confirmed in game with Dullahan, Skill and Vocation Creator, _NickCore, UDD2P and Method Library installed: `skill-mods-4`, an Archer pawn with a Fighter Arisen, all skills fire with the Arisen's weapon away and drawn; Rearmament off while the pawn is played, on again after; no DPC errors. `skill-mods-1`: all three pawns' skills (6 each, chorded too). **Not covered:** the skill-failure log line only watches the fallback skill path (puppeteer / Thief fallback); presses through the pawn's own player input (the default) aren't logged yet.
+
+### 0.9.175-dev3 (2026-11-23): Dullahan compatibility, the right config table
+- dev2 looked for `REARMAMENT` at the top of Dullahan's config; it lives in `Config.WARFARER` (the hook file does `require("Dullahan/Config").WARFARER`). `skill-mods-3` showed it never changed; dev3 reads `WARFARER`.
+
+### 0.9.175-dev2 (2026-11-23): pause Dullahan's Rearmament while a pawn is played
+- A player report: with Dullahan, skills "don't work for any of the 3 pawns" but do for the Arisen. Read Dullahan 5.1.3, Skill and Vocation Creator 2.4.1, _NickCore 2.7.5 and UDD2P 2.15.1. A played pawn has its own `PlayerInputProcessor` (native controls), so its skill presses go through `PlayerInputProcessorDetail.processCustomSkill`. Dullahan's Rearmament hook on that method (on by default, no Warfarer check) compares the skill's vocation with the ARISEN's weapon and, when the Arisen is free to act, swaps his weapon and skips the press. Reproduced: Archer pawn, Fighter Arisen sheathed, skills cancelled; drawn, they fire.
+- `R.compat_tick` (0.5 s): while anyone plays a pawn, Rearmament is turned off and restored afterwards. Two smaller conflicts left to the author: Skill Creator plays a replaced skill on the Arisen when a pawn presses it with the same weapon type; UDD2P's NoUnsheathe can draw the Arisen's weapon on a pawn's press.
+
+### 0.9.175-dev1 (2026-11-23): say why a pawn skill didn't start
+- `R.skill_fail_note`: when a requested skill never starts within the retry window, the log names the skill, tries, the pawn's action, stamina, weapon drawn or not, "not a vanilla skill id" for ids above 131 (skills added by Skill Creator mods), and which skill mods are loaded. Counters for TestGuide (`R.skill_ok_n`, `R.skill_fail_n`, `R.skill_fail_last`).
+
 ### 0.9.174 (2026-11-23): release (Camera Distance stays 2.9.19)
 - the tester: ship it. Fake game: new `loot_arisen.py` (13 checks) and every other suite pass; lint unchanged. **Not run in game:** the loot-to-Arisen option itself (off by default; with it off the new hooks return at once). `pawn-loot-1` (the reported ox case, option off) not run yet.
 - The hook writes the Arisen's address (`sdk.to_ptr(addr)`), the form DPC's other argument swaps use.

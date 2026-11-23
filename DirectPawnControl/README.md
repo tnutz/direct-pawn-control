@@ -88,6 +88,7 @@ Wait and To Me orders tell him to stay or follow again. A caster Arisen answers 
 - Quick skills (Numpad 1-6) cover the six pawn vocations; attack skills need an enemy in view or near the pawn.
 - Possessing a pawn far away from the Arisen for a long time is not recommended.
 - While you play a pawn, the button guide does not show "Dash" on its button. Dashing works as usual; only the label is missing.
+- **Dullahan / Skill and Vocation Creator:** while you play a pawn, the mod pauses Dullahan's Rearmament option (it cancelled the pawn's skills) and turns it back on when you return to the Arisen. Brand-new skills added by Skill Creator mods only work on the Arisen, so a pawn can't use them, AI or played.
 - **Thief** pawns had crashes in early versions; none since. If you do get crashes while playing a Thief pawn, the advanced options have a switch that puts Thief pawns on simpler fallback controls.
 
 ## For mod authors

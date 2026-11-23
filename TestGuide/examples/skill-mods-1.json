@@ -1,0 +1,160 @@
+{
+ "id": "skill-mods-1",
+ "title": "Pawn skills with Skill Creator + Dullahan + _NickCore + UDD2P installed (DPC 0.9.175-dev1)",
+ "intro": "Two players report pawn skills not working; one uses the Dullahan and Skill Creator mods. Those mods (and _NickCore, UDD2P that Dullahan needs) are now installed next to DPC. RESTART THE GAME before this test (Skill Creator wants a restart), and SAVE first. Outdoors, playing the Arisen, co-op off, three pawns. Don't buy or equip any new Dullahan skills unless a step asks. For each pawn: a training dummy stands ahead; use each of its 4 skills once with L1 + a face button (wait for each to finish). About 5 minutes. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.175-dev1",
+  "TestGuide": "2.7"
+ },
+ "steps": [
+  {
+   "text": "1/4 You play your MAIN pawn. Use all 4 of its skills on the dummy (L1 + each face button). If one doesn't fire, try it twice more. End when done.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 8,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "ok",
+     "agg": "max",
+     "op": ">=",
+     "value": 4,
+     "label": "4 skills started"
+    },
+    {
+     "probe": "skills",
+     "agg": "last",
+     "label": "equipped skill ids (over 131 = added by a mod)"
+    },
+    {
+     "probe": "why",
+     "agg": "last",
+     "label": "last failed skill: why"
+    }
+   ]
+  },
+  {
+   "text": "2/4 Now your SECOND pawn. Same: all 4 skills on the dummy. End when done.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "ok",
+     "agg": "max",
+     "op": ">=",
+     "value": 8,
+     "label": "4 skills started"
+    },
+    {
+     "probe": "skills",
+     "agg": "last",
+     "label": "equipped skill ids (over 131 = added by a mod)"
+    },
+    {
+     "probe": "why",
+     "agg": "last",
+     "label": "last failed skill: why"
+    }
+   ]
+  },
+  {
+   "text": "3/4 Now your THIRD pawn. Same: all 4 skills. End when done.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "ok",
+     "agg": "max",
+     "op": ">=",
+     "value": 12,
+     "label": "4 skills started"
+    },
+    {
+     "probe": "skills",
+     "agg": "last",
+     "label": "equipped skill ids (over 131 = added by a mod)"
+    },
+    {
+     "probe": "why",
+     "agg": "last",
+     "label": "last failed skill: why"
+    }
+   ]
+  },
+  {
+   "text": "4/4 Done, back to the Arisen. Tell Claude which skills (pawn, button) didn't fire, if any. End to finish.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "fail",
+     "agg": "last",
+     "label": "skills that never started"
+    },
+    {
+     "probe": "mods",
+     "agg": "last",
+     "label": "skill mods DPC sees"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_skill-mods-1.json",
+  "show": [
+   "who",
+   "ok",
+   "fail",
+   "sk_now"
+  ],
+  "probes": {
+   "who": "local D=_G.DPC_dbg; return D and (D.state.active and ('playing '..tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "ok": "local D=_G.DPC_dbg; return D and (D.R.skill_ok_n or 0) or -1",
+   "fail": "local D=_G.DPC_dbg; return D and (D.R.skill_fail_n or 0) or -1",
+   "why": "local D=_G.DPC_dbg; local f=D and D.R.skill_fail_last; return f and (tostring(f.id)..' slot '..tostring(f.slot)..': '..(f.why~='' and f.why or 'no known reason')..' | '..tostring(f.node)) or 'none'",
+   "mods": "local D=_G.DPC_dbg; return D and D.R.skill_mods and D.R.skill_mods() or ''",
+   "skills": "local D=_G.DPC_dbg; if not D then return '' end; local t={}; for s=1,4 do t[#t+1]=tostring(D.state.pawn_skills and D.state.pawn_skills[s] or '-') end; return table.concat(t,',')",
+   "sk_now": "local D=_G.DPC_dbg; local h=D and D.state.pawn_human; local ok,v=pcall(function() return h:call('get_CustomSkillState') end); return ok and v or 0",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ }
+}

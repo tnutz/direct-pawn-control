@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.174"
+local VERSION = "0.9.175"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -10345,8 +10345,10 @@ local function update_puppeteer_controls(is_first_frame)
             local ps = state.pending_skill
             if cur_sk == ps.id and cur_sk ~= 0 then
                 state.pending_skill = nil
+                R.skill_ok_n = (R.skill_ok_n or 0) + 1
             elseif now > ps.until_t then
                 state.pending_skill = nil
+                pcall(R.skill_fail_note, ps, cur_sk) -- 0.9.175: say why a skill didn't start
             else
                 pcall(sel.call, sel, "requestCustomSkill", ps.id, ps.speed_type)
                 ps.tries = ps.tries + 1
@@ -13751,6 +13753,74 @@ R.loot_hooks_install = function() -- a function, not a do-block: the main chunk 
     end
 end
 R.loot_hooks_install()
+
+-- 0.9.175 Skill diagnostics. Players report pawn skills that "don't work" (one with the Dullahan / Skill Creator
+-- mods, one random on an archer). When a requested skill never starts inside the retry window, log what the pawn
+-- was doing, its stamina, whether the weapon was drawn, whether the skill id is a vanilla one, and which known
+-- skill-changing mods are loaded, so a report (or the log) says why. Counters for TestGuide: R.skill_ok_n,
+-- R.skill_fail_n, R.skill_fail_last.
+R.SKILL_ID_VANILLA_MAX = 131 -- Trickster / Assassin maister skills; Skill Creator gives its "new" skills 121/132 and up
+R.skill_mods = function()
+    if R.skill_mods_s then return R.skill_mods_s end
+    local t = {}
+    if _G.NickCore then t[#t + 1] = "_NickCore" end
+    for _, m in ipairs({ { "SkillCreator/SkillHandler", "Skill Creator" }, { "Dullahan/Config", "Dullahan" },
+                         { "_ScriptCore/Hotkeys", "_ScriptCore" } }) do
+        if package.loaded[m[1]] then t[#t + 1] = m[2] end
+    end
+    if _G.SkillMaker or _G.skill_maker then t[#t + 1] = "Skill Maker" end
+    R.skill_mods_s = table.concat(t, ", ")
+    return R.skill_mods_s
+end
+-- 0.9.175 Dullahan compatibility. Dullahan's "Rearmament" option (on by default) pre-hooks the game's player input
+-- (PlayerInputProcessorDetail.processCustomSkill) and, when a skill doesn't belong to the ARISEN's current weapon,
+-- swaps his weapon and cancels the press. A pawn played with native controls uses its own copy of that input code,
+-- so its skills were cancelled whenever its vocation differed from the Arisen's and he was free to act (Nexus
+-- report, reproduced in skill-mods-1/2 with an Archer pawn and a Fighter Arisen). While anyone plays a pawn,
+-- DPC turns that option off and puts it back afterwards (the Arisen isn't pressing skills then anyway).
+R.compat_tick = function()
+    local now = os.clock()
+    if now < (R.compat_next or 0) then return end
+    R.compat_next = now + 0.5
+    local dc = package.loaded["Dullahan/Config"]
+    dc = type(dc) == "table" and dc.WARFARER -- the option lives in Config.WARFARER (dev2 looked at the top level)
+    if type(dc) ~= "table" then return end
+    local playing = state.active or coop.active
+    if playing and dc.REARMAMENT and not R.compat_rearm_off then
+        R.compat_rearm_off = true
+        dc.REARMAMENT = false
+        log_msg("Dullahan found: its Rearmament option is paused while a pawn is played (it would cancel the pawn's skills)")
+    elseif not playing and R.compat_rearm_off then
+        R.compat_rearm_off = nil
+        dc.REARMAMENT = true
+    end
+end
+re.on_frame(function() pcall(R.compat_tick) end)
+R.skill_fail_note = function(ps, cur_sk)
+    local pc, ph = state.pawn_chara, state.pawn_human
+    local node, st, drawn = "?", nil, nil
+    pcall(function()
+        local fsm = pc:call("get_ActionManager"):get_field("Fsm")
+        node = tostring(fsm:call("getCurrentNodeName(System.UInt32)", 0)) .. " | " .. tostring(fsm:call("getCurrentNodeName(System.UInt32)", 1))
+    end)
+    pcall(function()
+        local sm = pc:call("get_StaminaManager")
+        st = sm:call("get_RemainingAmount")
+    end)
+    pcall(function() drawn = pc:call("get_IsDrawedWeapon") end)
+    local why = {}
+    if (ps.id or 0) > R.SKILL_ID_VANILLA_MAX then why[#why + 1] = "not a vanilla skill id (added by a skill mod; the game can't play it on a pawn)" end
+    if st and st <= 1 then why[#why + 1] = "out of stamina" end
+    if drawn == false then why[#why + 1] = "weapon not drawn" end
+    local mods = R.skill_mods()
+    R.skill_fail_n = (R.skill_fail_n or 0) + 1
+    R.skill_fail_last = { id = ps.id, slot = ps.slot, tries = ps.tries, node = node, stamina = st, drawn = drawn,
+        now_skill = cur_sk, mods = mods, why = table.concat(why, "; ") }
+    log_msg(string.format("Skill %s: %s (id %s) did not start after %d tries. Pawn: %s, stamina %s, weapon %s, skill now %s%s%s",
+        tostring(ps.slot), skill_name(ps.id), tostring(ps.id), ps.tries or 0, node, st and string.format("%.0f", st) or "?",
+        drawn == nil and "?" or (drawn and "drawn" or "sheathed"), tostring(cur_sk),
+        #why > 0 and (". Likely: " .. R.skill_fail_last.why) or "", mods ~= "" and (". Skill mods loaded: " .. mods) or ""))
+end
 
 dev.api_overrides = R.api.overrides -- save_cfg leaves these out of the saved config
 
