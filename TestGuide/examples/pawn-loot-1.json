@@ -1,0 +1,150 @@
+{
+ "id": "pawn-loot-1",
+ "title": "Report check: a played pawn loots corpses, incl. a harnessed ox (DPC 0.9.173)",
+ "intro": "A player's game crashed right after his played pawn looted a dead harnessed ox (oxcart ox, ch299003_A_10). His load order has several loot mods; ours has none. SAVE THE GAME FIRST: this may crash. Open ground outdoors, playing the Arisen, co-op off, at least two pawns, no enemies near. The test spawns a target in front of the pawn you play each time; you kill it and loot it with DPC's 'Loot the body' prompt (Interact). If the game crashes, just restart and tell Claude which step it was. About 4 minutes. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.173",
+  "TestGuide": "2.7"
+ },
+ "steps": [
+  {
+   "text": "1/5 Control: you now play your MAIN pawn. A goblin stands still 5 m ahead. Kill it, walk up, press Interact on 'Loot the body'. End once looted.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 5,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "looted",
+     "agg": "max",
+     "op": ">=",
+     "value": 1,
+     "label": "the pawn looted the goblin"
+    }
+   ]
+  },
+  {
+   "text": "2/5 The reported case: a HARNESSED OX (oxcart ox) stands 5 m ahead. Kill it, then loot it as the main pawn. End once looted (or restart if the game crashes).",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch299003_A_10",
+     "count": 1,
+     "dist": 5,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "looted",
+     "agg": "max",
+     "op": ">=",
+     "value": 2,
+     "label": "the pawn looted the harnessed ox"
+    }
+   ]
+  },
+  {
+   "text": "3/5 A plain ox (no harness) 5 m ahead. Kill it, loot it. End once looted.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "spawn",
+     "cid": "ch299003_A_00",
+     "count": 1,
+     "dist": 5,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "looted",
+     "agg": "max",
+     "op": ">=",
+     "value": 3,
+     "label": "the pawn looted the plain ox"
+    }
+   ]
+  },
+  {
+   "text": "4/5 Now you play your SECOND (hired) pawn. Another harnessed ox 5 m ahead. Kill it, loot it. End once looted.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 1
+    },
+    {
+     "cmd": "spawn",
+     "cid": "ch299003_A_10",
+     "count": 1,
+     "dist": 5,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "looted",
+     "agg": "max",
+     "op": ">=",
+     "value": 4,
+     "label": "the hired pawn looted the harnessed ox"
+    }
+   ]
+  },
+  {
+   "text": "5/5 Done, no crash. Check the played pawn's inventory has the loot if you like. Back to the Arisen; End to finish.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_pawn-loot-1.json",
+  "show": [
+   "who",
+   "looted",
+   "near"
+  ],
+  "probes": {
+   "looted": "local D = _G.DPC_dbg; return D and (D.R.int_n or 0) or -1",
+   "near": "local D = _G.DPC_dbg; return D and tostring(D.R.int_name) or ''",
+   "who": "local D = _G.DPC_dbg; return D and (D.state.active and ('playing ' .. tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ }
+}

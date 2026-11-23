@@ -123,6 +123,13 @@ glow and slow motion too. Before DPC 0.9.173, `camera.follow` alone left the tra
 the game closes, Reset Scripts, or `DPC_API.clear_override(o)`. It is never written to the player's saved settings.
 Returns `nil, "no such setting"` for an unknown key.
 
+Settings other mods commonly override:
+- `switch_cine` (false = no transition), `switch_cine_profile` (1 Instant, 2 Establish, 3 Bird's-eye, 4 Custom) and the
+  `switch_cine_*` sliders: the camera transition when control changes hands.
+- `pawn_loot_to_arisen` (0.9.174): true = what the played pawn loots, gathers or picks up goes into the Arisen's bag (the
+  item award is re-addressed to him, so hooks on `ItemManager.getItem` see the player as the receiver); false (default)
+  = it stays with the pawn.
+
 ## Example
 
 `research/examples/DPC_API_Example.lua` in the source logs every event and has switches for a claim, an override

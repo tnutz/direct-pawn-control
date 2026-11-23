@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.173"
+local VERSION = "0.9.174"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -324,6 +324,7 @@ local cfg = {
     coop_no_gyro = true,              -- v0.9.39: in co-op the controller's motion sensor does not aim the Arisen
     possess_interrupt_ai = true,      -- v0.9.38: end the pawn's running AI action when taking control
     pawn_interact = true,             -- v0.9.26: the possessed pawn gathers / loots himself (own prompt + Interact button)
+    pawn_loot_to_arisen = false,      -- 0.9.174: what the played pawn loots / gathers goes into the Arisen's bag (as in vanilla); other mods can set it (DPC_API.override)
     pawn_interact_range = 2.2,        -- m
     cycle_switches_now = false,       -- v0.9.90: F7 while possessing switches pawn at once (the old behaviour) instead of selecting
     show_legacy = false,              -- v0.9.82: the advanced / test / legacy bin of the settings window
@@ -10212,6 +10213,7 @@ local function update_puppeteer_controls(is_first_frame)
                     im:call("endInteract(app.Character)", state.pawn_chara)
                 end
                 R.int_last_t = now
+                R.loot_window_open() -- 0.9.174: hand what this gives to the Arisen, if that option is on
                 local pt = sdk.create_instance("app.InteractManager.InteractPoint"):add_ref()
                 pt:set_field("Object", obj)
                 pt:set_field("PointNo", 0)
@@ -10224,7 +10226,8 @@ local function update_puppeteer_controls(is_first_frame)
                 end
             end)
             R.int_n = (R.int_n or 0) + 1
-            if okx then log_msg(string.format("%s: %s %s", tostring(state.pawn_name), R.int_dead and "looted" or "used", tostring(R.int_name)))
+            local to_ar = (R.loot_win and R.loot_win.n > 0) and string.format(" (%d to the Arisen)", R.loot_win.n) or ""
+            if okx then log_msg(string.format("%s: %s %s%s", tostring(state.pawn_name), R.int_dead and "looted" or "used", tostring(R.int_name), to_ar))
             else dev_error("pawn interact", errx) end
             R.int_obj = nil
             R.int_next = now + 0.6
@@ -13688,6 +13691,67 @@ R.api_control_refusal = function()
 end
 R.api_build()
 
+-- 0.9.174 Loot to the Arisen (cfg.pawn_loot_to_arisen, off by default; asked for by the tester, and a candidate fix for a
+-- report where the game died right after a played pawn's loot on a load order with several loot-award hooks).
+-- The pawn still runs the loot (the path verified since v0.9.26); for 1.5 s after that, the game's item award is
+-- re-addressed from the pawn to the Arisen: the receiver argument of ItemManager.getItem(..., app.Character, ...) and
+-- the CharacterID of getItemNoLock. So the items land in his bag and every other mod's hook on those calls sees the
+-- player as the receiver, as in vanilla. Nothing changes when the option is off or no loot window is open.
+R.loot_win = nil
+R.loot_window_open = function()
+    R.loot_win = nil
+    if not cfg.pawn_loot_to_arisen or not state.pawn_chara then return end
+    local ar = state.arisen_chara or R.real_player()
+    if not ar then return end
+    local okp, pid = pcall(state.pawn_chara.call, state.pawn_chara, "get_CharaID")
+    local oka, aid = pcall(ar.call, ar, "get_CharaID")
+    R.loot_win = { pawn = state.pawn_chara:get_address(), ar_addr = ar:get_address(), pawn_id = okp and tonumber(pid) or nil,
+        ar_id = oka and tonumber(aid) or nil, t_end = os.clock() + 1.5, n = 0 }
+end
+R.loot_hooks_install = function() -- a function, not a do-block: the main chunk is at Lua's 200-locals limit
+    local td = sdk.find_type_definition("app.ItemManager")
+    -- (signature, position of the receiver in args: args[2] is the ItemManager, args[3] the first parameter)
+    local by_chara = {
+        { "getItem(app.ItemDropLottery.ItemResult, app.Character, app.ItemDefine.GetItemOption)", 4 },
+        { "getItem(app.ItemDropLottery.ItemResult, app.Character)", 4 },
+        { "getItem(System.Int32, System.Int32, app.Character, app.ItemDefine.GetItemOption)", 5 },
+        { "getItem(System.Int32, System.Int32, app.Character)", 5 },
+    }
+    local by_id = { { "getItemNoLock(System.Int32, System.Int32, app.CharacterID, app.ItemDefine.GetItemOption, System.Int32, System.Int32)", 5 } }
+    R.loot_hooks = 0
+    if td then
+        for _, h in ipairs(by_chara) do
+            local m = td:get_method(h[1])
+            if m then
+                local at = h[2]
+                pcall(sdk.hook, m, function(args)
+                    local w = R.loot_win
+                    if not w or os.clock() > w.t_end then return end -- the common path: no loot window open
+                    if arg_addr(args[at]) ~= w.pawn then return end
+                    args[at] = sdk.to_ptr(w.ar_addr)
+                    w.n = w.n + 1
+                end, function(retval) return retval end)
+                R.loot_hooks = R.loot_hooks + 1
+            end
+        end
+        for _, h in ipairs(by_id) do
+            local m = td:get_method(h[1])
+            if m then
+                local at = h[2]
+                pcall(sdk.hook, m, function(args)
+                    local w = R.loot_win
+                    if not w or os.clock() > w.t_end or not w.pawn_id or not w.ar_id then return end
+                    if (sdk.to_int64(args[at]) & 0xFFFFFFFF) ~= w.pawn_id then return end
+                    args[at] = sdk.to_ptr(w.ar_id)
+                    w.n = w.n + 1
+                end, function(retval) return retval end)
+                R.loot_hooks = R.loot_hooks + 1
+            end
+        end
+    end
+end
+R.loot_hooks_install()
+
 dev.api_overrides = R.api.overrides -- save_cfg leaves these out of the saved config
 
 -- publish and run anything queued by mods that loaded before DPC (principle 5)
@@ -14549,6 +14613,7 @@ re.on_frame(function()
     if group("Features (all on by default; switch one off if it gets in your way)") then
         imgui.text_colored("Playing a pawn", GREY)
         cb("Pick up, gather, loot and open chests as the pawn", "pawn_interact")
+        if cfg.pawn_interact then cb("   what the pawn picks up goes into the Arisen's bag", "pawn_loot_to_arisen") end
         cb("Wake a sleeping companion (Interact next to them)", "pawn_wake")
         cb("Revive a downed pawn (hold Interact next to them)", "pawn_revive")
         if cfg.pawn_revive then sl("   seconds to hold (the game's own revive: 3.8)", "pawn_revive_hold", 0.0, 6.0, "%.1f") end

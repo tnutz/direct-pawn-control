@@ -8,7 +8,17 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 
 ## Changelog & Engineering Post-Mortem
 
+### 0.9.174 (2026-11-23): release (Camera Distance stays 2.9.19)
+- the tester: ship it. Fake game: new `loot_arisen.py` (13 checks) and every other suite pass; lint unchanged. **Not run in game:** the loot-to-Arisen option itself (off by default; with it off the new hooks return at once). `pawn-loot-1` (the reported ox case, option off) not run yet.
+- The hook writes the Arisen's address (`sdk.to_ptr(addr)`), the form DPC's other argument swaps use.
+
+### 0.9.174-dev1 (2026-11-23): option "what the pawn picks up goes into the Arisen's bag"
+- A player report (0.9.173): the game died right after the played pawn looted a dead harnessed ox (`ch299003_A_10`, an oxcart ox in the catalog, not a human enemy as the report says). DPC's interact had finished; two loot mods' hooks on the item award ran inside that loot, one of them "for the first time" with a pawn as the receiver. No dump; one occurrence. Asked him for the Windows Application Error entry (faulting offset, for `index addr`) and a run without those mods. Test plan `pawn-loot-1` (goblin, harnessed ox, plain ox, harnessed ox as the hired pawn).
+- New option `pawn_loot_to_arisen` (Features, under the pawn interact box; **off by default**: the pawn who loots keeps the items; other mods can set it with `DPC_API.override`). The pawn still runs the loot; for 1.5 s after it, pre-hooks on `ItemManager.getItem(..., app.Character, ...)` (4 overloads) and `getItemNoLock(..., app.CharacterID, ...)` swap the receiver from the played pawn to the Arisen. Every loot mod's hook then sees the player as the receiver, as in vanilla. The hooks return at once when no loot window is open. The log line says "(N to the Arisen)".
+- Not tested in game yet. Overload signatures and argument positions from the type index (dd2.exe 4.1.0.0).
+
 ### 0.9.173 (2026-11-22): release, with Camera Distance 2.9.19
+- Live on Nexus (both main files, 0.9.173, old ones archived); public source 8e2b657. Page description: two lines updated with the tester's approval (colours, Controls: Clear and the keyboard switch); saved and read back (FNV-1a f048cb22).
 - the tester chose a normal release over a beta. Confirmed in game: mod API 1.2 (`api-control-1`, 9 of 9), Red's glow and White's (`Counterslash`) by eye, the colour Preview on a played pawn. **Not run in game:** the new colour order and its one-time move of the old default pair, the Clear buttons and the "Keyboard shortcuts on" checkbox itself (the switch was tested through an override), Preview on the Arisen with nobody played, Gold / Cyan / Green / Magenta glows one by one, Camera Distance 2.9.19's markers in the chosen colours. All covered by the fake game (`colors.py`, `api_control.py`).
 
 ### 0.9.173-dev6 (2026-11-22): colour order Cyan, White, Green, Magenta, Red, Gold
