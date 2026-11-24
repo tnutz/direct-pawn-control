@@ -1,0 +1,109 @@
+{
+ "id": "coop-lean-1",
+ "title": "Co-op on a leaning pawn: it stands up first (DPC 0.9.176-dev7)",
+ "intro": "The stand-up-first fix, now for co-op. Have a second controller connected (player 2). Tavern, playing the Arisen, co-op off. SAVE FIRST. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.176-dev7",
+  "TestGuide": "2.7"
+ },
+ "steps": [
+  {
+   "text": "1/4 Wait until the pawn row shows IN INTERACTION for one pawn (leaning). Then End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "pawns at the start"
+    },
+    {
+     "probe": "coop",
+     "agg": "last",
+     "label": "co-op"
+    }
+   ]
+  },
+  {
+   "text": "2/4 (automatic) Starting co-op with player 2 on the leaning pawn: it should stand up first, then go to player 2.",
+   "secs": 8,
+   "cmds": [
+    {
+     "cmd": "lean",
+     "how": "coop",
+     "idx": -1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "after co-op start"
+    },
+    {
+     "probe": "coop",
+     "agg": "last",
+     "label": "co-op"
+    }
+   ]
+  },
+  {
+   "text": "3/4 Player 2: walk the pawn around with the second controller. Does it move? Player 1: move the Arisen too. End.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "while playing"
+    },
+    {
+     "probe": "coop",
+     "agg": "last",
+     "label": "co-op"
+    }
+   ]
+  },
+  {
+   "text": "4/4 Co-op off. Tell Claude whether the pawn stood up and player 2 could move it. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_coop-lean-1.json",
+  "show": [
+   "coop",
+   "pawns"
+  ],
+  "probes": {
+   "who": "local D=_G.DPC_dbg; return D and (D.state.active and ('playing '..tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "pawns": "local D=_G.DPC_dbg; local pm=sdk.get_managed_singleton('app.PawnManager'); local l=pm and pm:call('get_PawnCharacterList'); if not (D and l) then return '' end; local t={}; for i=0,l:call('get_Count')-1 do local c=l:call('get_Item',i); local n='?'; pcall(function() n=tostring(c:call('get_ActionManager'):get_field('Fsm'):call('getCurrentNodeName(System.UInt32)',0)) end); t[#t+1]=i..':'..(D.R.busy_interact(c) and 'IN INTERACTION ' or '')..n end; return table.concat(t,' / ')",
+   "spots": "local D=_G.DPC_dbg; return D and tostring(D.R.lean_spots) or ''",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "coop": "local D=_G.DPC_dbg; if not D then return '' end; local c=D.R.cp; return 'coop '..tostring(D.state.active and D.state.pawn_name or '-')..' p2side '..tostring(c and c.on)"
+  }
+ }
+}

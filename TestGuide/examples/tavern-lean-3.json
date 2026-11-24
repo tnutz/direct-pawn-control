@@ -1,0 +1,72 @@
+{
+ "id": "tavern-lean-3",
+ "title": "Report check: taking control of a pawn leaning on a tavern wall (DPC 0.9.175)",
+ "intro": "A player reported a crash when taking control of the main pawn in a tavern while he leaned against a wall. SAVE THE GAME FIRST: this may crash. Go into a tavern (the test puts you back on the Arisen), co-op off. This test records what every pawn is doing (also to a flight file, so we keep it even if the game crashes).",
+ "requires": {
+  "DirectPawnControl": "0.9.175",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_tavern-lean-3.json",
+  "show": [
+   "nodes"
+  ],
+  "probes": {
+   "nodes": "local pm = sdk.get_managed_singleton('app.PawnManager'); local l = pm and pm:call('get_PawnCharacterList'); if not l then return '' end; local t = {}; for i = 0, l:call('get_Count') - 1 do local c = l:call('get_Item', i); local ok, s = pcall(function() local f = c:call('get_ActionManager'):get_field('Fsm'); return tostring(f:call('getCurrentNodeName(System.UInt32)', 0)) .. ' | ' .. tostring(f:call('getCurrentNodeName(System.UInt32)', 1)) end); t[#t + 1] = (ok and s or '?') end; return table.concat(t, ' / ')",
+   "dpc": "local D = _G.DPC_dbg; return D and (D.state.active and 'playing a pawn' or 'Arisen') or ''",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready: saved, in a tavern, playing the Arisen. Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "Stand still near a wall until your main pawn leans on it (or sits, or poses). It can take a minute or two; the pawn row on screen shows what each pawn is doing. End once he's posing (don't take control yet).",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "nodes",
+     "agg": "last",
+     "label": "pawns' actions (layer 0 | layer 1)"
+    }
+   ]
+  },
+  {
+   "text": "Now take control of your main pawn the usual way, while he's still posing. If the game crashes, just restart and tell Claude. Otherwise walk around a bit, then go back to the Arisen. End when done.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "dpc",
+     "agg": "last",
+     "label": "who you play at the end"
+    },
+    {
+     "probe": "nodes",
+     "agg": "last",
+     "label": "pawns' actions at the end"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: crash or not, and what the pawn was doing.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ]
+  }
+ ]
+}

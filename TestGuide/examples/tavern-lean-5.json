@@ -1,0 +1,153 @@
+{
+ "id": "tavern-lean-5",
+ "title": "Tavern lean: find a safe way to get a played pawn out of a lean (DPC 0.9.176-dev2)",
+ "intro": "tavern-lean-4 showed it: the freeze comes from DPC force-ending the pawn's lean (the AI decision). With that off, the pawn just stays stuck in the lean. This run keeps it off and tries three gentler ways out, one per step. Any of them could still freeze the game, so SAVE FIRST. Tavern; the test puts you on the Arisen. Press End.",
+ "requires": {
+  "DirectPawnControl": "0.9.176-dev2",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_tavern-lean-5.json",
+  "show": [
+   "dpc",
+   "mine"
+  ],
+  "probes": {
+   "nodes": "local pm = sdk.get_managed_singleton('app.PawnManager'); local l = pm and pm:call('get_PawnCharacterList'); if not l then return '' end; local t = {}; for i = 0, l:call('get_Count') - 1 do local c = l:call('get_Item', i); local ok, s = pcall(function() local f = c:call('get_ActionManager'):get_field('Fsm'); return tostring(f:call('getCurrentNodeName(System.UInt32)', 0)) .. ' | ' .. tostring(f:call('getCurrentNodeName(System.UInt32)', 1)) end); t[#t + 1] = (ok and s or '?') end; return table.concat(t, ' / ')",
+   "dpc": "local D = _G.DPC_dbg; return D and (D.state.active and 'playing a pawn' or 'Arisen') or ''",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "decision": "local pm=sdk.get_managed_singleton('app.PawnManager'); local l=pm and pm:call('get_PawnCharacterList'); if not l then return '' end; local t={}; for i=0,l:call('get_Count')-1 do local c=l:call('get_Item',i); local ok,s=pcall(function() local ex=c:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_DecisionExecutor'); local d=ex:call('get_ExecutingDecision'); return d and d:get_type_definition():get_full_name() or 'none' end); t[#t+1]=ok and s or '?' end; return table.concat(t,' / ')",
+   "mine": "local D=_G.DPC_dbg; return D and D.R.trace_pawn_state and D.R.trace_pawn_state() or ''"
+  }
+ },
+ "steps": [
+  {
+   "text": "1/7 Get ready: saved, in a tavern, playing the Arisen. Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "2/7 Stand still near a wall until your main pawn leans on it (or sits, or poses). It can take a minute or two; the pawn row on screen shows what each pawn is doing. End once he's posing (don't take control yet).",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "nodes",
+     "agg": "last",
+     "label": "pawns' actions (layer 0 | layer 1)"
+    },
+    {
+     "probe": "decision",
+     "agg": "last",
+     "label": "pawns' running AI decision"
+    }
+   ]
+  },
+  {
+   "text": "3/7 Take control of your main pawn while he leans (the AI interrupt is off, so he'll probably be stuck). Try to move. End.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "mine",
+     "agg": "last",
+     "label": "played pawn: action | decision (pack)"
+    }
+   ],
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "possess_interrupt_ai",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "dev_trace_frames",
+     "value": 300
+    }
+   ]
+  },
+  {
+   "text": "4/7 Try 1: DPC now asks the game to put him back into normal walking. Try to move. Note whether he's free. If the game freezes, close it, restart and tell Claude which try. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "pawn_ai",
+     "how": "loco"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mine",
+     "agg": "last",
+     "label": "played pawn after this try"
+    }
+   ]
+  },
+  {
+   "text": "5/7 Try 2: DPC now asks the game to make him idle. Try to move. Note whether he's free. If the game freezes, close it, restart and tell Claude which try. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "pawn_ai",
+     "how": "idle"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mine",
+     "agg": "last",
+     "label": "played pawn after this try"
+    }
+   ]
+  },
+  {
+   "text": "6/7 Try 3: DPC now asks the game to end his AI decision the normal way (not forced). Try to move. Note whether he's free. If the game freezes, close it, restart and tell Claude which try. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "pawn_ai",
+     "how": "end"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "mine",
+     "agg": "last",
+     "label": "played pawn after this try"
+    }
+   ]
+  },
+  {
+   "text": "7/7 Back to the Arisen. Tell Claude which try freed him, if any. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "set",
+     "key": "possess_interrupt_ai",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "dev_trace_frames",
+     "value": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ]
+}

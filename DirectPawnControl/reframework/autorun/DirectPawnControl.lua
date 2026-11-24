@@ -98,7 +98,7 @@
 --   release possession first; the release skips action requests when it is a teardown.
 --   Native release no longer calls :release() on the processor / lock-on objects.
 
-local VERSION = "0.9.175"
+local VERSION = "0.9.176"
 
 -- v0.9.7 Dev HUD status (TestGuide 2.0 shows it): errors that used to be swallowed by pcall, and whether the
 -- settings file saved. Written to data/dev_status/DirectPawnControl.json once a second.
@@ -108,9 +108,16 @@ local dev = { errors = 0, last_error = nil, last_error_t = nil, save_ok = nil, n
 --   arisen: drives the Arisen through the brain's input injection (stick + action flags), bypassing the brain's rules.
 -- Each entry expires on its own (secs), so a lost command can never leave a button held.
 local robot = { pad = nil, arisen = nil, uses = 0 }
+local dev_error_seen = {}
 local function dev_error(where, err)
     dev.errors = dev.errors + 1
     dev.last_error, dev.last_error_t = where .. ": " .. tostring(err), os.clock()
+    -- 0.9.176-dev17: the first error of each kind goes to the log too (these were invisible: a stop that failed
+    -- every frame left no trace)
+    if not dev_error_seen[where] then
+        dev_error_seen[where] = true
+        pcall(function() log.info("[DirectPawnControl] error in " .. where .. ": " .. tostring(err)) end)
+    end
 end
 local CONFIG_PATH = "DirectPawnControl.json"
 local TRACE_PATH = "DPC_trace.json"
@@ -323,11 +330,14 @@ local cfg = {
     coop_warp_p2 = true,              -- v0.9.41: the party warp key also brings player 2's pawn in co-op
     coop_no_gyro = true,              -- v0.9.39: in co-op the controller's motion sensor does not aim the Arisen
     possess_interrupt_ai = true,      -- v0.9.38: end the pawn's running AI action when taking control
+    possess_unlean = true,            -- 0.9.176: a pawn leaning on a wall (object interaction) stands up before you take it over
+    dev_trace_frames = 0,             -- 0.9.176-dev1 (dev): trace every stage of the first N frames after a take-over
     pawn_interact = true,             -- v0.9.26: the possessed pawn gathers / loots himself (own prompt + Interact button)
     pawn_loot_to_arisen = false,      -- 0.9.174: what the played pawn loots / gathers goes into the Arisen's bag (as in vanilla); other mods can set it (DPC_API.override)
     pawn_interact_range = 2.2,        -- m
     cycle_switches_now = false,       -- v0.9.90: F7 while possessing switches pawn at once (the old behaviour) instead of selecting
     show_legacy = false,              -- v0.9.82: the advanced / test / legacy bin of the settings window
+    exp_pawn_cbt = false,             -- 0.9.176-dev12 (experiment, was pawn_job_input): run the Arisen's customizeButtonTrigger on the played pawn's processor. Measured: L2 already carries ActCancel for every vocation, so this changed nothing for the cancel
     pawn_aim_skills = true,           -- v0.9.87: bow pawns: L2 + face button = the aimed skill, whatever the Arisen's vocation
     pawn_hip_skill_aim = true,        -- v0.9.167: an Archer pawn's skill used from the hip keeps its aim up until it fires
     pad_hold_select = true,           -- v0.9.96: hold a D-pad direction: left / right select, up switch, down back to the Arisen
@@ -391,6 +401,7 @@ local cfg = {
     test_custom = { enemy = 1, count = 1, dist = 14.0, angle = 0, still = true, around = "arisen" },
     migrated_081 = false,
     migrated_0811 = false,
+    migrated_0176 = false,
     -- Subsystem toggles for Mode 2 (all safe, can be toggled live):
     sub_camera_attach = true,       -- Attach MainCameraController to Pawn
     sub_disable_arisen_pip = true,  -- Block Arisen PlayerInputProcessor:update() while possessing
@@ -637,6 +648,17 @@ if not cfg.migrated_0974 then
     cfg.migrated_0974 = true
     save_cfg()
 end
+if not cfg.migrated_0176 then
+    -- 0.9.176: two settings that dev test plans (tavern-lean-4..7) switched for a step and that the next save kept:
+    -- the AI interrupt at take-over (off = a taken-over pawn ran on with its AI's last move) and the take-over trace.
+    -- Only where the trace is on (a dev-only setting no player changes), so a player's own choice stays.
+    if (cfg.dev_trace_frames or 0) ~= 0 then
+        cfg.possess_interrupt_ai = true
+        cfg.dev_trace_frames = 0
+    end
+    cfg.migrated_0176 = true
+    save_cfg()
+end
 if not cfg.migrated_0811 then
     -- v0.8.11: Thief gets native controls (retest under the v0.7.5 app.Player.update timing)
     cfg.native_skip_thief = false
@@ -666,7 +688,7 @@ local trace_steps = {}
 local function write_trace(step_name, extra)
     table.insert(trace_steps, string.format("[%.3f] %s%s",
         os.clock(), tostring(step_name), extra and (" | " .. tostring(extra)) or ""))
-    while #trace_steps > 50 do table.remove(trace_steps, 1) end
+    while #trace_steps > (((cfg and (cfg.dev_trace_frames or 0)) or 0) > 0 and 400 or 50) do table.remove(trace_steps, 1) end
     if json and json.dump_file then
         R.dump(TRACE_PATH, {
             version = VERSION,
@@ -5254,6 +5276,164 @@ local function install_teardown_hooks()
 end
 install_teardown_hooks()
 
+-- 0.9.176 Leaning pawns (tavern freeze report). A pawn leaning on a wall is in an object interaction
+-- (AI pack Common/InteractingWithObject, gimmick Gm80_079 / app.GmAIInteract_02) and its body is held by a motion
+-- jack. Ending it from outside (DecisionExecutor.forceEndDecision at take-over, or InteractManager.cancelInteract)
+-- runs GmAIInteract_02.onCancelInteractBase -> Gm80_079_interact.requestEndJack -> AdjustJack.reject, which hit an
+-- access violation in the engine on a played pawn and froze the game (tavern-lean-3/4/6; the stack is in
+-- REFramework's log). Not ending it left the pawn stuck in the lean (tavern-lean-4/5). The game's own way out is an
+-- abort: ActiveInteract.IsNeedAbort, which InteractManager handles in its update (onAbortInteractBase). So before a
+-- take-over, a pawn in an object interaction is asked to abort and the take-over waits (up to 3 s) until it is
+-- free; and the "pawn runs off on an order" guard never force-ends a decision while an interaction is active.
+R.busy_interact = function(ch)
+    local im = ch and sdk.get_managed_singleton("app.InteractManager")
+    if not im then return nil end
+    local ok, ai = pcall(im.call, im, "getActiveInteract(app.Character)", ch)
+    return ok and ai or nil
+end
+R.abort_interact = function(ch)
+    local ai = R.busy_interact(ch)
+    if not ai then return false end
+    local ok = pcall(ai.set_field, ai, "IsNeedAbort", true)
+    return ok
+end
+-- 0.9.176-dev7 co-op: the same stand-up-first for co-op take-overs (co-op start, the co-op character change,
+-- players 2+ taking a pawn). R.unlean_defer(list of {chara, name}, fn, label): if any of them is in an object
+-- interaction, ask it to abort, run fn once all are free (checked every frame, up to 3 s) and return true; else false.
+R.unlean_q = {}
+R.unlean_defer = function(list, fn, label)
+    if not cfg.possess_unlean then return false end
+    local busy = {}
+    for _, it in ipairs(list) do
+        if it.chara and R.busy_interact(it.chara) then R.abort_interact(it.chara); busy[#busy + 1] = it end
+    end
+    if #busy == 0 then return false end
+    local now = os.clock()
+    for _, q in ipairs(R.unlean_q) do if q.label == label then return true end end -- already waiting for this
+    local names = {}
+    for _, it in ipairs(busy) do names[#names + 1] = tostring(it.name) end
+    R.unlean_q[#R.unlean_q + 1] = { list = busy, fn = fn, label = label, t0 = now, t_end = now + 3.0, names = table.concat(names, ", ") }
+    log_msg(label .. ": " .. table.concat(names, ", ") .. " in an object interaction (leaning, sitting...): asked to stop first")
+    R.note = { text = table.concat(names, ", ") .. " stands up...", t_end = now + 1.5 }
+    return true
+end
+R.unlean_tick = function()
+    if #R.unlean_q == 0 then return end
+    local now = os.clock()
+    local q = R.unlean_q[1]
+    local free = true
+    for _, it in ipairs(q.list) do if R.busy_interact(it.chara) then free = false end end
+    if free then
+        table.remove(R.unlean_q, 1)
+        log_msg(q.label .. ": " .. q.names .. " free after " .. string.format("%.2f", now - q.t0) .. " s")
+        local ok, err = pcall(q.fn)
+        if not ok then log_msg(q.label .. " after stand-up failed: " .. tostring(err)) end
+    elseif now > q.t_end then
+        table.remove(R.unlean_q, 1)
+        log_msg(q.label .. " cancelled: " .. q.names .. " still in an object interaction after 3 s")
+        R.note = { text = q.names .. " is busy, try again", t_end = now + 2.5 }
+    end
+end
+R.chara_of_idx = function(idx)
+    if type(idx) ~= "number" then return nil end
+    for _, e in ipairs((R.party_all and R.party_all()) or get_party()) do
+        if e.idx == idx then return { chara = e.chara, name = e.name } end
+    end
+    return nil
+end
+R.possess_wait_tick = function()
+    local w = R.possess_wait
+    if not w then return end
+    local now = os.clock()
+    if not R.busy_interact(w.chara) then
+        R.possess_wait = nil
+        log_msg(tostring(w.name) .. " is free of the interaction after " .. string.format("%.2f", now - w.t0) .. " s; taking control")
+        R.possess_retry = true
+        R.start_possession(w.idx)
+        R.possess_retry = nil
+    elseif now > w.t_end then
+        R.possess_wait = nil
+        log_msg("Take-over of " .. tostring(w.name) .. " cancelled: still in an object interaction after 3 s")
+        R.note = { text = tostring(w.name) .. " is busy, try again", t_end = now + 2.5 }
+    end
+end
+-- 0.9.176-dev4 (dev) lean lab: find lean spots, make a pawn use one, abort it. {"cmd":"lean","how":...,"idx":n}
+R.lean_lab = function(how, idx)
+    local pm = sdk.get_managed_singleton("app.PawnManager")
+    local list = pm and pm:call("get_PawnCharacterList")
+    if idx and idx < 0 and list then -- -1: the first pawn that is in an object interaction (leaning...)
+        for i = 0, list:call("get_Count") - 1 do
+            if R.busy_interact(list:call("get_Item", i)) then idx = i; break end
+        end
+        if idx < 0 then return "no pawn is in an interaction" end
+    end
+    local ch = list and idx and idx < list:call("get_Count") and list:call("get_Item", idx) or nil
+    if how == "coop" then
+        log_msg("lean lab: co-op start on pawn " .. tostring(idx) .. (R.busy_interact(ch) and " (in an interaction)" or ""))
+        local party = get_party and get_party() or {}
+        for _, e in ipairs(party) do
+            if e.chara and ch and e.chara:get_address() == ch:get_address() then R.coop_start(e.idx); return "ok" end
+        end
+        return "pawn not in the party list"
+    end
+    if how == "possess" then
+        log_msg("lean lab: taking control of pawn " .. tostring(idx) .. (R.busy_interact(ch) and " (in an interaction)" or ""))
+        local party = get_party and get_party() or {}
+        for _, e in ipairs(party) do
+            if e.chara and ch and e.chara:get_address() == ch:get_address() then R.start_possession(e.idx); return "ok" end
+        end
+        return "pawn not in the party list"
+    end
+    local im = sdk.get_managed_singleton("app.InteractManager")
+    if how == "abort" then
+        local ok = R.abort_interact(ch)
+        log_msg("lean lab abort pawn " .. tostring(idx) .. ": " .. tostring(ok))
+        return ok and "ok" or "not in an interaction"
+    end
+    -- find lean gimmicks in the scene
+    local scene = sdk.call_native_func(sdk.get_native_singleton("via.SceneManager"), sdk.find_type_definition("via.SceneManager"), "get_CurrentScene")
+    local comps = scene:call("findComponents(System.Type)", sdk.typeof("app.GmAIInteract_02"))
+    local spots = {}
+    local cpos = ch and ch:call("get_GameObject"):call("get_Transform"):call("get_Position")
+    local n = 0
+    pcall(function() n = comps:get_size() end)
+    if n == 0 then pcall(function() n = comps:call("get_Length") end) end
+    for i = 0, n - 1 do
+        local c = comps[i]
+        local go = c and c:call("get_GameObject")
+        local io = c and c:get_field("InteractiveObject") -- GimmickBase.InteractiveObject (+0x288), not a component
+        local pno = 0
+        pcall(function() local l = c:get_field("InteractNoList"); if l and l:call("get_Count") > 0 then pno = l:call("get_Item", 0) end end)
+        local busy = false
+        pcall(function() busy = c:call("IsInteract()") end)
+        local pos = go and go:call("get_Transform"):call("get_Position")
+        local d = (cpos and pos) and (pos - cpos):length() or -1
+        spots[#spots + 1] = { go = go, io = io, d = d, name = go and go:call("get_Name"), pno = pno, busy = busy }
+    end
+    table.sort(spots, function(a, b) return a.d < b.d end)
+    local names = {}
+    for i = 1, math.min(6, #spots) do names[#names + 1] = string.format("%s %.1fm pt%s%s%s", tostring(spots[i].name), spots[i].d, tostring(spots[i].pno), spots[i].io and "" or " (no InteractiveObject)", spots[i].busy and " (in use)" or "") end
+    if how == "find" then
+        R.lean_spots = table.concat(names, ", ")
+        log_msg("lean lab: " .. #spots .. " AI interact spots near pawn " .. tostring(idx) .. ": " .. R.lean_spots)
+        return "ok"
+    end
+    if how == "force" and ch and im then
+        for _, sp in ipairs(spots) do
+            if sp.io and not sp.busy and sp.d >= 0 and sp.d < 25 then
+                local pt = sdk.create_instance("app.InteractManager.InteractPoint"):add_ref()
+                pt:set_field("Object", sp.io)
+                pt:set_field("PointNo", sp.pno or 0)
+                im:call("addActiveInteract(app.Character, app.InteractManager.InteractPoint)", ch, pt)
+                im:call("executeInteract(app.Character)", ch)
+                log_msg(string.format("lean lab force: pawn %d -> %s (%.1f m)", idx, tostring(sp.name), sp.d))
+                return "ok"
+            end
+        end
+        return "no spot within 25 m"
+    end
+    return "unknown how"
+end
 local function start_possession(target_pawn_idx)
     write_trace("start_possession begin", tostring(target_pawn_idx))
     ensure_enums()
@@ -5290,6 +5470,15 @@ local function start_possession(target_pawn_idx)
 
     if call(entry.chara, "get_IsDead") or call(entry.chara, "get_IsDown") then
         log_msg("Cannot possess " .. entry.name .. ": Pawn is currently downed/dead.")
+        return false
+    end
+    if cfg.possess_unlean and R.busy_interact(entry.chara) then
+        R.abort_interact(entry.chara)
+        if not R.possess_wait then
+            R.possess_wait = { idx = entry.idx, chara = entry.chara, name = entry.name, t0 = os.clock(), t_end = os.clock() + 3.0 }
+            log_msg(tostring(entry.name) .. " is in an object interaction (leaning, sitting...): asked it to stop before taking control")
+            R.note = { text = tostring(entry.name) .. " stands up...", t_end = os.clock() + 1.5 }
+        end
         return false
     end
 
@@ -6203,6 +6392,10 @@ local function coop_force_kbm_glyphs()
 end
 
 local function coop_start(idx)
+    do
+        local it = R.chara_of_idx(idx or cfg.selected_pawn_idx or 0)
+        if it and R.unlean_defer({ it }, function() coop_start(idx) end, "Co-op start") then return false end
+    end
     if state.active then release_possession("starting co-op") end
     ensure_enums()
     coop_apply_overrides()
@@ -8075,17 +8268,88 @@ end
 -- v0.9.38 / 0.9.88 end whatever the pawn's AI is doing. At possession start, and (0.9.88) again whenever a decision is
 -- found running while he is possessed: a pawn order given during possession (Go, Come, Help, Wait reach every pawn)
 -- started a new one and the possessed pawn ran off on it (reported: a possessed Archer pawn was still running around from an earlier order).
+-- 0.9.176-dev1 (tavern hang): one line on what the played pawn is doing, for the per-frame trace
+R.trace_pawn_state = function()
+    local pc = state.pawn_chara
+    if not pc then return nil end
+    local out = "?"
+    pcall(function()
+        local f = pc:call("get_ActionManager"):get_field("Fsm")
+        out = tostring(f:call("getCurrentNodeName(System.UInt32)", 0)) .. " | " .. tostring(f:call("getCurrentNodeName(System.UInt32)", 1))
+    end)
+    pcall(function()
+        local aidm = call(pc, "get_AIDecisionMaker")
+        local ex = aidm and call(aidm, "get_DecisionModule"):call("get_DecisionExecutor")
+        local d = ex and ex:call("get_ExecutingDecision")
+        local pk = d and d:call("get_ActionPackData")
+        local pn = "none"
+        if pk then pcall(function() pn = tostring(pk:call("get_Path") or pk:call("ToString")) end) end
+        out = out .. " | decision " .. (d and pn or "none")
+    end)
+    pcall(function()
+        local im = sdk.get_managed_singleton("app.InteractManager")
+        out = out .. " | interact " .. ((im and im:call("getActiveInteract(app.Character)", pc)) and "active" or "none")
+    end)
+    return out
+end
+R.pawn_ai_try = function(how)
+    local pc = state.pawn_chara
+    if not pc then return "no pawn played" end
+    local ok, err = pcall(function()
+        if how == "loco" then
+            pc:call("get_ActionManager"):call("requestActionCore(app.ActionManager.Priority, System.String, System.UInt32)", 0, "NormalLocomotion", 0)
+        elseif how == "idle" then
+            local sel = pc:call("get_HumanActionSelector")
+            sel:call("requestIdleImpl(System.Boolean)", true)
+        elseif how == "end" then
+            local ex = pc:call("get_AIDecisionMaker"):call("get_DecisionModule"):call("get_DecisionExecutor")
+            ex:call("endDecision")
+        elseif how == "im_cancel" or how == "im_end" then
+            local im = sdk.get_managed_singleton("app.InteractManager")
+            im:call((how == "im_cancel" and "cancelInteract" or "endInteract") .. "(app.Character)", pc)
+        elseif how == "npc_cancel" then
+            sdk.find_type_definition("app.NPCUtil"):get_method("cancelInteract(app.Character, System.Boolean, System.Boolean)"):call(nil, pc, false, false)
+        else
+            error("unknown how " .. tostring(how))
+        end
+    end)
+    log_msg("pawn_ai " .. tostring(how) .. ": " .. (ok and "done" or tostring(err)) .. " | " .. tostring(R.trace_pawn_state and R.trace_pawn_state()))
+    return ok and "ok" or tostring(err)
+end
 R.interrupt_ai = function(chara, name, with_idle)
     local did = {}
-    pcall(function()
+    -- 0.9.176-dev16: the pack the AI was running (its move to a target, ch1_Move_Run_Target) kept steering a pawn
+    -- after the take-over: ending the DECISION doesn't stop it, and with the pawn's thinking held off nothing else
+    -- does. The pack runs in the decision module's ActionInterface; its executor (app.actinter.Executor, read from
+    -- DD2.exe: _State 2 = done) is told to end it, which is what forceEndActionForState does (sets _State 3, the
+    -- executor finishes it on its own next update).
+    local okx, errx = pcall(function()
+        local aidm = call(chara, "get_AIDecisionMaker") or field(chara, "<AIDecisionMaker>k__BackingField")
+        local dm = aidm and (call(aidm, "get_DecisionModule") or field(aidm, "<DecisionModule>k__BackingField"))
+        local ai = dm and field(dm, "<ActionInterface>k__BackingField")
+        local ex = ai and field(ai, "<Executor>k__BackingField")
+        local st = ex and field(ex, "_State")
+        if ex and type(st) == "number" and st ~= 2 and field(ex, "_CurrentNode") ~= nil and not R.busy_interact(chara) then
+            ex:call("forceEndActionForState")
+            did[#did + 1] = "action pack ended (state " .. st .. ")"
+        end
+    end)
+    if not okx then dev_error("interrupt_ai pack", errx) end
+    local okd, errd = pcall(function()
         local aidm = call(chara, "get_AIDecisionMaker") or field(chara, "<AIDecisionMaker>k__BackingField")
         local dm = aidm and (call(aidm, "get_DecisionModule") or field(aidm, "<DecisionModule>k__BackingField"))
         local ex = dm and dm:call("get_DecisionExecutor")
         if ex and ex:call("get_ExecutingDecision") ~= nil then
-            ex:call("forceEndDecision")
-            did[#did + 1] = "decision ended"
+            if R.busy_interact(chara) then
+                -- 0.9.176: never force-end while an object interaction holds the pawn (freeze); abort it instead
+                if R.abort_interact(chara) then did[#did + 1] = "interaction abort asked" end
+            else
+                ex:call("forceEndDecision")
+                did[#did + 1] = "decision ended"
+            end
         end
     end)
+    if not okd then dev_error("interrupt_ai decision", errd) end
     if with_idle or #did > 0 then
         pcall(function()
             local sel = call(chara, "get_HumanActionSelector")
@@ -9088,9 +9352,10 @@ R.ai_watch = function()
     R.cling_watch()
     R.cam_watch()
     if state.active and not R.aim_hooked then R.aim_install() end -- 0.9.143: the camera-switch hook is needed for every pawn
-    if not (cfg.possess_interrupt_ai and state.active and state.pawn_chara) then return end
-    R.navi_stop()
-    R.move_stop()
+    if not (state.active and state.pawn_chara) then return end
+    R.navi_stop() -- their own switches (possess_stop_navi / possess_stop_move); 0.9.176-dev17: no longer also behind
+    R.move_stop() -- possess_interrupt_ai, so turning that off doesn't leave the pawn following its last move
+    if not cfg.possess_interrupt_ai then return end
     local now = os.clock()
     if now < (R.ai_watch_next or 0) then return end
     R.ai_watch_next = now + 0.25
@@ -9734,6 +9999,59 @@ local function pawn_do_skill_slot(slot_1_to_4, speed_type, ax, ay, mag) -- slot 
     return true
 end
 
+-- 0.9.176-dev9: end the played pawn's current skill (chant cancel). Logs whether it took.
+function R.cancel_skill(sk, why)
+    local sel = state.pawn_chara and call(state.pawn_chara, "get_HumanActionSelector")
+    if not sel then return false end
+    call(sel, "requestEndAction()")
+    local cur_sel = field(sel, "CurrentSelector")
+    if cur_sel then call(cur_sel, "requestEndAction()") end
+    state.active_cast = nil
+    state.pending_skill = nil
+    R.cancel_n = (R.cancel_n or 0) + 1
+    R.cancel_check = { t = os.clock() + 0.25, sk = sk, n = R.cancel_n }
+    log_msg(string.format("%s during %s: requestEndAction (%d)", why or "cancel", skill_name(sk), R.cancel_n))
+    return true
+end
+
+-- dev14: the gates the game's sheathe / cancel code checks (read from DD2.exe 4.1: processSheathe, processCancelSkill)
+function R.cancel_gates(sk)
+    local function tr(t)
+        if not t then return "nil" end
+        local function b(n) return field(t, n) and "1" or "0" end
+        return "Cancel " .. b("Cancel") .. " CancelBuf " .. b("CancelBuffer") .. " All " .. b("All") .. " AllBuf " .. b("AllBuffer")
+            .. " SpFlag " .. b("SpecialFlag") .. " NormAtk " .. b("NormalAttack") .. " ClrNA " .. b("IsClearNormalAttack")
+    end
+    local pip = native.pip
+    local hu, ch = state.pawn_human, state.pawn_chara
+    local wd = ch and field(ch, "WeaponDrawContext")
+    local pt = pip and call(pip, "get_PlayerTrack")
+    log_msg(string.format("gates %s: drawn=%s disSheathe=%s atkState=%s pipTrack=%s | Track: %s | Upper: %s | input same=%s",
+        skill_name(sk), tostring(wd and field(wd, "IsDrawedWeapon")), tostring(pip and field(pip, "IsDisableSheatheButton")),
+        tostring(hu and call(hu, "get_AttackState")),
+        (pt and hu and addr_of(pt) == addr_of(field(hu, "Track"))) and "Track" or (pt and hu and addr_of(pt) == addr_of(field(hu, "UpperTrack"))) and "Upper" or tostring(pt),
+        tr(hu and field(hu, "Track")), tr(hu and field(hu, "UpperTrack")),
+        tostring(ch and state.pawn_input and addr_of(call(ch, "get_Input")) == addr_of(state.pawn_input))))
+end
+
+function R.cancel_pending_tick()
+    local c = R.cancel_pending
+    if not c or os.clock() < c.t then return end
+    R.cancel_pending = nil
+    local now_sk = state.pawn_human and call(state.pawn_human, "get_CustomSkillState") or 0
+    if now_sk == c.sk then R.cancel_skill(c.sk, "L2")
+    else log_msg("L2: the game ended " .. skill_name(c.sk) .. " by itself") end
+end
+
+function R.cancel_check_tick()
+    local c = R.cancel_check
+    if not c or os.clock() < c.t then return end
+    R.cancel_check = nil
+    local now_sk = state.pawn_human and call(state.pawn_human, "get_CustomSkillState") or 0
+    log_msg(string.format("cancel %d: skill %s after 0.25 s (%s)", c.n, skill_name(now_sk),
+        (now_sk == c.sk) and "STILL ACTIVE" or "ended"))
+end
+
 local function pawn_do_jump(speed_type, ax, ay, mag)
     local pawn_chara = state.pawn_chara
     local sel = pawn_chara and call(pawn_chara, "get_HumanActionSelector")
@@ -9936,6 +10254,29 @@ local function update_puppeteer_controls(is_first_frame)
                 if R.row_pressed(row) then add_trg = add_trg | f end
                 if state["native_k" .. n] and not R.row_down(row) then add_rel = add_rel | f end
                 state["native_k" .. n] = R.row_down(row)
+            end
+        end
+        -- 0.9.176-dev9: L2 / LT cancels a chant. The flags come from the ARISEN's input, built for his vocation, so a
+        -- played mage never gets the game's cancel (report: "can't cancel spells"; Levin on a played Mage). dev8 added
+        -- ActCancel to the pawn's flags: it never cancelled and made the button guide show follow-up attacks, so the
+        -- flags are left alone now. On the press, while the played pawn is in a skill, end the action directly (the
+        -- same calls DPC's jump-cancel uses) and check 0.25 s later whether the skill ended.
+        local src = (ACTION_FLAGS.Sheathe or 0) | (ACTION_FLAGS.Draw or 0) | (ACTION_FLAGS.ActCancel or 0)
+        local l2 = ((R.pad_values and R.pad_values() or {}).LTrigBottom) or 0x200
+        local l2_trg = (pad_buttons & l2) ~= 0 and (pad_prev & l2) == 0
+        -- Mage / Sorcerer only: on other vocations the same button aims (Archer) or sheathes, and vanilla doesn't cancel
+        -- their skills with it.
+        if ((trg_flags & src) ~= 0 or l2_trg) and state.pawn_human and (state.pawn_job == 3 or state.pawn_job == 6) then
+            local sk = call(state.pawn_human, "get_CustomSkillState") or 0
+            if type(sk) == "number" and sk ~= 0 then
+                if R.dev then
+                    R.cprobe.until_t, R.cprobe.n = os.clock() + 1.5, 0
+                    pcall(R.cancel_gates, sk)
+                    -- dev: wait 0.3 s first, so the log shows whether the game cancels by itself
+                    R.cancel_pending = { t = os.clock() + 0.3, sk = sk }
+                else
+                    R.cancel_skill(sk, "L2")
+                end
             end
         end
         if add_on ~= 0 or add_trg ~= 0 or add_rel ~= 0 then
@@ -10216,7 +10557,7 @@ local function update_puppeteer_controls(is_first_frame)
                 R.loot_window_open() -- 0.9.174: hand what this gives to the Arisen, if that option is on
                 local pt = sdk.create_instance("app.InteractManager.InteractPoint"):add_ref()
                 pt:set_field("Object", obj)
-                pt:set_field("PointNo", 0)
+                pt:set_field("PointNo", sp.pno or 0)
                 im:call("addActiveInteract(app.Character, app.InteractManager.InteractPoint)", state.pawn_chara, pt)
                 im:call("executeInteract(app.Character)", state.pawn_chara)
                 if R.int_item then
@@ -11185,7 +11526,25 @@ local function poll_cmd_file()
         end
     elseif d.cmd == "solo" then
         brain.solo = d.on == true
+    elseif d.cmd == "lean" then
+        local ok, r = pcall(R.lean_lab, tostring(d.how), tonumber(d.idx) or 0)
+        res = ok and tostring(r) or ("error: " .. tostring(r))
+        if not ok then log_msg("lean lab error: " .. tostring(r)) end
+    elseif d.cmd == "pawn_ai" then
+        -- 0.9.176-dev2 (dev, tavern hang): ways to get the played pawn out of a lean without forceEndDecision,
+        -- which froze the game twice on a pawn leaning on a tavern wall. {"cmd":"pawn_ai","how":"loco"|"idle"|"end"}
+        res = R.pawn_ai_try(tostring(d.how))
     elseif d.cmd == "set" and type(d.key) == "string" and cfg[d.key] ~= nil and type(cfg[d.key]) == type(d.value) then
+        -- 0.9.176-dev17: a test plan's settings last for the session only. tavern-lean-4..7 switched
+        -- possess_interrupt_ai off for a step; the plans were stopped before their restore step, and the next menu
+        -- save kept it off, so taken-over pawns ran on with their AI's last move (found in the player's config).
+        -- Unless the plan asks to save, the value saved stays the player's (same path as DPC_API overrides).
+        if not d.save then
+            dev.api_overrides = dev.api_overrides or {}
+            local reg = dev.api_overrides[d.key]
+            if not reg then dev.api_overrides[d.key] = { saved = cfg[d.key], value = d.value, by = "test plan" }
+            else reg.value = d.value end
+        end
         cfg[d.key] = d.value
         if d.save then save_cfg() end
     else
@@ -11389,6 +11748,7 @@ R.cp_apply = function(want, why)
     if not c.on or c.busy then return false end
     local a, b = want[1], want[2]
     if a == nil or b == nil or a == b then return false end
+    if R.unlean_defer({ R.chara_of_idx(a) or {}, R.chara_of_idx(b) or {} }, function() R.cp_apply(want, why) end, "Co-op change") then return true end
     -- 0.9.172: a pawn a player 3+ holds is not taken from them
     for _, v in ipairs({ a, b }) do
         if type(v) == "number" and R.np then
@@ -11542,6 +11902,9 @@ R.s2_start = function(idx, s)
     if state.active and state.pawn_idx == idx then return false end
     if R.held_by and R.held_by(idx, s) then R.cp_event("second pawn: " .. tostring(entry.name) .. " is played by someone else"); return false end
     if not R.cr_ok(entry.chara) then R.cp_event("second pawn: " .. tostring(entry.name) .. " is down"); return false end
+    if R.unlean_defer({ { chara = entry.chara, name = entry.name } }, function() R.s2_start(idx, s) end, "Player " .. tostring(pn) .. " take-over") then
+        return true -- pending: taken once the pawn has stood up
+    end
     local ar = quick_arisen()
     local apip = ar and call(ar, "get_InputProcessor")
     local input = call(entry.chara, "get_Input")
@@ -12740,8 +13103,32 @@ re.on_pre_application_entry("UpdateBehavior", function()
 
     state.frames_since_start = state.frames_since_start + 1
     local is_first_frame = (state.frames_since_start == 1)
-    if is_first_frame then
-        write_trace("frame1: begin post-possession tick")
+    -- 0.9.176-dev1: dev_trace_frames > 0 traces every stage of the first N frames after a take-over (tavern hang)
+    local tr = state.frames_since_start <= math.max(1, cfg.dev_trace_frames or 0)
+    R.tr_frame = tr and state.frames_since_start or nil
+    if tr then
+        write_trace(string.format("f%d: begin post-possession tick", state.frames_since_start), R.trace_pawn_state and R.trace_pawn_state() or nil)
+    end
+    -- 0.9.176-dev15: "the pawn keeps running somewhere after the take-over and I don't get control" (long-standing).
+    -- For the first 8 s, every 0.5 s: what the pawn's action layers and AI decision are, how far it moved, and the
+    -- stick. A pawn that moves with the stick at rest is being driven by something else; this says what.
+    if state.frames_since_start == 1 then R.run_watch = R.dev and { t0 = os.clock(), next_t = 0, last = nil } or nil end
+    if R.run_watch and os.clock() - R.run_watch.t0 < 8 and os.clock() >= R.run_watch.next_t then
+        local w = R.run_watch
+        w.next_t = os.clock() + 0.5
+        pcall(function()
+            local p = state.pawn_chara:call("get_GameObject"):call("get_Transform"):call("get_Position")
+            local moved = w.last and math.sqrt((p.x - w.last.x) ^ 2 + (p.z - w.last.z) ^ 2) or 0
+            w.last = { x = p.x, z = p.z }
+            local exs = "?"
+            pcall(function()
+                local dm = state.pawn_chara:call("get_AIDecisionMaker"):call("get_DecisionModule")
+                local ex = field(field(dm, "<ActionInterface>k__BackingField"), "<Executor>k__BackingField")
+                exs = tostring(field(ex, "_State")) .. (field(ex, "_CurrentNode") and " node" or " no node")
+            end)
+            log_msg(string.format("run watch %.1fs: moved %.2f m, stick %.2f, pack %s | %s", os.clock() - w.t0, moved,
+                state.last_stick_mag or 0, exs, tostring(R.trace_pawn_state and R.trace_pawn_state())))
+        end)
     end
 
     -- 2. Safety Guards: Auto-release if Pawn or Arisen is invalid, dead, downed, or in cutscene
@@ -12784,19 +13171,19 @@ re.on_pre_application_entry("UpdateBehavior", function()
 
     -- 3. Keep Pawn AI suppressed & Camera locked onto Pawn
     if cfg.sub_suppress_ai then
-        if is_first_frame then write_trace("frame1: set_pawn_ai_suppressed") end
+        if tr then write_trace(string.format("f%d: set_pawn_ai_suppressed", state.frames_since_start)) end
         set_pawn_ai_suppressed(state.pawn_chara, state.pawn_obj, true, false)
     end
     if cfg.sub_camera_attach then
-        if is_first_frame then write_trace("frame1: attach_camera_to") end
+        if tr then write_trace(string.format("f%d: attach_camera_to", state.frames_since_start)) end
         attach_camera_to(state.pawn_go)
     end
 
     -- 4. In Mode 2 / Mode 3, run ActionSelector / Locomotion Puppeteer
     if cfg.control_mode == 2 or cfg.control_mode == 3 then
-        if is_first_frame then write_trace("frame1: update_puppeteer_controls begin") end
+        if tr then write_trace(string.format("f%d: update_puppeteer_controls begin", state.frames_since_start)) end
         guarded_tick("update_puppeteer_controls", update_puppeteer_controls, is_first_frame)
-        if is_first_frame then write_trace("frame1: update_puppeteer_controls done") end
+        if tr then write_trace(string.format("f%d: update_puppeteer_controls done", state.frames_since_start)) end
     end
 
     -- 4b. Keep the native HUD pointed at the pawn
@@ -12804,15 +13191,15 @@ re.on_pre_application_entry("UpdateBehavior", function()
     guarded_tick("flush_input_log", flush_input_log)
 
     -- 5. Update Arisen tether / auto-follow
-    if is_first_frame then write_trace("frame1: update_arisen_tether") end
+    if tr then write_trace(string.format("f%d: update_arisen_tether", state.frames_since_start)) end
     guarded_tick("update_arisen_tether", update_arisen_tether)
 
     -- 6. v0.8 Arisen combat brain (decides; the PlayerInputProcessor hook applies it)
     guarded_tick("arisen_brain", brain_tick)
     guarded_tick("arisen_brain_dump", brain_dump)
 
-    if is_first_frame then
-        write_trace("frame1: SURVIVED full post-possession tick!")
+    if tr then
+        write_trace(string.format("f%d: SURVIVED full post-possession tick", state.frames_since_start))
     end
 end)
 
@@ -13343,6 +13730,105 @@ R.lis_tick = function() -- before UpdateBehavior, every frame
 end
 re.on_application_entry("LateUpdateBehavior", function() if R.lis.want or R.lis.want_prev then pcall(R.lis_measure) end end)
 re.on_pre_application_entry("UpdateBehavior", function() pcall(R.lis_tick) end)
+R.start_possession = start_possession
+R.coop_start = coop_start
+re.on_pre_application_entry("UpdateBehavior", function() pcall(R.possess_wait_tick) end)
+re.on_pre_application_entry("UpdateBehavior", function() pcall(R.unlean_tick) end)
+re.on_pre_application_entry("UpdateBehavior", function() if R.cancel_check then pcall(R.cancel_check_tick) end end)
+re.on_pre_application_entry("UpdateBehavior", function() if R.cancel_pending then pcall(R.cancel_pending_tick) end end)
+
+-- 0.9.176-dev11 the root of "the pawn's buttons are the Arisen's". The game builds a character's input flags in
+-- CharacterInput.processPadAssign: every binding of a pressed button (L2 = Sheathe, Draw, ActCancel, AimHold ...)
+-- goes through CustomizeButtonTriggerHandler, which is the owner's PlayerInputProcessor.customizeButtonTrigger, and
+-- that processor keeps what fits ITS vocation and state (a chanting mage keeps ActCancel). DPC mirrors the Arisen's
+-- flags onto the played pawn, so they were always filtered by the Arisen's job: a played mage couldn't cancel, a
+-- played archer couldn't aim with a non-bow Arisen, and any vocation added by another mod depends on luck.
+-- While a pawn is played (single player), the Arisen's call runs on the pawn's processor instead, so the flags are
+-- the ones the game would build if the pawn were the player. The Arisen's own processor is muted meanwhile anyway.
+R.cbt = { src = 0, dst = 0, log = true, seen = {}, n = 0 }
+R.cbt_tick = function()
+    local c = R.cbt
+    if cfg.exp_pawn_cbt and state.active and not coop.active and native.pip and not native.failed
+        and state.arisen_pip_addr and state.arisen_pip_addr ~= 0 then
+        c.src, c.dst = state.arisen_pip_addr, addr_of(native.pip) or 0
+    else
+        c.src, c.dst = 0, 0
+    end
+end
+if R.dev then -- dev builds only (experiment, off by default)
+    local td = sdk.find_type_definition("app.PlayerInputProcessor")
+    local m = td and td:get_method("customizeButtonTrigger(System.UInt64, System.UInt64, via.hid.GamePadButton, System.Collections.Generic.IReadOnlyList`1<app.CharacterPadAssign.Info>)")
+    m = m or (td and td:get_method("customizeButtonTrigger"))
+    if m then
+        sdk.hook(m, function(args)
+            local c = R.cbt
+            if c.src == 0 then return end
+            local this = sdk.to_int64(args[2])
+            if this ~= c.src or c.dst == 0 then return end
+            args[2] = sdk.to_ptr(c.dst)
+            if c.log and c.n < 300 then
+                local hs = thread.get_hook_storage()
+                hs.a, hs.b, hs.btn = sdk.to_int64(args[3]), sdk.to_int64(args[4]), sdk.to_int64(args[5]) & 0xFFFFFFFF
+                hs.on = true
+            end
+        end, function(retval)
+            local c = R.cbt
+            if c.log and c.n < 300 and c.src ~= 0 then
+                local hs = thread.get_hook_storage()
+                if hs and hs.on then
+                    hs.on = false
+                    local r = sdk.to_int64(retval)
+                    local k = string.format("%x|%x|%x|%x", hs.a, hs.b, hs.btn, r)
+                    if not c.seen[k] then
+                        c.seen[k] = true
+                        c.n = c.n + 1
+                        log_msg(string.format("cbt job%s: a=%x b=%x btn=%x -> %x", tostring(state.pawn_job), hs.a, hs.b, hs.btn, r))
+                    end
+                end
+            end
+            return retval
+        end)
+        log_msg("Pawn input by the pawn's vocation: hooked customizeButtonTrigger")
+    else
+        log_msg("Pawn input by the pawn's vocation: customizeButtonTrigger not found (game update?)")
+    end
+end
+re.on_pre_application_entry("UpdateBehavior", function() pcall(R.cbt_tick) end)
+
+-- 0.9.176-dev13 probe: does the played pawn's processor ever take the game's cancel path? For 1.5 s after an L2
+-- press during a skill, log every call (with its result) to the methods the game uses to cancel a skill.
+R.cprobe = { until_t = 0, n = 0 }
+if R.dev then -- dev builds only
+    local function probe(tn, sig, label)
+        local td = sdk.find_type_definition(tn)
+        local m = td and td:get_method(sig)
+        if not m then log_msg("cancel probe: " .. tn .. "." .. sig .. " not found"); return end
+        sdk.hook(m, function(args)
+            if os.clock() > R.cprobe.until_t then return end
+            local hs = thread.get_hook_storage()
+            hs.cp_this = sdk.to_int64(args[2])
+            hs.cp_a = args[3] and sdk.to_int64(args[3]) or nil
+        end, function(retval)
+            if os.clock() > R.cprobe.until_t or R.cprobe.n > 200 then return retval end
+            local hs = thread.get_hook_storage()
+            if not hs or not hs.cp_this then return retval end
+            R.cprobe.n = R.cprobe.n + 1
+            local who = (native.pip and hs.cp_this == addr_of(native.pip)) and "pawn pip"
+                or (hs.cp_this == state.arisen_pip_addr) and "Arisen pip" or string.format("%x", hs.cp_this)
+            log_msg(string.format("cancel probe: %s by %s arg=%s -> %s", label, who,
+                hs.cp_a and string.format("%x", hs.cp_a) or "-", tostring(sdk.to_int64(retval) & 0xFF)))
+            hs.cp_this = nil
+            return retval
+        end)
+    end
+    probe("app.PlayerInputProcessor", "processCancelSkill", "processCancelSkill")
+    probe("app.PlayerInputProcessorDetail", "acceptCancel", "acceptCancel")
+    probe("app.PlayerInputProcessorDetail", "isSkillCancelableMagic", "isSkillCancelableMagic")
+    probe("app.PlayerInputProcessorDetail", "isSkillCancelable", "isSkillCancelable")
+    probe("app.Job03InputProcessor", "isSkillCancelable", "Job03.isSkillCancelable")
+    probe("app.PlayerInputProcessor", "processSheathe", "processSheathe")
+    probe("app.HumanActionSelector", "requestSheatheWeapon", "requestSheatheWeapon")
+end
 
 R.pf_restore_all = function(why)
     pcall(function() -- 0.9.172: the listener's offset back (not during a load: the object may be gone; a new one starts clean)

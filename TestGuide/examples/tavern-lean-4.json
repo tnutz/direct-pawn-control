@@ -1,0 +1,102 @@
+{
+ "id": "tavern-lean-4",
+ "title": "Tavern hang: take control of a leaning pawn with the AI interrupt off, traced frame by frame (DPC 0.9.176-dev1)",
+ "intro": "tavern-lean-3 froze the game right after taking control of the main pawn while he leaned on a wall. This run turns off one suspect (DPC ending the pawn's AI action at take-over) and writes a trace of every frame after the take-over to disk, so we see where it stops even if it freezes again. SAVE FIRST. Go into a tavern; the test puts you on the Arisen. Press End.",
+ "requires": {
+  "DirectPawnControl": "0.9.176-dev1",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_tavern-lean-4.json",
+  "show": [
+   "nodes"
+  ],
+  "probes": {
+   "nodes": "local pm = sdk.get_managed_singleton('app.PawnManager'); local l = pm and pm:call('get_PawnCharacterList'); if not l then return '' end; local t = {}; for i = 0, l:call('get_Count') - 1 do local c = l:call('get_Item', i); local ok, s = pcall(function() local f = c:call('get_ActionManager'):get_field('Fsm'); return tostring(f:call('getCurrentNodeName(System.UInt32)', 0)) .. ' | ' .. tostring(f:call('getCurrentNodeName(System.UInt32)', 1)) end); t[#t + 1] = (ok and s or '?') end; return table.concat(t, ' / ')",
+   "dpc": "local D = _G.DPC_dbg; return D and (D.state.active and 'playing a pawn' or 'Arisen') or ''",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "decision": "local pm=sdk.get_managed_singleton('app.PawnManager'); local l=pm and pm:call('get_PawnCharacterList'); if not l then return '' end; local t={}; for i=0,l:call('get_Count')-1 do local c=l:call('get_Item',i); local ok,s=pcall(function() local ex=c:call('get_AIDecisionMaker'):call('get_DecisionModule'):call('get_DecisionExecutor'); local d=ex:call('get_ExecutingDecision'); return d and d:get_type_definition():get_full_name() or 'none' end); t[#t+1]=ok and s or '?' end; return table.concat(t,' / ')"
+  }
+ },
+ "steps": [
+  {
+   "text": "Get ready: saved, in a tavern, playing the Arisen. Press End.",
+   "wait": true,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "Stand still near a wall until your main pawn leans on it (or sits, or poses). It can take a minute or two; the pawn row on screen shows what each pawn is doing. End once he's posing (don't take control yet).",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "nodes",
+     "agg": "last",
+     "label": "pawns' actions (layer 0 | layer 1)"
+    },
+    {
+     "probe": "decision",
+     "agg": "last",
+     "label": "pawns' running AI decision"
+    }
+   ]
+  },
+  {
+   "text": "Now take control of your main pawn the usual way, while he's still posing (the AI interrupt is off for this try). If the game freezes, close it, restart, and tell Claude. Otherwise walk around a bit, go back to the Arisen, End.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "dpc",
+     "agg": "last",
+     "label": "who you play at the end"
+    },
+    {
+     "probe": "nodes",
+     "agg": "last",
+     "label": "pawns' actions at the end"
+    }
+   ],
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "possess_interrupt_ai",
+     "value": false
+    },
+    {
+     "cmd": "set",
+     "key": "dev_trace_frames",
+     "value": 300
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: crash or not, and what the pawn was doing.",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "no DPC errors",
+     "op": "==",
+     "value": 0
+    }
+   ],
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "possess_interrupt_ai",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "dev_trace_frames",
+     "value": 0
+    }
+   ]
+  }
+ ]
+}

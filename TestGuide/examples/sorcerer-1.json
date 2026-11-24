@@ -1,0 +1,124 @@
+{
+ "id": "sorcerer-1",
+ "title": "Sorcerer pawn: Galvanize and cancelling a spell (DPC 0.9.175)",
+ "intro": "A player: Galvanize on his played Sorcerer pawn doesn't restore stamina, and he can't cancel spells. You need a SORCERER pawn in the party (hire one at a riftstone, or switch a pawn's vocation). Outdoors, co-op off. A training dummy appears ahead. About 4 minutes. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.175",
+  "TestGuide": "2.7"
+ },
+ "steps": [
+  {
+   "text": "1/4 Take control of your Sorcerer pawn yourself (F6 / L1 + left stick click on it). Then press End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 10,
+     "angle": 0,
+     "still": true
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "last",
+     "label": "vocation of the played pawn (6 = Sorcerer)"
+    }
+   ]
+  },
+  {
+   "text": "2/4 GALVANIZE: use up stamina (cast spells or sprint) until the bar is below half. Then stand still and HOLD the Galvanize button for 5 seconds (keyboard: V; on the controller it's the button the Sorcerer skill menu lists for Galvanize). Does the bar refill faster? End.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "stam",
+     "agg": "min",
+     "label": "lowest stamina"
+    },
+    {
+     "probe": "stam",
+     "agg": "last",
+     "label": "stamina at the end"
+    },
+    {
+     "probe": "conc",
+     "agg": "last",
+     "label": "Galvanize: input checks / started"
+    },
+    {
+     "probe": "recov",
+     "agg": "last",
+     "label": "stamina recovery blockers"
+    },
+    {
+     "probe": "nodes",
+     "agg": "last",
+     "label": "pawn's action at the end"
+    }
+   ]
+  },
+  {
+   "text": "3/4 CANCEL: start chanting a spell on the dummy (L1 + a face button), and while it charges try, one at a time: B / Circle, then A / X (jump), then the Galvanize button. Do it a few times. Note which one stops the chant. End.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "sk_now",
+     "agg": "max",
+     "label": "a spell was chanted (skill id)"
+    },
+    {
+     "probe": "nodes",
+     "agg": "last",
+     "label": "pawn's action at the end"
+    }
+   ]
+  },
+  {
+   "text": "4/4 Done, back to the Arisen. Tell Claude what happened in steps 2 and 3. End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_sorcerer-1.json",
+  "show": [
+   "who",
+   "stam",
+   "conc",
+   "nodes"
+  ],
+  "probes": {
+   "who": "local D=_G.DPC_dbg; return D and (D.state.active and ('playing '..tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "stam": "local D=_G.DPC_dbg; local pc=D and D.state.pawn_chara; if not pc then return -1 end; local ok,v=pcall(function() local sm=pc:call('get_StaminaManager'); return math.floor(sm:call('get_RemainingAmount')) end); return ok and v or -1",
+   "stam_max": "local D=_G.DPC_dbg; local pc=D and D.state.pawn_chara; if not pc then return -1 end; local ok,v=pcall(function() return math.floor(pc:call('get_StaminaManager'):call('get_MaxValue')) end); return ok and v or -1",
+   "recov": "local D=_G.DPC_dbg; local pc=D and D.state.pawn_chara; if not pc then return '' end; local ok,s=pcall(function() local c=pc:call('get_Human'):call('get_HumanStaminaCtrl'); return 'disable '..tostring(c:get_field('DisableRecoverStamina'))..' ext '..tostring(c:get_field('IsRequestDisableRecoverStaminaFromExternal'))..' fsm '..tostring(c:get_field('IsRequestDisableRecoverStaminaFromFsm'))..' add '..string.format('%.2f',c:get_field('StaminaAddValue') or 0) end); return ok and s or 'err'",
+   "nodes": "local D=_G.DPC_dbg; local pc=D and D.state.pawn_chara; if not pc then return '' end; local ok,s=pcall(function() local f=pc:call('get_ActionManager'):get_field('Fsm'); return tostring(f:call('getCurrentNodeName(System.UInt32)',0))..' | '..tostring(f:call('getCurrentNodeName(System.UInt32)',1)) end); return ok and s or '?'",
+   "conc": "if not _G.__dpc_conc then _G.__dpc_conc={n=0,ok=0,en=0}; local td=sdk.find_type_definition('app.JobMagicUserInputProcessor'); local m=td:get_method('processConcentrate()'); if m then pcall(sdk.hook,m,function(a) local D=_G.DPC_dbg; if D and D.state.active then _G.__dpc_conc.n=_G.__dpc_conc.n+1 end end,function(r) local D=_G.DPC_dbg; if D and D.state.active and (sdk.to_int64(r)&1)==1 then _G.__dpc_conc.ok=_G.__dpc_conc.ok+1 end return r end) end end return _G.__dpc_conc.n..' calls, '.._G.__dpc_conc.ok..' started'",
+   "job": "local D=_G.DPC_dbg; return D and tostring(D.state.pawn_job) or ''",
+   "sk_now": "local D=_G.DPC_dbg; local pc=D and D.state.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ }
+}

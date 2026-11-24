@@ -1,0 +1,142 @@
+{
+ "id": "lean-lab-3",
+ "title": "Lean lab: abort a real lean, then take over a leaning pawn (DPC 0.9.176-dev6)",
+ "intro": "Forcing a lean doesn't work (only the pawn's AI starts one), but in lean-lab-2 the second Archer pawn was leaning the whole time. This test works on whichever pawn is leaning: the pawn row on screen shows IN INTERACTION. SAVE FIRST. Press End to start.",
+ "requires": {
+  "DirectPawnControl": "0.9.176-dev6",
+  "TestGuide": "2.7"
+ },
+ "steps": [
+  {
+   "text": "1/6 Tavern, playing the Arisen, SAVE FIRST. Wait until the pawn row on screen shows IN INTERACTION for one pawn (in lean-lab-2 the second Archer pawn was already leaning). Then End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "pawns at the start"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "2/6 (automatic) Asking the leaning pawn to stop the game's way (abort), without you playing it. Watch it.",
+   "secs": 8,
+   "cmds": [
+    {
+     "cmd": "lean",
+     "how": "abort",
+     "idx": -1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "after the abort"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "3/6 Wait until a pawn shows IN INTERACTION again (leaning), then End.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "leaning again"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "4/6 (automatic) Taking control of the leaning pawn: DPC should make it stand up first, then hand it to you.",
+   "secs": 8,
+   "cmds": [
+    {
+     "cmd": "lean",
+     "how": "possess",
+     "idx": -1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "after the take-over"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "5/6 Walk around as that pawn: can it move? End.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "while you play it"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "6/6 Back to the Arisen. Tell Claude: did it stand up in step 2, and could you move it in step 5? End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_lean-lab-3.json",
+  "show": [
+   "who",
+   "pawns"
+  ],
+  "probes": {
+   "who": "local D=_G.DPC_dbg; return D and (D.state.active and ('playing '..tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "pawns": "local D=_G.DPC_dbg; local pm=sdk.get_managed_singleton('app.PawnManager'); local l=pm and pm:call('get_PawnCharacterList'); if not (D and l) then return '' end; local t={}; for i=0,l:call('get_Count')-1 do local c=l:call('get_Item',i); local n='?'; pcall(function() n=tostring(c:call('get_ActionManager'):get_field('Fsm'):call('getCurrentNodeName(System.UInt32)',0)) end); t[#t+1]=i..':'..(D.R.busy_interact(c) and 'IN INTERACTION ' or '')..n end; return table.concat(t,' / ')",
+   "spots": "local D=_G.DPC_dbg; return D and tostring(D.R.lean_spots) or ''",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ }
+}

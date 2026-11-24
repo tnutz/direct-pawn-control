@@ -1,0 +1,189 @@
+{
+ "id": "lean-lab-2",
+ "title": "Lean lab: force a lean, end it safely, take over a leaning pawn (DPC 0.9.176-dev5)",
+ "intro": "lean-lab-1 found the lean spots but couldn't use them (the spot's interaction object sits on the gimmick, not as a component). Fixed; same test again. SAVE FIRST. Press End to start; most steps run by themselves.",
+ "requires": {
+  "DirectPawnControl": "0.9.176-dev5",
+  "TestGuide": "2.7"
+ },
+ "steps": [
+  {
+   "text": "1/8 In the tavern (or anywhere with pawns near walls), playing the Arisen, pawns standing near you. SAVE FIRST. Press End; the next steps run by themselves.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "pawns at the start"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "2/8 (automatic) Looking for lean spots near your main pawn.",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "lean",
+     "how": "find",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "spots",
+     "agg": "last",
+     "label": "lean spots found (nearest first)"
+    }
+   ]
+  },
+  {
+   "text": "3/8 (automatic) Making your main pawn lean on the nearest spot. Watch him.",
+   "secs": 10,
+   "cmds": [
+    {
+     "cmd": "lean",
+     "how": "force",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "after forcing the lean"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "4/8 (automatic) Asking him to stop leaning the game's way (abort), without you playing him.",
+   "secs": 8,
+   "cmds": [
+    {
+     "cmd": "lean",
+     "how": "abort",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "after the abort"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "5/8 (automatic) Making him lean again.",
+   "secs": 10,
+   "cmds": [
+    {
+     "cmd": "lean",
+     "how": "force",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "leaning again"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "6/8 (automatic) Taking control of him while he leans: DPC should make him stand up first, then hand him to you.",
+   "secs": 8,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "after the take-over"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "7/8 You play him now (if the take-over worked). Walk around: can he move? End.",
+   "secs": 3600,
+   "expect": [
+    {
+     "probe": "pawns",
+     "agg": "last",
+     "label": "while you play him"
+    },
+    {
+     "probe": "who",
+     "agg": "last",
+     "label": "who you play"
+    }
+   ]
+  },
+  {
+   "text": "8/8 Back to the Arisen. Tell Claude: did he lean in step 3, stand up in step 4, and could you move him in step 7? End.",
+   "secs": 3600,
+   "cmds": [
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "op": "==",
+     "value": 0,
+     "label": "no DPC errors"
+    }
+   ]
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_lean-lab-2.json",
+  "show": [
+   "who",
+   "pawns"
+  ],
+  "probes": {
+   "who": "local D=_G.DPC_dbg; return D and (D.state.active and ('playing '..tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "pawns": "local D=_G.DPC_dbg; local pm=sdk.get_managed_singleton('app.PawnManager'); local l=pm and pm:call('get_PawnCharacterList'); if not (D and l) then return '' end; local t={}; for i=0,l:call('get_Count')-1 do local c=l:call('get_Item',i); local n='?'; pcall(function() n=tostring(c:call('get_ActionManager'):get_field('Fsm'):call('getCurrentNodeName(System.UInt32)',0)) end); t[#t+1]=i..':'..(D.R.busy_interact(c) and 'IN INTERACTION ' or '')..n end; return table.concat(t,' / ')",
+   "spots": "local D=_G.DPC_dbg; return D and tostring(D.R.lean_spots) or ''",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ }
+}
