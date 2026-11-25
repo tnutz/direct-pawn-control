@@ -331,6 +331,8 @@ local cfg = {
     coop_no_gyro = true,              -- v0.9.39: in co-op the controller's motion sensor does not aim the Arisen
     possess_interrupt_ai = true,      -- v0.9.38: end the pawn's running AI action when taking control
     possess_unlean = true,            -- 0.9.176: a pawn leaning on a wall (object interaction) stands up before you take it over
+    galvanize_watch = true,           -- 0.9.177-dev1: log one "Galvanize watch" line per Mage / Sorcerer Galvanize hold (reads only)
+    pawn_stale_dash_fix = true,       -- 0.9.177-dev1: clear a played pawn's IsDash left on while the stick is at rest (stamina keeps draining)
     dev_trace_frames = 0,             -- 0.9.176-dev1 (dev): trace every stage of the first N frames after a take-over
     pawn_interact = true,             -- v0.9.26: the possessed pawn gathers / loots himself (own prompt + Interact button)
     pawn_loot_to_arisen = false,      -- 0.9.174: what the played pawn loots / gathers goes into the Arisen's bag (as in vanilla); other mods can set it (DPC_API.override)
@@ -4372,6 +4374,9 @@ local function quick_skill(slot, idx)
     if held and held.id == id and quick.STANCE[id] then -- the stance is ordered again: end it
         quick.hold_end(pw:get_address(), "ordered again")
         pcall(function()
+            -- 0.9.177-dev1: not inside an object interaction (lean / sit: freeze, rule 24); the stance has
+            -- already been let go above, the pawn's AI ends it once the interaction is over
+            if R.busy_interact and R.busy_interact(pw) then R.abort_interact(pw); return end
             local ex = pw:call("get_AIDecisionMaker"):call("get_DecisionModule"):call("get_ActionInterface"):call("get_Executor")
             ex:call("forceEndAction")
         end)
@@ -9295,6 +9300,20 @@ R.move_stop = function()
         if not (c and c.running and c.name) then return end
         local taking = now < (R.move_take_until or 0)
         if not (taking or c.name:find("app.actinter.cmd.move.", 1, true) == 1 or c.name == "app.actinter.cmd.JumpGrab") then return end
+        -- 0.9.177-dev1 (tavern lean, PXXXND's report): never force-end while an object interaction holds the pawn.
+        -- The take-over waits until the pawn is free of its lean (0.9.176), but the AI pack it was running
+        -- (InteractingWithObject) can still be walking it to the wall: the lean can start inside this 1.5 s window,
+        -- and ending ANY command then goes down the same cancel chain into AdjustJack.reject (dd2-modding rule 24).
+        -- Ask the interaction to abort instead; this check runs again 0.1 s later.
+        if R.busy_interact(state.pawn_chara) then
+            R.abort_interact(state.pawn_chara)
+            R.move_lean_skips = (R.move_lean_skips or 0) + 1
+            if R.move_lean_skips <= 3 then
+                log_msg(string.format("%s is in an object interaction: asked it to stop instead of ending %s",
+                    tostring(state.pawn_name), (c.name:gsub("^app%.actinter%.cmd%.", ""))))
+            end
+            return
+        end
         c.ex:call("forceEndAction")
         R.move_stops = (R.move_stops or 0) + 1
         if taking or now >= (R.move_log_t or 0) then
@@ -10014,6 +10033,18 @@ function R.cancel_skill(sk, why)
     return true
 end
 
+-- 0.9.177-dev1: the same for a pawn played by player 2 (both on pawns) or players 3+ (s = their slot)
+function R.cancel_skill_for(s, sk)
+    local sel = s and s.chara and call(s.chara, "get_HumanActionSelector")
+    if not sel then return false end
+    call(sel, "requestEndAction()")
+    local cur_sel = field(sel, "CurrentSelector")
+    if cur_sel then call(cur_sel, "requestEndAction()") end
+    R.cancel_n = (R.cancel_n or 0) + 1
+    log_msg(string.format("L2 (player %s) during %s: requestEndAction (%d)", tostring(s.player or 2), skill_name(sk), R.cancel_n))
+    return true
+end
+
 -- dev14: the gates the game's sheathe / cancel code checks (read from DD2.exe 4.1: processSheathe, processCancelSkill)
 function R.cancel_gates(sk)
     local function tr(t)
@@ -10256,11 +10287,23 @@ local function update_puppeteer_controls(is_first_frame)
                 state["native_k" .. n] = R.row_down(row)
             end
         end
-        -- 0.9.176-dev9: L2 / LT cancels a chant. The flags come from the ARISEN's input, built for his vocation, so a
-        -- played mage never gets the game's cancel (report: "can't cancel spells"; Levin on a played Mage). dev8 added
-        -- ActCancel to the pawn's flags: it never cancelled and made the button guide show follow-up attacks, so the
-        -- flags are left alone now. On the press, while the played pawn is in a skill, end the action directly (the
-        -- same calls DPC's jump-cancel uses) and check 0.25 s later whether the skill ended.
+        if add_on ~= 0 or add_trg ~= 0 or add_rel ~= 0 then
+            set_field(state.pawn_input, "ButtonOnFlags", on_flags | add_on)
+            set_field(state.pawn_input, "ButtonTriggerFlags", trg_flags | add_trg)
+            set_field(state.pawn_input, "ButtonReleaseFlags", rel_flags | add_rel)
+        end
+    end
+
+    -- 0.9.176-dev9: L2 / LT cancels a chant. The flags come from the ARISEN's input, built for his vocation, so a
+    -- played mage never gets the game's cancel (report: "can't cancel spells"; Levin on a played Mage). dev8 added
+    -- ActCancel to the pawn's flags: it never cancelled and made the button guide show follow-up attacks, so the
+    -- flags are left alone now. On the press, while the played pawn is in a skill, end the action directly (the
+    -- same calls DPC's jump-cancel uses) and check 0.25 s later whether the skill ended.
+    -- 0.9.177-dev1: moved out of the single-player-only block above. In classic co-op player 2 plays this same pawn
+    -- (on_flags / trg_flags and pad_buttons are player 2's controller here, see the co-op block above), and with both
+    -- players on pawns player 1's pawn reads player 1's controller: a played Mage / Sorcerer couldn't cancel there.
+    -- Players on a second pawn (R.s2, players 3+) get the same cancel in R.s2_tick (R.cancel_skill_for).
+    if cfg.native_controls and native.pip and not native.failed and state.pawn_input then
         local src = (ACTION_FLAGS.Sheathe or 0) | (ACTION_FLAGS.Draw or 0) | (ACTION_FLAGS.ActCancel or 0)
         local l2 = ((R.pad_values and R.pad_values() or {}).LTrigBottom) or 0x200
         local l2_trg = (pad_buttons & l2) ~= 0 and (pad_prev & l2) == 0
@@ -10269,20 +10312,15 @@ local function update_puppeteer_controls(is_first_frame)
         if ((trg_flags & src) ~= 0 or l2_trg) and state.pawn_human and (state.pawn_job == 3 or state.pawn_job == 6) then
             local sk = call(state.pawn_human, "get_CustomSkillState") or 0
             if type(sk) == "number" and sk ~= 0 then
-                if R.dev then
+                if R.dev and not coop.active then
                     R.cprobe.until_t, R.cprobe.n = os.clock() + 1.5, 0
                     pcall(R.cancel_gates, sk)
                     -- dev: wait 0.3 s first, so the log shows whether the game cancels by itself
                     R.cancel_pending = { t = os.clock() + 0.3, sk = sk }
                 else
-                    R.cancel_skill(sk, "L2")
+                    R.cancel_skill(sk, coop.active and "L2 (co-op)" or "L2")
                 end
             end
-        end
-        if add_on ~= 0 or add_trg ~= 0 or add_rel ~= 0 then
-            set_field(state.pawn_input, "ButtonOnFlags", on_flags | add_on)
-            set_field(state.pawn_input, "ButtonTriggerFlags", trg_flags | add_trg)
-            set_field(state.pawn_input, "ButtonReleaseFlags", rel_flags | add_rel)
         end
     end
 
@@ -12164,7 +12202,15 @@ R.s2_carry_stop = function(s, now)
         local okc, c = pcall(R.move_cmd, s.chara)
         if okc and c and c.running and c.name then
             local taking = now < (s.move_take_until or 0)
-            if taking or c.name:find("app.actinter.cmd.move.", 1, true) == 1 or c.name == "app.actinter.cmd.JumpGrab" then
+            if (taking or c.name:find("app.actinter.cmd.move.", 1, true) == 1 or c.name == "app.actinter.cmd.JumpGrab")
+                and R.busy_interact(s.chara) then
+                -- 0.9.177-dev1: never force-end inside an object interaction (lean / sit: freeze); abort it instead
+                R.abort_interact(s.chara)
+                s.lean_skips = (s.lean_skips or 0) + 1
+                if s.lean_skips <= 3 then
+                    R.cp_event(string.format("%s: %s is in an object interaction, asked it to stop", R.cp_label(s.player or 2), tostring(s.name)))
+                end
+            elseif taking or c.name:find("app.actinter.cmd.move.", 1, true) == 1 or c.name == "app.actinter.cmd.JumpGrab" then
                 pcall(c.ex.call, c.ex, "forceEndAction")
                 s.move_stops = (s.move_stops or 0) + 1
                 if (s.move_stops or 0) <= 3 then
@@ -12253,6 +12299,18 @@ R.s2_tick = function(s)
     local trg, rel = on & ~(s.prev_on or 0), (s.prev_on or 0) & ~on
     s.prev_on = on
     s.last_on, s.last_mag = on, mag
+    -- 0.9.177-dev1: L2 chant cancel for a Mage / Sorcerer on a second pawn (player 2 with both on pawns, players 3+),
+    -- the same as the main played pawn's (see the 0.9.176 cancel in the main loop)
+    do
+        local l2 = pv.LTrigBottom or 0x200
+        local l2_trg = (raw & l2) ~= 0 and ((s.l2_prev or 0) & l2) == 0
+        s.l2_prev = raw
+        local src = (ACTION_FLAGS.Sheathe or 0) | (ACTION_FLAGS.Draw or 0) | (ACTION_FLAGS.ActCancel or 0)
+        if (l2_trg or (trg & src) ~= 0) and (s.job == 3 or s.job == 6) and s.human then
+            local sk = call(s.human, "get_CustomSkillState") or 0
+            if type(sk) == "number" and sk ~= 0 then pcall(R.cancel_skill_for, s, sk) end
+        end
+    end
     local inp = s.input
     local okw, errw = pcall(function()
         inp:set_field("ButtonOnFlags", on)
@@ -13736,6 +13794,116 @@ re.on_pre_application_entry("UpdateBehavior", function() pcall(R.possess_wait_ti
 re.on_pre_application_entry("UpdateBehavior", function() pcall(R.unlean_tick) end)
 re.on_pre_application_entry("UpdateBehavior", function() if R.cancel_check then pcall(R.cancel_check_tick) end end)
 re.on_pre_application_entry("UpdateBehavior", function() if R.cancel_pending then pcall(R.cancel_pending_tick) end end)
+
+-- 0.9.177-dev1 Galvanize watch (report: "Galvanize on my controlled Sorcerer pawn doesn't restore stamina").
+-- The cause is not known yet, so this only measures. While a Mage / Sorcerer (the played pawn, or the Arisen when
+-- nothing is played, as a baseline) holds JobSpecialAction or AttackL outside a chant, it samples every 0.25 s:
+-- stamina, the action nodes, and what HumanStaminaController says about recovery (DisableRecoverStamina bits:
+-- Fsm 1, Sequence 2, RunOut 4, Damage 8, Down 16, Consume 32, SpellStock 64, AfterDash 128, External 256).
+-- When the hold ends (0.6 s or longer) it logs ONE summary line "Galvanize watch: ..." and keeps it in R.galv_last
+-- (also in the dev status). Reads only; nothing is changed. Field names as read live in research/bridge/st3.lua
+-- and TestGuide sorcerer-1 (recov probe).
+R.galv = nil
+R.galv_next = 0
+function R.galv_stam(ch)
+    local sm = call(ch, "get_StaminaManager")
+    return sm and call(sm, "get_RemainingAmount") or nil
+end
+function R.galv_who()
+    if state.active and state.pawn_chara and state.pawn_human and state.pawn_input and not coop.active then
+        return state.pawn_chara, state.pawn_human, state.pawn_input, state.pawn_job, "played pawn"
+    end
+    if state.active or coop.active then return nil end
+    local cm = sdk.get_managed_singleton("app.CharacterManager")
+    local ar = cm and call(cm, "get_ManualPlayer")
+    local hu = ar and call(ar, "get_Human")
+    if not hu then return nil end
+    return ar, hu, state.arisen_input or call(ar, "get_Input"), get_job(hu, ar), "Arisen"
+end
+function R.galv_tick()
+    if cfg.galvanize_watch == false then return end
+    local now = os.clock()
+    if now < R.galv_next then return end
+    R.galv_next = now + 0.25
+    local ch, hu, inp, job, who = R.galv_who()
+    local g = R.galv
+    local held = false
+    if ch and inp and (job == 3 or job == 6) then
+        local mask = (ACTION_FLAGS.JobSpecialAction or 0) | (ACTION_FLAGS.AttackL or 0)
+        local on = field(inp, "ButtonOnFlags") or 0
+        local sk = call(hu, "get_CustomSkillState") or 0
+        held = mask ~= 0 and (on & mask) ~= 0 and sk == 0
+    end
+    local st = ch and R.galv_stam(ch)
+    if held then
+        if not g or g.who ~= who then
+            g = { who = who, job = job, t0 = now, st0 = st, pre = R.galv_pre_rate, n = 0, dis = 0, ext = 0, fsm = 0,
+                  dash = 0, add_min = nil, add_max = nil, nodes = {} }
+            R.galv = g
+        end
+        g.n = g.n + 1
+        g.st1 = st
+        local c = call(hu, "get_HumanStaminaCtrl")
+        if c then
+            local d = field(c, "DisableRecoverStamina") or 0
+            if type(d) == "number" then g.dis = g.dis | d end
+            if field(c, "IsRequestDisableRecoverStaminaFromExternal") then g.ext = g.ext + 1 end
+            if field(c, "IsRequestDisableRecoverStaminaFromFsm") then g.fsm = g.fsm + 1 end
+            local a = field(c, "StaminaAddValue")
+            if type(a) == "number" then
+                g.add_min = math.min(g.add_min or a, a)
+                g.add_max = math.max(g.add_max or a, a)
+            end
+        end
+        if call(hu, "get_IsDash") then g.dash = g.dash + 1 end
+        if #g.nodes < 6 then
+            local n0, n1 = R.node_names(ch)
+            local s = tostring(n0) .. " | " .. tostring(n1)
+            if g.nodes[#g.nodes] ~= s then g.nodes[#g.nodes + 1] = s end
+        end
+        return
+    end
+    if g then
+        R.galv = nil
+        local dt = now - g.t0
+        if dt >= 0.6 then
+            local rate = (g.st0 and g.st1 and dt > 0) and (g.st1 - g.st0) / dt or nil
+            local line = string.format("Galvanize watch (%s, job %s): held %.1f s, stamina %s -> %s (%s/s; before the hold %s/s), DisableRecoverStamina bits %d, external %d/%d, fsm %d/%d, IsDash %d/%d, StaminaAddValue %s..%s, nodes: %s",
+                g.who, tostring(g.job), dt, tostring(g.st0 and math.floor(g.st0) or "?"), tostring(g.st1 and math.floor(g.st1) or "?"),
+                rate and string.format("%.0f", rate) or "?", g.pre and string.format("%.0f", g.pre) or "?",
+                g.dis, g.ext, g.n, g.fsm, g.n, g.dash, g.n,
+                g.add_min and string.format("%.3f", g.add_min) or "?", g.add_max and string.format("%.3f", g.add_max) or "?",
+                table.concat(g.nodes, " ; "))
+            R.galv_last = line
+            log_msg(line)
+        end
+    end
+    -- the stamina rate just before a hold, to compare against (sampled every 0.25 s while not holding)
+    if st and R.galv_prev_st and R.galv_prev_who == who then R.galv_pre_rate = (st - R.galv_prev_st) / 0.25 end
+    R.galv_prev_st, R.galv_prev_who = st, who
+end
+re.on_pre_application_entry("UpdateBehavior", function() pcall(R.galv_tick) end)
+
+-- 0.9.177-dev1 candidate fix (low confidence) for the same report. In 0.9.86 a stuck "Consume" block kept the
+-- Arisen's stamina from coming back, and on release DPC clears the Arisen's IsDash because a dash flag left on keeps
+-- stamina draining. Nothing cleared it on the played pawn under native controls. If the played pawn still has
+-- IsDash set while the stick has been at rest for 0.5 s, clear IsDash / IsPrevDash (what the game does when you stop
+-- sprinting). Off with cfg.pawn_stale_dash_fix = false. Counted in R.stale_dash_n; the first 3 are logged.
+R.stale_dash_since = nil
+function R.stale_dash_tick()
+    if not cfg.pawn_stale_dash_fix or not cfg.native_controls then R.stale_dash_since = nil; return end
+    local hu = state.active and not coop.active and state.pawn_human
+    if not hu or (state.last_stick_mag or 0) >= 0.1 or not call(hu, "get_IsDash") then R.stale_dash_since = nil; return end
+    local now = os.clock()
+    if not R.stale_dash_since then R.stale_dash_since = now; return end
+    if now - R.stale_dash_since < 0.5 then return end
+    call(hu, "set_IsDash(System.Boolean)", false)
+    call(hu, "set_IsPrevDash(System.Boolean)", false)
+    R.stale_dash_since = nil
+    R.stale_dash_n = (R.stale_dash_n or 0) + 1
+    if R.stale_dash_n <= 3 then log_msg(string.format("played pawn: IsDash was still on with the stick at rest, cleared (%d)", R.stale_dash_n)) end
+end
+re.on_pre_application_entry("UpdateBehavior", function() pcall(R.stale_dash_tick) end)
 
 -- 0.9.176-dev11 the root of "the pawn's buttons are the Arisen's". The game builds a character's input flags in
 -- CharacterInput.processPadAssign: every binding of a pressed button (L2 = Sheathe, Draw, ActCancel, AimHold ...)
@@ -15520,6 +15688,7 @@ dash_label = { text = R.dash_n_text or 0, seen = R.dash_seen, repoints = R.hud_r
         gyro = { blocked = R.gyro_blocked or 0, cleared = R.gyro_cleared or 0 },
         arrows = R.arrows and R.arrows.n or nil,
         stam_joint = R.stam_joint_name,
+        galvanize = R.galv_last, stale_dash = R.stale_dash_n or 0,
     })
 end)
 

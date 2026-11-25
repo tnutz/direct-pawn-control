@@ -8,6 +8,13 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 
 ## Changelog & Engineering Post-Mortem
 
+### 0.9.177-dev1 (2026-11-25): branch fix/galvanize-and-lean-guards, for testing (VERSION stays 0.9.176)
+Two Nexus reports (PXXXND): Galvanize on a played Sorcerer doesn't restore stamina and spells can't be cancelled; a crash taking control of the main pawn while it leaned on a wall in a tavern (on 0.9.170, before the 0.9.176 lean fix). Read from code only, not run in game.
+- **Lean / sit, hardening.** 0.9.176 waits for a leaning pawn to be free before the take-over, but three later paths still force-ended an action with no interaction check: `R.move_stop` (ends any running command for 1.5 s after a take-over; the AI's InteractingWithObject pack can start the lean inside that window), the co-op carry stop (`R.s2_carry_stop`), and the quick-skill stance end. Each now asks the interaction to abort (`R.abort_interact`) instead of force-ending while `R.busy_interact` is true (rule 24: force-end inside an interaction crashes in `AdjustJack.reject`).
+- **Chant cancel in co-op.** The 0.9.176 L2 cancel only ran in single player (`not coop.active`). It now also runs when player 2 plays the main pawn (classic co-op, and both players on pawns), and for second-pawn / players 3+ slots in `R.s2_tick` (`R.cancel_skill_for`). Single player is unchanged.
+- **Galvanize, diagnosis.** Cause not found from code. New read-only "Galvanize watch": while a Mage / Sorcerer (the played pawn, or the Arisen when nothing is played, as a baseline) holds JobSpecialAction or AttackL outside a chant, it samples stamina, action nodes and `HumanStaminaController` (DisableRecoverStamina bits, external / Fsm requests, StaminaAddValue) and IsDash, and logs one "Galvanize watch" line when the hold ends (also in the dev status). `cfg.galvanize_watch`.
+- **Galvanize, candidate fix (low confidence).** A played pawn whose IsDash stays on with the stick at rest for 0.5 s gets IsDash / IsPrevDash cleared, as the release path already does for the Arisen (a dash left on blocked stamina recovery there). `cfg.pawn_stale_dash_fix`, logged "IsDash was still on".
+
 ### 0.9.176 (2026-11-23): release (Camera Distance stays 2.9.19)
 - the tester: ship it. Confirmed in game: the lean fix in single player (`lean-lab-3`), L2 chant cancel on a played Mage (Levin, repeatedly, immediate in the release build), take-overs while pawns were running, following and fighting (the stick is the player's at once). **Not run in game:** the co-op version of the lean fix (`coop-lean-1`; pawns rarely lean on demand); Galvanize on a Sorcerer pawn; the one-time settings reset (only where the dev-only trace setting was left on).
 
