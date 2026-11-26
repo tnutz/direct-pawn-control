@@ -4,12 +4,161 @@
 Allow the player to take direct control of their Main Pawn or Hired Pawns in Dragon's Dogma 2 with full camera attachment, locomotion, combat attacks, and equipped vocation skills.
 
 ## Route
-REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
+REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`; since 0.9.178 it loads its parts from
+`reframework/autorun/DirectPawnControl/`, see 0.9.178-dev1)
 
 ## Changelog & Engineering Post-Mortem
 
+### 0.9.178 (2026-11-26): release
+- Released dev20 (fix/lean-guards-galvanize, fast-forwarded into main: the Lua split, headless tooling, lean / onsen guards, Ferrystone crash fix, co-op resume, Ctrl + F6 on a controller, player 2 on the Arisen classic, menus, cards, climbing camera, Galvanize watch, stale-dash fix). Camera Distance 2.9.20 and DPC Split Screen 0.2.0 unchanged.
+- All of it run in game on the test PC on 2026-11-26 (handoff/fix-lean-guards-galvanize.md). Not seen: a pawn sitting on a bench (same path as leaning, which passed).
+
+### 0.9.178-dev20 (2026-11-26): the Arisen's climbing camera no longer holds the view while a pawn is played
+- Test PC: climbing with the Arisen, then switching characters "kept pulling the camera back to the arisen and cancelling the switch". Log: the switches all went through; at the take-over the camera was already the climbing camera (Combat 2 -> Climbing 6, player camera false, 15.9 m from the pawn, target the Arisen) and it stayed until he let go 20 s later. v0.9.143's block only refuses a switch to it.
+- `R.climb_cam_off` (`fixes_world.lua`, from `R.ai_watch`): while a pawn is played (not classic co-op), a climbing camera that is up is switched back to the usual one with the game's own transition (as the bow-aim exit does), at most 4 times a second; logged. Behind `possess_no_climb_cam` (on).
+- Galvanize watch: the tester, "Galvanize seemed to work great" (played Sorcerer).
+
+### 0.9.178-dev19 (2026-11-26): player 1's PS5 touchpad opens the map with player 2 on the Arisen
+- dev18's log: player 1's Options (CRight 0x8000) was seen and opened the pause menu for him; Share and the touchpad never were. Recorded player 1's raw buttons: the touchpad press is `CCenter` (0x10000); Share never reaches the game (kept by Windows / Steam). `R.menu_mask` now has CCenter.
+
+### 0.9.178-dev18 (2026-11-26): whoever opens a menu drives it; the cards show each player's own controller
+- Test PC (P1 the main pawn on a PS5 controller, P2 the Arisen on an Xbox controller), read live: the controllers were right (`R.cp_dev(1)` PS5, `R.cp_dev(2)` Xbox, the game's controller the Xbox) but the cards took theirs from the sides: player 1's card from `R.tp.p1` (the Arisen side: Xbox names), player 2's from `R.tp.p2` (PS5 names); and player 2's card lit with `coop.last_btn`, the pawn side's buttons (player 1's), so player 1's L1 lit both cards. Now each card has its player's own controller (`R.cp_dev`), and player 2's card on the Arisen shows his own buttons (`R.tp_p1()` there).
+- Menus: player 2's Start opened a menu player 1 had to drive (dev16 gave every button-opened menu to player 1); the tester was confused. Now whoever opened it drives it: player 1's menu / map button -> player 1; player 2's button or his own interaction -> player 2. Menu events go to the co-op log (`menu opened: ... drives it`, `player 1 menu / map button`, `menu closed`).
+- Open: player 1's map (PS5 Share / touchpad) did not open the map (dev16). The log lines above will show whether the press was seen; to check in game.
+
+### 0.9.178-dev17 (2026-11-26): the menu note names whoever drives the menu
+- the tester: "it should then show 'player X controls the menu'". Two presses on the other player's controller within 3 s while a menu is open: "Player 1 controls this menu" or "Player 2 controls this menu".
+
+### 0.9.178-dev16 (2026-11-26): a menu stays with whoever opened it
+- Test PC, player 2 on the Arisen at a Rift: the hire screen moved to player 1 half way, then the parting gift back to player 2 (the game reports no menu for a moment between the Rift's screens, so dev12 handed the controller back and forth).
+- Now (`R.p1_menu_want`): a menu opened within 1.5 s of a menu / map button press (either player's) is player 1's; one opened any other way (player 2's own interaction: the Rift, shops, talking) stays with player 2. The owner holds until the menu has been closed for a second, so multi-screen flows do not flip. The "Player 1 controls the menus" note only shows while player 1 drives it.
+
+### 0.9.178-dev15 (2026-11-26): the menu note higher and bigger
+- dev14 confirmed: the note shows over the item menu. the tester: "higher and a bit bigger". Now its own font at 2.1 % of the screen height (`menu_note_size`), at 10 % from the top (`menu_note_y`), box sized from the measured text.
+
+### 0.9.178-dev14 (2026-11-26): the menu note is drawn over the game's menu
+- dev13 in game: no note seen. Read live: the note was set (2.9 s left), but DPC's overlay draw is skipped while the HUD is hidden for a menu (`R.hud_hidden`), the note line with it. A note marked `menu` is now drawn by its own frame callback while the HUD is hidden: centred near the bottom, on a dark box.
+
+### 0.9.178-dev13 (2026-11-26): a note when player 2 presses buttons in a menu player 1 drives
+- dev12 in game: player 1 opens and drives the menu and the map; player 2's Start still opens the pause menu, which then follows player 1 (as meant), so player 2's presses did nothing. Two presses on player 2's controller within 3 s while a menu is open show "Player 1 controls the menus" for 3 s.
+- To check: the note shows over the pause menu (DPC's notes are drawn by REFramework, not the game's GUI).
+
+### 0.9.178-dev12 (2026-11-26): player 1 drives the game's menus while player 2 has the Arisen
+- the tester: everyone should be able to swap around, and "I would like P1 to be the one to control the menus which he seems to be able to do UNLESS someone else is controlling the Arisen". With player 2 on the Arisen (classic) the game's own controller (UserPadManager's active pad) is player 2's, and the menus read only that.
+- `R.p1_menu_want` (`input.lua`, `cfg.coop_menus_p1`, on): while a game menu is open (GuiManager `get_IsPausedGUINoLock` / `get_IsOpenMainFlowUI` / `get_IsOptionMenuOpen`, PauseManager `get_IsPaused`), or for 1.5 s after player 1 presses his menu or map button (via.hid.GamePadButton `CRight` / `CLeft`, read from the enum), `R.pad_active_tick` makes player 1's controller the game's (`changeActiveUserPad`), at once both ways; then player 2's again. A menu player 2 opens also moves to player 1.
+- Not in the fake game (no menu or pause stand-ins); to check in game: player 1 opens the menu and the map with player 2 on the Arisen, both ways back, and player 2 still drives the Arisen after.
+
+### 0.9.178-dev11 (2026-11-26): the controllers no longer swap when co-op resumes with player 2 on the Arisen
+- Test PC, three players (P1 the main pawn, P2 the Arisen, P3 a pawn), Ferrystone: co-op came back with every character right (log: "resume: P1=the main pawn P2=arisen, 1 more (rearranged)"; P3 on a different pawn than before, as expected) but players 1 and 2 had each other's controllers ("P2 took control of the menu").
+- Cause: the resume kept `R.tp.p1 / p2`, which are the Arisen side's and the pawn side's controllers. With player 2 on the Arisen that is player 2's controller first; the classic restart gave it to player 1 (on the Arisen), and the rearrangement swapped them again. Now each person's own controller is kept (`R.cp_dev(1)`, `R.cp_dev(2)`), in `coop.on_release` and in `R.cp_end`. `coop_resume.py` checks the controllers too (fails on dev10).
+- With player 2 on the Arisen (classic), the game's own controller is player 2's: menus follow player 2. That is how the classic arrangement works, not the resume.
+
+### 0.9.178-dev10 (2026-11-26): co-op comes back after a Ferrystone or cutscene, with every player on their character
+- recheck-dev9-1 on the test PC: Ctrl + F6 from keyboard and mouse (dev9) and player 2's camera with both on pawns (dev8): both pass. Galvanize still not run.
+- the tester: "Can we keep co-op on across ferrystones and the like? If not can we save the config we had and restore it after?" Keeping it on is not safe: the Ferrystone crash fix (dev3) lets every played pawn go before the teleport, and cutscenes / loading need the Arisen as the player. So the existing auto-resume (`coop_auto_resume`, off until now; it only restarted classic co-op with player 2 on the pawn) now remembers the arrangement and is on by default (one-time `migrated_auto_resume`).
+- `R.cr_snapshot` (players 1 and 2's characters by name, controllers, players 3+ by controller) is taken in `coop.on_release` and, for the both-pawns arrangement (no classic session to end), in `R.cp_end`. Ended by a player (co-op off, the hotkey, a co-op change...) still ends for good (`R.CR_USER`). After the classic restart `R.cr_tick` waits a second, then `R.cr_restore`: `R.cp_apply` puts players 1 and 2 back, `R.np_join` brings players 3+ back on their controllers (onto a free pawn, not necessarily the same one).
+- Fake game `coop_resume.py` (12 checks: classic, player 2 on the Arisen, both on pawns, ended by the player; fails on dev9). Players 3+ and split screen coming back are not in it; check in game.
+
+### 0.9.178-dev9 (2026-11-26): Ctrl + F6 from keyboard and mouse no longer gives player 1 a controller
+- dev5-rest-1 on the test PC: steps 1-6 passed; step 7's keyboard case failed: player 1 on keyboard and mouse, Ctrl + F6, and player 1 also kept a controller, so the second controller could not become player 3's. dev4 counted player 1 as on a controller whenever the game's keyboard mode had begun within 3 s and after his last controller use: a short stretch on the keyboard after using a controller (the test had just used both controllers) read as "on a controller".
+- Now (`input.lua`): `R.hid_track` keeps the last moment the game was in keyboard mode as it stood about half a second earlier (`kb_old`: the Ctrl of Ctrl + F6 flips the mode itself), and player 1 is on a controller only if he used it after that. Fake game `coop_key_pad.py` case D (the report: fails on dev8, passes now).
+
+### 0.9.178-dev8 (2026-11-26): player 2 on a second pawn turns the shared camera
+- Read live with both players on pawns: the brain runs (`brain_inject` about 80 times a second) and the camera reads the Arisen processor's AxisR; `R.s2.pad` was already nil there (the second pawn's tick takes it), which is why dev5's version never turned. `R.cp_cam_add` is back for this arrangement only (not player 2 on the Arisen, which is classic by default now), reading player 2's stick from his controller (`R.tp_p2()`).
+
+### 0.9.178-dev7 (2026-11-26): player 2 on the Arisen gets the Arisen's card and bars; own-spot cards draw player 1's; row is the default again
+- dev6 confirmed on the test PC: classic player 2 on the Arisen walks where the stick points, and player 2 turns the camera.
+- Read live (player 1 on the second Archer pawn, player 2 on the Arisen, `R.cp.arisen_side` 2): both cards were the second Archer pawn's and both bars sat over the second Archer pawn; the Arisen had none. Player 2's card (`R.c2view`, refreshed in `R.item_tick`, named in ui.lua) always used the played pawn. Now it is the Arisen's when player 2 is on him (skills read from him).
+- Layout 1 (each player's own spot) never drew player 1's card: the others are drawn where they are requested, player 1's is only added in `R.cards_flush`. It is drawn there now, at `card_p1_left` (0.25) of the screen.
+- `card_layout` default 2 (row, bottom middle), the tester. A saved 4 (side stack, 0.9.177's default) becomes 2 once (`migrated_card_row`).
+
+### 0.9.178-dev6 (2026-11-26): co-op defaults: player 2 on the Arisen is "classic", player 1 gets a card on a shared screen; dev5's camera add taken out
+- Test PC, player 1 on a pawn, player 2 on the Arisen ("brain" arrangement): the Arisen walked the way he faced whatever the stick said, turned toward things on his own, nearly off a cliff; player 2 had no camera. Taking dev5's `R.cp_cam_add` out live did not clearly settle it (Reset Scripts put it back before the retest), so it is removed (coop.lua, brain.lua back to dev4) and the brain path is no longer the default.
+- `coop_any_p2_arisen` default "classic": the Arisen takes player 2's controller (the game's own input) and the camera; with the shared camera both players turn it (coop.filter runs, `coop.active`).
+- `card_p1_mode` default 3 (a card only) on a shared screen, as the tester prefers: player 1's card, glow and bars overhead like the others. Split screen keeps the game's HUD for player 1 (`card_p1_split_native`).
+- Still open: player 2's camera when both players are on pawns (R.s2); not new.
+
+### 0.9.178-dev5 (2026-11-26): player 2 turns the shared camera when player 1 is on a pawn
+- Test PC, onsen co-op: "only P1 can turn the shared camera", with player 1 on the Mage and player 2 on the main pawn, then on the Arisen. Read live: the two controllers were split (`R.tp.p2v.rx` 1.0 while held), but the arrangement was the any-combination "pawns" one (`R.cp.mode`, `ar2` for player 2 on the Arisen), where `coop.active` is false. So `coop.filter` and `R.cam_turn` never run, and the camera reads the Arisen processor's AxisR, which only has the game's active controller (player 1's). Same in 0.9.177; by design since 0.9.171 ("player 1 keeps the camera"), but the shared-camera setting says both turn it.
+- Fix: `R.cp_cam_add` (`coop.lua`), called from `brain_inject` (the Arisen's processor in those arrangements): with the shared camera, player 2's right stick (`R.tp_p2()` on the Arisen, `R.s2.pad` on a second pawn) is added to player 1's while pushed. Not in split screen, not with the camera mode "p1", not with player 1 on keyboard. Counter `R.cp_cam_n`.
+- Seen in the same session, not changed: in the onsen, player 2 on the Arisen could not stand him up; player 1's Cross did (the game's spa prompt reads the game's input, player 1's controller). Player 2 drives the Arisen through the brain's input path, which the bath's Stand Up does not use.
+
+### 0.9.178-dev4 (2026-11-26): Ctrl + F6 with player 1 on a controller
+- Reported (the tester, in game today): Arisen on a controller, Ctrl + F6, the other controller (connected after the start)
+  took the pawn; then the Arisen could only move, none of his attacks worked, and keyboard and mouse drove him too.
+  dev46 / dev57 read any Ctrl + F6 start as "player 1 on keyboard and mouse": player 1 got no controller
+  (R.KB_ADDR), so `R.tp_arisen_buttons` took every pad button away from the Arisen while his stick still came through
+  the game's active controller. A lone controller could also be handed straight to player 2.
+- Now `R.p1_start_pad` decides at the key press: player 1 keeps the most recently used, still connected controller
+  when the game was in controller mode, or its keyboard mode began only with the key press (within 3 s, tracked every
+  frame by `R.hid_track`) and the controller was used before it. Player 2 is then the first OTHER controller used (or
+  L3 + R3 as before); the lone controller is never given away; nothing is held off the Arisen while waiting. A real
+  keyboard player is unchanged. Suite `tools/fakegame/coop_key_pad.py` (22 checks, 11 fail on dev3). Not yet seen in game.
+
+### 0.9.178-dev3 (2026-11-26): Ferrystone crash with a pawn played
+- Reported (DrCh0ke, Nexus Bugs, 0.9.177; the tester: "the ferrystone swaps to arisen then crashes"): a Ferrystone used
+  while a pawn is played hands back to the Arisen, then crashes. DPC let go only when a later check tripped mid-flow
+  (cutscene check / world guard), and that release played the switch transition: camera glide against the
+  Ferrystone's own camera, slow motion written every frame to the WorkRate of every character and shell while the
+  teleport moves the party and the area unloads. Prime suspect, not proven.
+- Now (`fixes_world.lua`): hooks on `app.FerrystoneFlowController`'s steps plus its `Routine` fields per frame. When
+  the flow starts: transition and glows end (rates back to 1.0 first), player 1 lets go as a cutscene with no
+  transition, players 2+ end as for a cutscene; no take-over until it is over (+1.5 s; 10 s after the last step if
+  unreadable); a teleport with a pawn still played lets go inside that call. Every cutscene release skips the
+  transition too. Suite `tools/fakegame/ferrystone.py` (27 checks). Not yet seen in game.
+
+### 0.9.178-dev2 (2026-11-26): lean guards, Galvanize watch and stale-dash fix ported into the split
+- From the public repo's `fix/galvanize-and-lean-guards` (cb6849c, 0.9.177-dev1), built on 0.9.176, which never
+  made 0.9.177. Re-applied to the parts: `R.move_stop` (fixes_world), `R.s2_carry_stop` (second_pawn) and the
+  quick-skill stance end (native_controls) ask an object interaction to abort (`R.abort_interact`) instead of
+  `forceEndAction` while the pawn is in one (lean / seat: the AdjustJack.reject freeze, rule 24). The take-over
+  already waits for the stand-up (0.9.176); these cover the 1.5 s after it, players 2+, and the stance.
+- Galvanize watch (`cfg.galvanize_watch`, reads only): one "Galvanize watch (...)" log line per Mage / Sorcerer hold
+  of 0.6 s or more, for PXXXND's report (22 Nov). Stale IsDash clear on the played pawn under native controls
+  (`cfg.pawn_stale_dash_fix`, low confidence). Both in actions.lua, registered in coop_sound.lua with the other
+  per-frame checks.
+- Not ported: the co-op / players-3+ L2 chant cancel. the tester: 0.9.177's native possession already handles it.
+- Onsen report (Nexus, 26 Nov, grovermclurg: freeze when used while sitting in the onsen): likely the onsen's own
+  system (`app.SpaManager`, SpaState*), not an InteractManager interaction, so not covered yet. Probe
+  `dev/bridge/interact/spa1_onsen.lua`; test plan in handoff/fix-lean-guards-galvanize.md.
+- Checked offline: dpc_modules ok; run_all 30 runs (Lua 5.4 + 5.5) pass, same output as 0.9.178-dev1 except the new
+  `tools/fakegame/lean_guards.py` (25 checks, 12 fail on dev1). Not run: the game.
+
+### 0.9.178-dev1 (2026-11-26): the script is split into parts, no change in behaviour
+- Why: 17,759 lines in one file, and its main chunk at 199 of Lua's 200 locals (planned 2026-11-24, done right after
+  0.9.177 shipped so that anything that breaks now is the split's doing).
+- `DirectPawnControl.lua` keeps the header and VERSION and loads 26 parts from `reframework/autorun/DirectPawnControl/`
+  with `require`, in the order the single file ran (config, helpers, party, brain, hooks, camera_hud,
+  native_controls, possession, coop, input, follow, aim_binds, fixes_combat, fixes_world, actions, puppeteer,
+  testbench, coop_players, second_pawn, more_players, cards, tick, player_feel, coop_sound, api, ui). Each part is a
+  slice of the old file at a section boundary, so hooks and callbacks register in the same order. REFramework
+  only runs the files directly in `autorun`, so the parts run once, from the loader. The loader clears
+  `package.loaded` for its parts first (a reset reruns everything) and names the missing file if a part fails.
+- Shared values: `DirectPawnControl/shared.lua` returns one table `S`. A main-chunk local set once while its part
+  loads (116 of them: cfg, state, R, coop, brain, helpers...) stays a local there, goes into `S` at the part's end,
+  and later parts that use it take `local x = S.x` at their top: same value, still a local. The 14 that change
+  while the game runs and are read in more than one part (`pad_buttons`, `pad_prev`, `pad_stick_x/y/rx/ry`,
+  `is_key_down_safe`, `pad_device_ok`, `coop_saved_for_cfg`, `SKILL_NAMES`, `ACTION_ENUM`, `ACTION_FLAGS`,
+  `get_cam_angle_rad_method`, `in_internal_query`) are read and written as `S.<name>` everywhere (one table lookup
+  instead of an upvalue). 69 locals used by one part only stay where they were. Done by a scope resolver
+  (`tools/luascope.py`), not by hand: apart from those `S.` prefixes (168 lines) the code is the old text.
+- Unchanged: `_G.DPC` / `_G.DPC_API` / `_G.DPC_dbg`, the `DPC_GES_HOLD` global, config and data file paths, saved
+  settings. Lua error messages now name the part and its line (`DirectPawnControl/coop.lua:812`) instead of a line
+  of the old file.
+- Found, left as it was: `install_teardown_hooks` (possession.lua) reads `a2` outside the `if` that declares it,
+  so the players 3+ part of the onDestroy check compares against a global `a2` (nil). Players 3+ are not
+  released on their character's destroy through that path. A fix belongs in its own change.
+- Tools: `tools/dpc_modules.py` (new; every part compiles as Lua 5.4, is listed, imports only what an earlier part
+  shares, and uses no other part's name as a global), `tools/dpc_source.py` (the file list and the whole script as
+  one text), `build_release.py` / `release.py` put and check every part in the zips, `make_public.py` copies and
+  trims the folder, the fake-game harnesses find the parts next to the file they are given.
+- Checked offline: every file compiles in Lua 5.4; all 12 fake-game harnesses print the same as with 0.9.177's
+  single file (only the version string differs); `make_public.py` audit clean and every privacy-trim entry still
+  applies; the zips build. Not run: the game, `dd2-modkit lint` / `index check` (on the PC).
+
 ### 0.9.177 (2026-11-26): release
 - Released dev61 as 0.9.177 with DPC Split Screen 0.2.0 (early, off by default) and Camera Distance 2.9.20.
+- Live on Nexus 2026-11-26 (both files 0.9.177, old ones archived), public source 7a4f128. Description updated the same day (approved; FNV 4f2dc1f1).
 - Not run in game: looting a dead bandit (dev18 / dev19). Split screen known limits: enemy health bars, brightness of views 3-4, shadows (README).
 
 ### 0.9.177-dev61 (2026-11-26): release prep, split screen as an early release

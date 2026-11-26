@@ -1,0 +1,84 @@
+{
+ "id": "split-mod-1",
+ "title": "DPC 0.9.178-dev1 (the Lua split into parts): does everything still work like 0.9.177?",
+ "intro": "About 8 minutes. Nothing should feel different from 0.9.177. Start as the Arisen, full party, co-op off, out of combat on open ground. You'll need a second controller for step 4. If anything errors or acts oddly, note the step.",
+ "requires": {
+  "DirectPawnControl": "0.9.178-dev1",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_split-mod-1.json",
+  "show": [
+   "ver",
+   "played",
+   "arisen_ai",
+   "coop"
+  ],
+  "probes": {
+   "ver": "local A=_G.DPC_API; return A and A.dpc_version or 'no API'",
+   "played": "local A=_G.DPC_API; local s=A and A.state(); return s and s.played and (s.played.name or '?') or '-'",
+   "arisen_ai": "local A=_G.DPC_API; local s=A and A.state(); return s and tostring(s.arisen.ai_on) or '-'",
+   "coop": "local A=_G.DPC_API; local s=A and A.state(); if not (s and s.coop.active) then return 'off' end; local n=0; for _ in pairs(s.coop.players) do n=n+1 end; return n..' players'"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "SPLIT CHECK. The top line should read 0.9.178-dev1. Arisen, co-op off, out of combat. Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/7 Take control of a melee pawn (F6, or L1 + left stick click). Press End when you're playing them."
+  },
+  {
+   "wait": true,
+   "text": "2/7 Three goblins that can't die appear. Fight about 30 s: attacks, a skill, guard or dodge. Watch the Arisen: he should fight on his own (arisen_ai = true). Press End to spawn them, End again is the next step.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 5,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "3/7 Switch to another pawn (same button), then hold D-pad down to go back to the Arisen. Press End."
+  },
+  {
+   "wait": true,
+   "text": "4/7 Co-op: press Ctrl+F6, then touch the second controller (it becomes player 2). Split screen and the player cards should come up as before. Fight the goblins a little with both players. Press End."
+  },
+  {
+   "wait": true,
+   "text": "5/7 Player 2 holds L3 + R3 for 3 seconds to leave. Player 1 stays on his character. Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "6/7 Open the REFramework menu (Insert), DPC settings: change one main choice you'll remember (e.g. camera turning), close the menu. Press End."
+  },
+  {
+   "wait": true,
+   "text": "7/7 Last: after this step, in the REFramework menu press Reset Scripts. Then check: the DPC window shows 0.9.178-dev1, the setting you changed in step 6 is still changed, no error at the top of the menu, and F6 takes a pawn once (not twice). Tell Claude how each step went. Press End to finish."
+  }
+ ]
+}

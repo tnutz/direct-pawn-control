@@ -1,8 +1,9 @@
 import re
 import os
-f=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','..','reframework','autorun','DirectPawnControl.lua')
+import sys; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'tools'))
+from dpc_source import joined  # 0.9.178: the script is DirectPawnControl.lua + its parts
 ptw={}
-for m in re.finditer(r'^\s*\[(\d+)\] = \{ "([^"]+)", "(\w+)" \}, -- (\w+)', open(f).read(), re.M):
+for m in re.finditer(r'^\s*\[(\d+)\] = \{ "([^"]+)", "(\w+)" \}, -- (\w+)', joined(), re.M):
     ptw[int(m[1])]=(m[2].replace('\\\\','/').lower(), m[3], m[4])
 names={int(a):b for a,b in re.findall(r'(\d+)=(\w+)', open(__import__('os').path.dirname(__file__)+'/hv11.out').read())}
 game={}

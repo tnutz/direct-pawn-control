@@ -1,0 +1,13 @@
+-- Direct Pawn Control: the table its files share.
+-- DirectPawnControl.lua loads the files in this folder in order; each one starts with
+--     local S = require("DirectPawnControl/shared")
+-- and gets this same table (require keeps one copy per Lua state).
+-- What goes through it:
+--   * A value set once while its own file loads (functions, tables such as cfg, state, R, coop, brain): that file
+--     keeps it as a plain local and, at its end, puts it in S (S.cfg = cfg); a later file that uses it takes its own
+--     local copy at its top (local cfg = S.cfg). Tables are shared by reference, so both see the same table.
+--   * A value that changes while the game runs and is read by more than one file (the controller state pad_*,
+--     is_key_down_safe, pad_device_ok, coop_saved_for_cfg, SKILL_NAMES, ACTION_ENUM, ACTION_FLAGS,
+--     get_cam_angle_rad_method, in_internal_query): every file reads and writes it as S.<name>, never a local copy.
+-- Nothing here is global; other mods use the public API (_G.DPC), not this table.
+return {}

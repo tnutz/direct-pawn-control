@@ -1,0 +1,112 @@
+{
+ "id": "lean-galv-ferry-1",
+ "title": "DPC 0.9.178-dev4: leaning / sitting pawns, onsen, Galvanize, Ferrystone crash, Ctrl+F6 on a controller",
+ "intro": "About 30-40 min, done in any order you can manage; End skips a step you can't do (just tell Claude). You need: a tavern with a leaning pawn, benches/chairs, the onsen (hot spring), a Sorcerer and a Mage pawn with Galvanize, a Ferrystone plus a Portcrystal, two controllers. SAVE in a spare slot before steps 6, 12 and 13. Keep Task Manager handy for freezes. Settings are the fresh defaults.",
+ "requires": {
+  "DirectPawnControl": "0.9.178-dev4",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_lean-galv-ferry-1.json",
+  "show": [
+   "ver",
+   "played",
+   "ferry",
+   "galv",
+   "stale_dash",
+   "coop"
+  ],
+  "probes": {
+   "ver": "local A=_G.DPC_API; return A and A.dpc_version or 'no API'",
+   "played": "local A=_G.DPC_API; local s=A and A.state(); return s and s.played and (s.played.name or '?') or '-'",
+   "ferry": "local R=_G.DPC_dbg and _G.DPC_dbg.R; local f=R and R.ferry; return f and ('hooks '..tostring(f.hooks)..' live '..tostring(f.live)..' n '..tostring(f.n)) or '-'",
+   "galv": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return R and R.galv_last and tostring(R.galv_last):sub(1,160) or '-'",
+   "stale_dash": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return R and R.stale_dash_n or 0",
+   "coop": "local A=_G.DPC_API; local s=A and A.state(); if not (s and s.coop.active) then return 'off' end; local n=0; for _ in pairs(s.coop.players) do n=n+1 end; return n..' players'"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "Start. Top line: ver should read 0.9.178-dev4 and ferry 'hooks 10'. Press End."
+  },
+  {
+   "wait": true,
+   "text": "1/17 TAVERN LEAN, single player: wait for a pawn to lean on a wall, take it over. It should stand, then be yours, no freeze. Let go and repeat twice. End."
+  },
+  {
+   "wait": true,
+   "text": "2/17 TAVERN LEAN, co-op: while a pawn leans, Ctrl+F6 and press a button on controller 2. Then player 2 switches onto a leaning pawn. Co-op waits for the stand-up, no freeze. Player 2 leaves (L3+R3 3 s). End."
+  },
+  {
+   "wait": true,
+   "text": "3/17 Take over a pawn the moment it walks toward a wall or bench. No freeze; the DPC log may show up to 3 lines '... is in an object interaction: asked it to stop'. End."
+  },
+  {
+   "wait": true,
+   "text": "4/17 BENCH / CHAIR: take over a pawn sitting down. It stands, then yours. Note whether 'waiting for <name> to stand' showed. End."
+  },
+  {
+   "wait": true,
+   "text": "5/17 ONSEN PROBE: get the whole party bathing in the hot spring. Do NOT take anything over yet. When everyone is in the water, press End (it reads the onsen state, nothing else)."
+  },
+  {
+   "secs": 2,
+   "text": "Reading the onsen state...",
+   "each_frame": "if _G.__spa1_done then return end\n_G.__spa1_done=true\nlocal function run()\n-- Onsen (hot spring) report, Nexus 2026-11-26 (grovermclurg): \"Freezes game if used while sitting in onsen\".\n-- Run it while the Arisen and the party are IN the onsen, before taking anything over. Read-only.\n-- Question: is bathing an InteractManager object interaction (what R.busy_interact sees, like the tavern lean), or\n-- only the onsen's own system (app.SpaManager and its SpaState* states, which the decompile shows controlling the\n-- player's and party's positions: SpaRequestContainer.setupCharacterControlListPlayer, SpaStateCharacterPosControl)?\n-- If getActiveInteract is nil for everyone while bathing, DPC's lean guards don't see the onsen and a take-over\n-- needs its own check (e.g. refuse or wait while SpaManager is active).\nlocal out = {}\nlocal function add(s) out[#out + 1] = tostring(s) end\nlocal function tn(o) local ok, n = pcall(function() return o:get_type_definition():get_full_name() end); return ok and n or \"?\" end\nlocal function fields(o, max)\n  local l = {}\n  local ok = pcall(function()\n    local td = o:get_type_definition()\n    while td and #l < (max or 60) do\n      for _, f in ipairs(td:get_fields()) do\n        if not f:is_static() then\n          local okv, v = pcall(f.get_data, f, o)\n          local s = okv and (type(v) == \"userdata\" and (\"<\" .. tn(v) .. \">\") or tostring(v)) or \"?\"\n          l[#l + 1] = f:get_name() .. \"=\" .. s\n        end\n      end\n      td = td:get_parent_type()\n      if td and td:get_full_name():find(\"^System%.\") then break end\n    end\n  end)\n  if not ok then l[#l + 1] = \"(fields failed)\" end\n  return table.concat(l, \", \")\nend\nlocal spa = sdk.get_managed_singleton(\"app.SpaManager\")\nadd(\"SpaManager: \" .. (spa and tn(spa) or \"nil\"))\nif spa then add(\"  \" .. fields(spa, 80)) end\nlocal im = sdk.get_managed_singleton(\"app.InteractManager\")\nlocal function who(ch, label)\n  if not ch then add(label .. \": nil\"); return end\n  local ai = im and select(2, pcall(im.call, im, \"getActiveInteract(app.Character)\", ch))\n  local fsm = ch:call(\"get_ActionManager\"):get_field(\"Fsm\")\n  local n0 = fsm and tostring(fsm:call(\"getCurrentNodeName(System.UInt32)\", 0)) or \"?\"\n  local n1 = fsm and tostring(fsm:call(\"getCurrentNodeName(System.UInt32)\", 1)) or \"?\"\n  local cmd = \"?\"\n  pcall(function()\n    local ex = ch:call(\"get_AIDecisionMaker\"):call(\"get_DecisionModule\"):call(\"get_ActionInterface\"):call(\"get_Executor\")\n    local p = ex:get_field(\"_CommandExecutor\"):get_field(\"_PrimaryCommand\")\n    cmd = p and tn(p) or \"none\"\n  end)\n  local dec = \"?\"\n  pcall(function()\n    local d = ch:call(\"get_AIDecisionMaker\"):call(\"get_DecisionModule\"):call(\"get_DecisionExecutor\"):call(\"get_ExecutingDecision\")\n    dec = d and tostring(d:call(\"get_PackPath\") or tn(d)) or \"none\"\n  end)\n  add(string.format(\"%s: activeInteract=%s nodes=%s | %s cmd=%s decision=%s\", label, ai and tn(ai) or \"nil\", n0, n1, cmd, dec))\n  if ai and type(ai) == \"userdata\" then add(\"  interact: \" .. fields(ai, 30)) end\nend\nwho(sdk.get_managed_singleton(\"app.CharacterManager\"):call(\"get_ManualPlayer\"), \"Arisen\")\nlocal list = sdk.get_managed_singleton(\"app.PawnManager\"):call(\"get_PawnCharacterList\")\nfor i = 0, (list and list:call(\"get_Count\") or 0) - 1 do who(list:call(\"get_Item\", i), \"pawn \" .. i) end\nreturn table.concat(out, \"\\n\")\n\nend\nlocal ok,r=pcall(run)\npcall(json.dump_file,'test_guide/spa1_onsen_out.json',{ok=ok,out=tostring(r),t=os.time()})"
+  },
+  {
+   "wait": true,
+   "text": "6/17 ONSEN TAKE-OVER: SAVE FIRST. While everyone bathes, take over a pawn. Freeze or not? If it froze, stop testing and tell Claude. End."
+  },
+  {
+   "wait": true,
+   "text": "7/17 ONSEN RELEASE: let go back to the Arisen while still in the water, then walk out. No freeze? End."
+  },
+  {
+   "wait": true,
+   "text": "8/17 (only if it comes up, else End) QUICK-SKILL STANCE while leaning: Numpad launch stance on a pawn, let it lean, same key again. No freeze. End."
+  },
+  {
+   "wait": true,
+   "text": "9/17 GALVANIZE, played Sorcerer: out of combat, take over the Sorcerer, use some stamina, hold Galvanize about 2 s. The 'galv' line at the top should update (job 6) and stamina should rise during the hold. End."
+  },
+  {
+   "wait": true,
+   "text": "10/17 GALVANIZE, played Mage (job 3): same. Then let go and hold Galvanize on the Arisen if he is a Mage or Sorcerer. End."
+  },
+  {
+   "wait": true,
+   "text": "11/17 SPRINT: on a played pawn, sprint, then stop with the stick at rest. If 'stale_dash' goes up, did stamina then come back? Sprinting should feel as before. End."
+  },
+  {
+   "wait": true,
+   "text": "12/17 FERRYSTONE while playing a pawn: SAVE FIRST. Take over a pawn, use a Ferrystone, pick a Portcrystal. Expect: back on the Arisen at once, no camera glide or slow motion, teleport plays, NO crash. End after landing."
+  },
+  {
+   "wait": true,
+   "text": "13/17 FERRYSTONE right after switching back: SAVE FIRST. Take over a pawn, switch back to the Arisen (the transition plays), and within 1-2 s use a Ferrystone. No crash? End after landing."
+  },
+  {
+   "wait": true,
+   "text": "14/17 Use a Ferrystone again; DURING the teleport press the take-over key. Expect only the note 'Not during a Ferrystone'. About 2 s after landing, take-over works again. End."
+  },
+  {
+   "wait": true,
+   "text": "15/17 CO-OP FERRYSTONE: Ctrl+F6 + controller 2, then use a Ferrystone. Co-op ends like on a cutscene, no crash. End."
+  },
+  {
+   "wait": true,
+   "text": "16/17 Open the Ferrystone map and back out without travelling. Did DPC let go of the pawn anyway? (harmless either way) End."
+  },
+  {
+   "wait": true,
+   "text": "17/17 CTRL+F6 ON A CONTROLLER: play the Arisen on controller 1, press Ctrl+F6, then press a button on controller 2. Expect the note 'player 1 keeps their controller'; player 2 has the pawn; P1 attacks and skills work on the Arisen; P2 can't move the Arisen. End co-op, repeat with both controllers on from the start, then once from keyboard/mouse (P1 stays on keyboard). End."
+  },
+  {
+   "wait": true,
+   "text": "Done. Tell Claude pass/fail for each step (and anything odd). Press End."
+  }
+ ]
+}

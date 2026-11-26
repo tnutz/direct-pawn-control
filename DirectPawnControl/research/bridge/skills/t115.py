@@ -1,6 +1,7 @@
 import re, lupa, runpy, io, contextlib
 import os
-src=open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','..','reframework','autorun','DirectPawnControl.lua')).read()
+import sys; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'tools'))
+from dpc_source import joined; src = joined()  # 0.9.178: the script is DirectPawnControl.lua + its parts
 a=src.index('quick.SITUATIONAL = {'); b=src.index('function quick.elems(x)')
 c=src.index('function quick.situational(rel)'); d=src.index('-- v0.9.17: ask the pawn')
 L=lupa.LuaRuntime()

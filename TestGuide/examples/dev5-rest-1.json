@@ -1,0 +1,67 @@
+{
+ "id": "dev5-rest-1",
+ "title": "DPC 0.9.178-dev5: player 2 camera with player 1 on a pawn, Galvanize, sprint, Ferrystone crash, Ctrl+F6 on a controller",
+ "intro": "About 20 min, outside the onsen. You need: two controllers, a Sorcerer and a Mage pawn with Galvanize, a Ferrystone and a Portcrystal. SAVE in a spare slot before the Ferrystone steps (5 and 6). End skips a step you can't do; just tell Claude.",
+ "requires": {
+  "DirectPawnControl": "0.9.178-dev5",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_dev5-rest-1.json",
+  "show": [
+   "ver",
+   "coop",
+   "p2cam",
+   "ferry",
+   "galv",
+   "stale_dash"
+  ],
+  "probes": {
+   "ver": "local A=_G.DPC_API; return A and A.dpc_version or 'no API'",
+   "coop": "local R=_G.DPC_dbg and _G.DPC_dbg.R; local s=_G.DPC_API.state(); if not s.coop.active then return 'off' end; local t={}; for i,c in pairs(s.coop.players) do t[#t+1]='P'..i..'='..tostring(c and c.name) end; return table.concat(t,' ')..' ('..tostring(R.cp and R.cp.mode)..')'",
+   "p2cam": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return 'shared '..tostring(R.cct and R.cct.n or 0)..' / p1-on-pawn '..tostring(R.cp_cam_n or 0)",
+   "ferry": "local R=_G.DPC_dbg and _G.DPC_dbg.R; local f=R and R.ferry; return f and ('hooks '..tostring(f.hooks)..' live '..tostring(f.live)..' n '..tostring(f.n)) or '-'",
+   "galv": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return R and R.galv_last and tostring(R.galv_last):sub(1,160) or '-'",
+   "stale_dash": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return R and R.stale_dash_n or 0"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "Start, out of the onsen, out of combat. Co-op off. Top line: ver 0.9.178-dev5, ferry 'hooks 10'. Press End."
+  },
+  {
+   "wait": true,
+   "text": "1/7 PLAYER 2 CAMERA, player 1 on a pawn: take a pawn (player 1), start co-op (Ctrl+F6 or L3+R3 on controller 2) and put player 2 on the ARISEN. Player 2 turns the camera with the right stick for ~20 s, on and off; walk around too. Does it turn every time? ('p1-on-pawn' counts up while player 2 turns.) End."
+  },
+  {
+   "wait": true,
+   "text": "2/7 Same, but player 2 on a second PAWN (player 1 still on a pawn). Player 2 turns the camera ~20 s. Every time? Then end co-op (player 2 holds L3+R3 3 s). End."
+  },
+  {
+   "wait": true,
+   "text": "3/7 GALVANIZE: take over the Sorcerer, use some stamina, hold Galvanize ~2 s. 'galv' at the top updates (job 6); stamina should rise during the hold. Then the same on the Mage (job 3). End."
+  },
+  {
+   "wait": true,
+   "text": "4/7 SPRINT: on a played pawn sprint, then stop with the stick at rest. If 'stale_dash' goes up, does stamina come back after? Sprint should feel as before. End."
+  },
+  {
+   "wait": true,
+   "text": "5/7 FERRYSTONE while playing a pawn: SAVE FIRST. Take over a pawn, use a Ferrystone, pick a Portcrystal. Expect: back on the Arisen at once, no camera glide / slow motion, teleport plays, NO crash. Then use one again and press the take-over key DURING the teleport: only the note 'Not during a Ferrystone'. End after landing."
+  },
+  {
+   "wait": true,
+   "text": "6/7 FERRYSTONE right after switching back (the crash report): SAVE FIRST. Take over a pawn, switch back to the Arisen, and within 1-2 s use a Ferrystone. No crash? Then: co-op on, use a Ferrystone (co-op ends, no crash). Then: open the Ferrystone map and back out (note if DPC let go of a pawn). End."
+  },
+  {
+   "wait": true,
+   "text": "7/7 CTRL+F6 ON A CONTROLLER: co-op off, play the Arisen on controller 1, press Ctrl+F6, then a button on controller 2. Expect 'player 1 keeps their controller'; player 2 gets the pawn; player 1's attacks / skills work on the Arisen; player 2 can't move the Arisen. Repeat with both controllers on from the start, then once from keyboard/mouse (player 1 stays on keyboard). End."
+  },
+  {
+   "wait": true,
+   "text": "Done. Tell Claude pass/fail per step. Press End."
+  }
+ ]
+}

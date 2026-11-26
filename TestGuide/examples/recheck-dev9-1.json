@@ -1,0 +1,47 @@
+{
+ "id": "recheck-dev9-1",
+ "title": "DPC 0.9.178-dev9 re-checks: Ctrl+F6 from keyboard, player 2's camera with both on pawns, Galvanize",
+ "intro": "About 8 min. Two controllers; a Sorcerer and a Mage pawn with Galvanize (hire or switch one in first). End skips a step.",
+ "requires": {
+  "DirectPawnControl": "0.9.178-dev9",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_recheck-dev9-1.json",
+  "show": [
+   "ver",
+   "coop",
+   "p2cam",
+   "galv"
+  ],
+  "probes": {
+   "ver": "local A=_G.DPC_API; return A and A.dpc_version or 'no API'",
+   "coop": "local R=_G.DPC_dbg and _G.DPC_dbg.R; local s=_G.DPC_API.state(); if not s.coop.active then return 'off' end; local t={}; for i,c in pairs(s.coop.players) do t[#t+1]='P'..i..'='..tostring(c and c.name) end; return table.concat(t,' ')..' ('..tostring(R.cp and R.cp.mode)..')'",
+   "p2cam": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return 'both-on-pawns camera adds '..tostring(R.cp_cam_n or 0)",
+   "galv": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return R and R.galv_last and tostring(R.galv_last):sub(1,160) or '-'"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "Start: ver 0.9.178-dev9, co-op off. Press End."
+  },
+  {
+   "wait": true,
+   "text": "1/3 CTRL+F6 FROM KEYBOARD: use a controller briefly, then play on mouse and keyboard for a few seconds, press Ctrl+F6, then a button on controller A (player 2). Then L3+R3 on controller B: player 3 joins. Player 1 stays on keyboard/mouse only. End co-op. End."
+  },
+  {
+   "wait": true,
+   "text": "2/3 BOTH ON PAWNS: take a pawn (player 1), start co-op, player 2 switches to another pawn. Player 2 turns the camera ~15 s; the counter at the top climbs. Every time? End co-op. End."
+  },
+  {
+   "wait": true,
+   "text": "3/3 GALVANIZE: out of combat take over the Sorcerer, use some stamina, hold Galvanize ~2 s. 'galv' updates (job 6), stamina rises during the hold. Then the same on the Mage (job 3). End."
+  },
+  {
+   "wait": true,
+   "text": "Done. Tell Claude pass/fail per step. End."
+  }
+ ]
+}

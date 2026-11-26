@@ -45,7 +45,9 @@ version includes it. Parts of a pull request may be taken and others left out, a
 - Wrap anything that calls into the game in `pcall`, check singletons and objects for `nil` before use, and compare
   game objects by `get_address()`, never with `==`.
 - Don't edit the version number or the change log; they are updated when a release is made.
-- Check that the script still compiles (`luac -p DirectPawnControl.lua`) and say in the pull request what you
+- The script is `DirectPawnControl.lua` plus the parts in `reframework/autorun/DirectPawnControl/`, which it loads in
+  order; the parts share values through `DirectPawnControl/shared.lua` (see the notes at its top). Check that every
+  file still compiles (`luac -p DirectPawnControl.lua DirectPawnControl/*.lua`) and say in the pull request what you
   tested in the game.
 - No game files, extracted assets or anything you don't have the right to share.
 
