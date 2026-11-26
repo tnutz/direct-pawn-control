@@ -1,6 +1,16 @@
 # MODLOG: Camera Distance & Framing Studio (Dragon's Dogma 2)
 
 
+### 2.9.20 (2026-11-26): released with Direct Pawn Control 0.9.177
+
+### 2.9.20-dev4 (2026-11-25): presets for other mods
+- `CameraDistance_API.presets()` (built-in then custom), `active_preset()`, `apply_preset(i)`, `in_combat()`. DPC Split
+  Screen uses them so players 2-4 can each pick a preset for their own view; DPC's main choices set player 1's.
+
+### 2.9.20-dev1 (2026-11-24): lens vignette on ultrawide screens
+- the tester (32:9): "a big circular [dark edge] closing in". Read live through the agent bridge: not a status effect and not the danger screen effect; the camera's `via.render.ToneMapping` has `Vignetting = Enable`, `KerareBeginAngle 10`, `KerareEndAngle 35`: the lens falloff darkens what is more than 10..35 degrees from the view centre, and a 32:9 screen's sides are far past that, more so as the FOV widens.
+- `lens_vignette`: 1 the game's, 2 off (`setVignetting(Disable)`), 3 scaled to the screen width (default): both angles times atan(tan(vfov/2) * aspect) / atan(tan(vfov/2) * 16/9), so the edges darken as on 16:9. Every frame at LateUpdateBehavior (two compares when nothing changed); the game's values are kept and put back for mode 1 and on script reset. In the FOV section, with "widened xN".
+
 ### 2.9.19 (2026-11-22): release, with DirectPawnControl 0.9.173
 ### 2.9.19-dev1 (2026-11-21): off-screen markers in each player's chosen colour
 - With DirectPawnControl 0.9.173-dev1: DPC_coop.json `colors` ("p<n>" = 0xAABBGGRR) colours the Player 1, Player 2 and players 3+ markers; without it (older DPC) the fixed colours as before.
@@ -84,7 +94,7 @@
 ### 2.9.9 (2026-11-19): joseau11's co-op changes
 - `coop_ahead_per_m` (0 = off, his setting about 0.35): the frustum fit did not pull back when player 2 ran ahead, since a pawn far down the view line still fits on screen, just small. The camera now also pulls back by this much per metre player 2 is ahead past `coop_start_dist`, up to `coop_fit_cap`. Slider under the fit settings.
 - The off-screen player 2 marker is hidden while a menu, shop, talk or a non-player camera is up.
-- Tested (`cam-299-1`, Thirteen, 2026-11-19): look-ahead pulls back as intended; the marker hides over the Esc menu. the tester: about 0.1 feels better than 0.35, so 0.1 is the default. His idea for later: when player 2 runs ahead, raising the camera would help more than pulling back.
+- Tested (`cam-299-1`, the test PC, 2026-11-19): look-ahead pulls back as intended; the marker hides over the Esc menu. the tester: about 0.1 feels better than 0.35, so 0.1 is the default. His idea for later: when player 2 runs ahead, raising the camera would help more than pulling back.
 
 ### 2.9.8 (2026-11-17): the status names aiming as aiming (not tested in game yet)
 - **Reported 2026-11-17, walk-through 3, step "bow aim as the Arisen" (screenshot):** the expected status text did not show, and the "Auto-Suspend While Aiming" option could not be found. The status line read `cam = suspended: Non-Player Camera (Event/Talk)`, not "suspended: Aiming".

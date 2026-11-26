@@ -1,0 +1,317 @@
+{
+ "id": "coop-robot-diag-2",
+ "title": "Co-op player 2 by robot: attacks and skills with the input state fix on / off",
+ "intro": "Runs by itself. Co-op on the main pawn, the robot presses buttons; records DPC's controller bits, the pawn's input flags and nodes.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev6",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_coop-robot-diag-2.json",
+  "show": [
+   "btn",
+   "on",
+   "pin",
+   "n1"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "act": "local D=_G.DPC_dbg; return D and D.state.active == true",
+   "btn": "local D=_G.DPC_dbg; return D and D.coop.last_btn or -1",
+   "on": "local D=_G.DPC_dbg; return D and D.state.last_on_flags or -1",
+   "pin": "local D=_G.DPC_dbg; local ok, v = pcall(function() return D.state.pawn_input:get_field('ButtonOnFlags') end); return ok and v or -1",
+   "n1": "local D=_G.DPC_dbg; local pc = D and D.state.pawn_chara; return pc and H.node(pc, 1) or ''",
+   "n0": "local D=_G.DPC_dbg; local pc = D and D.state.pawn_chara; return pc and H.node(pc) or ''",
+   "tp": "local D=_G.DPC_dbg; local c = D and D.cfg; return c and tostring(c.coop_two_pads) .. '/' .. tostring(c.robot_frees_pad) .. '/' .. tostring(c.native_controls)",
+   "busy": "local D=_G.DPC_dbg; local pc = D and D.state.pawn_chara; if not pc then return false end; local a, b = tostring(H.node(pc) or ''), tostring(H.node(pc, 1) or ''); local function busy(n) return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Guard', 1, true) and not n:find('DrawWeapon', 1, true) end; return busy(a) or busy(b)",
+   "sk": "local D=_G.DPC_dbg; local pc = D and D.state.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "trg": "local D=_G.DPC_dbg; local ok, v = pcall(function() return D.state.pawn_input:get_field('ButtonTriggerFlags') end); return ok and v or -1",
+   "pf": "local D=_G.DPC_dbg; return D and D.R.pipfix_n or 0",
+   "npip": "local D=_G.DPC_dbg; return D and D.native.pip ~= nil and not D.native.failed"
+  }
+ },
+ "steps": [
+  {
+   "text": "ready",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "fix ON: co-op on pawn 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "fix ON: draw (R1 guard tap)",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ]
+  },
+  {
+   "text": "fix ON: light attack taps",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "fix ON: light attack"
+    }
+   ]
+  },
+  {
+   "text": "fix ON: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "fix ON: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "fix ON: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "fix ON: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "fix ON: co-op off",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "fix OFF: co-op on pawn 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "fix OFF: draw (R1 guard tap)",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ]
+  },
+  {
+   "text": "fix OFF: light attack taps",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "fix OFF: light attack"
+    }
+   ]
+  },
+  {
+   "text": "fix OFF: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "fix OFF: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "fix OFF: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "fix OFF: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "fix OFF: co-op off",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "fix back on",
+   "secs": 2,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  }
+ ]
+}

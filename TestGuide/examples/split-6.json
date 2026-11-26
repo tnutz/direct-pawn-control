@@ -1,0 +1,150 @@
+{
+ "id": "split-6",
+ "title": "Split screen: do 3 and 4 views stay up now? (Split Screen 0.2.0-dev10, DPC 0.9.177-dev44)",
+ "intro": "About 10 minutes. Frame generation OFF. The stutter fix is in, so this checks the crashes and the camera feel. The plan sets the layouts and render scale itself. If it crashes, just tell Claude which step you were on.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev44",
+  "TestGuide": "2.7.6"
+ },
+ "settings": [
+  {
+   "mod": "split",
+   "key": "layout",
+   "label": "Layout with 2 players",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Auto",
+    "Side by side",
+    "Top and bottom"
+   ]
+  },
+  {
+   "mod": "split",
+   "key": "layout3",
+   "label": "Layout with 3 players",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Auto",
+    "Three across",
+    "2 x 2 grid"
+   ]
+  },
+  {
+   "mod": "split",
+   "key": "spare",
+   "label": "3 in the grid: fourth quarter",
+   "values": [
+    1,
+    2
+   ],
+   "labels": [
+    "Blank",
+    "Party from above"
+   ]
+  },
+  {
+   "mod": "split",
+   "key": "layout4",
+   "label": "Layout with 4 players",
+   "values": [
+    1,
+    2
+   ],
+   "labels": [
+    "2 x 2 grid",
+    "Four across"
+   ]
+  },
+  {
+   "mod": "split",
+   "key": "menus_keep",
+   "label": "Keep the split in menus"
+  },
+  {
+   "mod": "split",
+   "key": "view_scale",
+   "label": "Render scale of players 2-4",
+   "values": [
+    0.7,
+    1.0
+   ],
+   "labels": [
+    "0.7",
+    "1.0 (full)"
+   ]
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_split-6.json",
+  "show": [
+   "split",
+   "views",
+   "scale",
+   "hitch",
+   "errs"
+  ],
+  "probes": {
+   "split": "local S=_G.DPC_SplitScreen; return S and (S.active and 'ON' or 'off') or 'not loaded'",
+   "kind": "local S=_G.DPC_SplitScreen; return S and tostring(S.kind or '') or ''",
+   "views": "local S=_G.DPC_SplitScreen; local n = 0; for _ in pairs(S and S.views.ex or {}) do n = n + 1 end; return n",
+   "errs": "local S=_G.DPC_SplitScreen; return S and S.st.errors or 0",
+   "lasterr": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.last_error or '') or ''",
+   "paused": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.suspended_by or '') or ''",
+   "menu": "local S=_G.DPC_SplitScreen; return S and tostring(S.menu_open) or ''",
+   "npl": "local D=_G.DPC_dbg; local n = 0; for _ in pairs(D and D.R.npl_gone or {}) do n = n + 1 end; return n",
+   "hitch": "if not _G.FT_SPIKE then _G.FT_SPIKE={last=os.clock(),n=0,max=0}; re.on_frame(function() local F=_G.FT_SPIKE; local t=os.clock(); local d=(t-F.last)*1000; F.last=t; if d>40 then F.n=F.n+1 end; if d>F.max then F.max=d end end) end; return _G.FT_SPIKE.n",
+   "scale": "local S=_G.DPC_SplitScreen; return S and S.cfg.view_scale or ''"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "SPLIT 6. Start co-op (Ctrl+F6, player 2 holds L3 + R3). Press End once it splits.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S then if S.cfg.layout ~= 1 or S.cfg.layout3 ~= 3 or S.cfg.spare ~= 2 or S.cfg.layout4 ~= 1 or S.cfg.view_scale ~= 0.7 then S.cfg.layout = 1; S.cfg.layout3 = 3; S.cfg.spare = 2; S.cfg.layout4 = 1; S.cfg.view_scale = 0.7; S.save() end end"
+  },
+  {
+   "wait": true,
+   "text": "1/5 CAMERA FEEL. Hold player 2's right stick gently to one side for a few seconds, then your mouse. Smooth now, or still turn-hitch-turn? Press End."
+  },
+  {
+   "wait": true,
+   "text": "2/5 THIRD PLAYER (this crashed last time). A third controller holds L3 + R3: 2 x 2 grid with the party from above in the fourth quarter. Play 30 seconds. Press End."
+  },
+  {
+   "wait": true,
+   "text": "3/5 FOUR PLAYERS at 0.7 scale. Fourth controller holds L3 + R3. Then: open and close the pause menu, swing the mouse camera hard for a few seconds, and take one Steam F12 screenshot. Press End if it survived."
+  },
+  {
+   "wait": true,
+   "text": "4/5 FOUR PLAYERS at FULL scale. Same again: pause menu, hard mouse swings, one F12. Play a minute. Press End if it survived.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S then if S.cfg.view_scale ~= 1.0 then S.cfg.view_scale = 1.0; S.save() end end"
+  },
+  {
+   "wait": true,
+   "text": "5/5 END CO-OP (Ctrl+F6). One normal full view again, not stretched? Press End and tell Claude what you saw."
+  },
+  {
+   "text": "Putting your settings back",
+   "secs": 2,
+   "each_frame": "local S=_G.DPC_SplitScreen; if S then S.cfg.layout = 1; S.cfg.layout3 = 3; S.cfg.spare = 2; S.cfg.layout4 = 1; S.cfg.view_scale = 0.7; S.save() end",
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no split-screen errors"
+    }
+   ]
+  }
+ ]
+}

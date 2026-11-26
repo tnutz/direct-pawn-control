@@ -1,0 +1,150 @@
+{
+ "id": "split-1",
+ "title": "Split screen, first look (DPC Split Screen 0.1.0-dev1, DPC 0.9.177-dev37)",
+ "intro": "About 10 minutes, two players: you on keyboard and mouse as player 1, player 2 on a controller (or you holding the controller for player 2's parts). The split only happens in co-op; it goes back to one view in menus, talks and cutscenes. Watch for anything odd in either half and tell Claude.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev37",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_split-1.json",
+  "show": [
+   "split",
+   "paused",
+   "frames",
+   "turns",
+   "errs"
+  ],
+  "probes": {
+   "split": "local S=_G.DPC_SplitScreen; return S and (S.active and ('ON ' .. tostring(S.layout and S.layout.mode)) or 'off') or 'not loaded'",
+   "paused": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.suspended_by or S.st.why_off or '') or ''",
+   "frames": "local S=_G.DPC_SplitScreen; return S and S.st.frames or 0",
+   "turns": "local S=_G.DPC_SplitScreen; return S and S.st.turns or 0",
+   "kept": "local S=_G.DPC_SplitScreen; return S and S.st.kept or 0",
+   "angle": "local S=_G.DPC_SplitScreen; return S and S.st.angle_fix or 0",
+   "errs": "local S=_G.DPC_SplitScreen; return S and S.st.errors or 0",
+   "lasterr": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.last_error or '') or ''",
+   "fwd": "local S=_G.DPC_SplitScreen; return S and S.fwd or 0",
+   "yaw2": "local S=_G.DPC_SplitScreen; return S and S.cam and string.format('%.2f / %.2f', S.cam.yaw, S.cam.p1_yaw) or ''",
+   "dpc_turns": "local D=_G.DPC_dbg; local v = D and D.R.view_turn; return v and v.n or 0"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "SPLIT SCREEN. Start co-op the usual way (Ctrl+F6, player 2 holds L3 + R3 on his controller). Out of combat, open ground. The screen should split: you on the left (or top), player 2 on the right (or bottom). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "text": "Checking the split is running",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "frames",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "two views are drawn"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no split-screen errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/6 PLAYER 2'S CAMERA. Player 2: turn the right stick left / right and up / down. Does his view turn around his character the right way? Then walk forward with the left stick: does he walk where his view faces (not where yours faces)? Try a few directions. Press End."
+  },
+  {
+   "text": "Checking player 2's stick is turned for his view",
+   "secs": 3,
+   "expect": [
+    {
+     "probe": "turns",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "player 2's stick turned for his view"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "2/6 PLAYER 1. You: walk around and turn the mouse. Do you still walk where YOUR view faces? Is your half's picture right (not stretched or zoomed)? And player 2's half: same colours, shadows and sky as yours? Press End."
+  },
+  {
+   "wait": true,
+   "text": "3/6 FIGHT. Three goblins appear by player 2. Both fight them. Watch player 2's half: are the goblins drawn when they are only in his view (not yours)? Does his picture keep up? Press End to spawn, End again when done.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 6,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Fighting. Notice the bars and cards: they may sit in the wrong half for now (known). Press End when done.",
+   "cmds": []
+  },
+  {
+   "wait": true,
+   "text": "4/6 MENUS. Open the main menu (Esc), look, close it. The screen should go back to one view while the menu is open and split again after. Then open the map and close it. Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "5/6 SOUND. Player 2 walks 30 m away from you. Do sounds near him (his footsteps, his attacks on a bush or barrel) still come through? Press End."
+  },
+  {
+   "wait": true,
+   "text": "6/6 END CO-OP (Ctrl+F6). The screen should go back to one normal view, with your usual camera. Press End."
+  },
+  {
+   "text": "Checking one view again",
+   "secs": 3,
+   "expect": [
+    {
+     "probe": "split",
+     "agg": "last",
+     "op": "==",
+     "value": "off",
+     "label": "one view after co-op"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no split-screen errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "DONE. Tell Claude what looked or felt wrong, half by half. Press End."
+  }
+ ]
+}

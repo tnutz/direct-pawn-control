@@ -1,0 +1,1595 @@
+{
+ "id": "fix-regress-bench-2",
+ "title": "Pawn input state fix: every party pawn, fix on vs off (DPC 0.9.177-dev6)",
+ "intro": "Runs by itself on the test bench. The robot plays each party pawn with the input state fix on, then off: run, light x3, heavy, hold L2, skill 1, skill 2, jump. Then co-op player 2 with the fix on. Compare the on/off rows per vocation.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev6",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_fix-regress-bench-2.json",
+  "show": [
+   "who",
+   "job",
+   "fix",
+   "n0"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "who": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and tostring(s.pawn_name) or 'Arisen'",
+   "job": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and s.pawn_job or 0",
+   "fix": "local D=_G.DPC_dbg; return D and D.cfg.pawn_prev_state ~= false",
+   "pf": "local D=_G.DPC_dbg; return D and D.R.pipfix_n or 0",
+   "n0": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and H.node(pc) or ''",
+   "n1": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and H.node(pc, 1) or ''",
+   "sk": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "atk": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_AttackState') end); return ok and v or 0",
+   "v": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and H.speed(pc, 'played') or 0",
+   "busy": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; if not pc then return false end; local a, b = tostring(H.node(pc) or ''), tostring(H.node(pc, 1) or '')\nlocal function busy(n) return n ~= '' and not n:find('Locomotion', 1, true) and not n:find('UpperBodyDefault', 1, true) and not n:find('Liv', 1, true) and not n:find('Idle', 1, true) end\nreturn busy(a) or busy(b)",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true"
+  }
+ },
+ "steps": [
+  {
+   "text": "HANDS OFF (about 6 minutes). Getting ready",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "solo",
+     "on": false
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: take control",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": ">",
+     "value": 0,
+     "label": "pawn 1 played, fix ON: control started"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: run forward",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 1 played, fix ON: moves"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: light attack x3",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 played, fix ON: light attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 played, fix ON: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: hold vocation action (guard / aim / etc.)",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 played, fix ON: vocation action"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 1 played, fix ON: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: skill 2",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 1 played, fix ON: skill 2"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: jump",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 played, fix ON: jumps"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix ON: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 1 played, fix ON: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: take control",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": ">",
+     "value": 0,
+     "label": "pawn 1 played, fix OFF: control started"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: run forward",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 1 played, fix OFF: moves"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: light attack x3",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 played, fix OFF: light attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 played, fix OFF: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: hold vocation action (guard / aim / etc.)",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 played, fix OFF: vocation action"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 1 played, fix OFF: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: skill 2",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 1 played, fix OFF: skill 2"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: jump",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 played, fix OFF: jumps"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 played, fix OFF: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 1 played, fix OFF: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: take control",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": ">",
+     "value": 0,
+     "label": "pawn 2 played, fix ON: control started"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: run forward",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 2 played, fix ON: moves"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: light attack x3",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 2 played, fix ON: light attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 2 played, fix ON: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: hold vocation action (guard / aim / etc.)",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 2 played, fix ON: vocation action"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 2 played, fix ON: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: skill 2",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 2 played, fix ON: skill 2"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: jump",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 2 played, fix ON: jumps"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix ON: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 2 played, fix ON: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: take control",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": ">",
+     "value": 0,
+     "label": "pawn 2 played, fix OFF: control started"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: run forward",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 2 played, fix OFF: moves"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: light attack x3",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 2 played, fix OFF: light attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 2 played, fix OFF: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: hold vocation action (guard / aim / etc.)",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 2 played, fix OFF: vocation action"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 2 played, fix OFF: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: skill 2",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 2 played, fix OFF: skill 2"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: jump",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 2 played, fix OFF: jumps"
+    }
+   ]
+  },
+  {
+   "text": "pawn 2 played, fix OFF: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 2 played, fix OFF: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: take control",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": ">",
+     "value": 0,
+     "label": "pawn 3 played, fix ON: control started"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: run forward",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 3 played, fix ON: moves"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: light attack x3",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 3 played, fix ON: light attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 3 played, fix ON: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: hold vocation action (guard / aim / etc.)",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 3 played, fix ON: vocation action"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 3 played, fix ON: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: skill 2",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 3 played, fix ON: skill 2"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: jump",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 3 played, fix ON: jumps"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix ON: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 3 played, fix ON: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: take control",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": ">",
+     "value": 0,
+     "label": "pawn 3 played, fix OFF: control started"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: run forward",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 3 played, fix OFF: moves"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: light attack x3",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 3 played, fix OFF: light attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 3 played, fix OFF: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: hold vocation action (guard / aim / etc.)",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 3 played, fix OFF: vocation action"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 3 played, fix OFF: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: skill 2",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 3 played, fix OFF: skill 2"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: jump",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 3 played, fix OFF: jumps"
+    }
+   ]
+  },
+  {
+   "text": "pawn 3 played, fix OFF: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 3 played, fix OFF: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: take control",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "coop",
+     "idx": 0
+    }
+   ],
+   "expect": [
+    {
+     "probe": "coop",
+     "agg": "any",
+     "label": "pawn 1 co-op, fix ON: control started"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: run forward",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "stick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "v",
+     "agg": "max",
+     "op": ">",
+     "value": 3.0,
+     "label": "pawn 1 co-op, fix ON: moves"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: light attack x3",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.2,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 co-op, fix ON: light attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: heavy attack",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.8,
+     "actions": [
+      "AttackL"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 co-op, fix ON: heavy attack"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: hold vocation action (guard / aim / etc.)",
+   "secs": 3.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 2.5,
+     "actions": [
+      "JobSpecialAction"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 co-op, fix ON: vocation action"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: skill 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 1 co-op, fix ON: skill 1"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: skill 2",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.6,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "sk",
+     "agg": "any",
+     "op": "~=",
+     "value": 0,
+     "label": "pawn 1 co-op, fix ON: skill 2"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: jump",
+   "secs": 2.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.3,
+     "actions": [
+      "Jump"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "busy",
+     "agg": "any",
+     "label": "pawn 1 co-op, fix ON: jumps"
+    }
+   ]
+  },
+  {
+   "text": "pawn 1 co-op, fix ON: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "pawn 1 co-op, fix ON: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "Done: fix back on, Arisen",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ]
+}

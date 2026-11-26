@@ -1,0 +1,374 @@
+{
+ "id": "coop-cards-1",
+ "title": "Co-op player cards: every layout and option side by side (DPC 0.9.177-dev20)",
+ "intro": "About 5 minutes, needs co-op running with at least player 2. Settings changed here are for this session only.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev20",
+  "TestGuide": "2.7"
+ },
+ "settings": [
+  {
+   "mod": "dpc",
+   "key": "card_layout",
+   "label": "Cards go",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Each player's spot",
+    "Row, bottom middle",
+    "Stack, bottom middle"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_palette",
+   "label": "Card shows",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Skills always",
+    "Like the game",
+    "Skills and actions"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_bars",
+   "label": "Health / stamina",
+   "values": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "labels": [
+    "In the card",
+    "Over the character",
+    "Under the character",
+    "Card and over"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_items",
+   "label": "Item lines",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Always",
+    "On demand",
+    "Never"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_bg_alpha",
+   "label": "Card background",
+   "min": 0.1,
+   "max": 1.0
+  },
+  {
+   "mod": "cd",
+   "key": "lens_vignette",
+   "label": "Lens vignette (Camera Distance)",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Game's",
+    "Off",
+    "Scaled to the screen"
+   ]
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_coop-cards-1.json",
+  "show": [
+   "mode",
+   "players"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "mode": "local D=_G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "players": "local D=_G.DPC_dbg; local n = 0; if D and D.coop.active then n = 2 elseif D and D.R.cp and D.R.cp.on then n = 2 end; for _ in pairs(D and D.R.np and D.R.np.slots or {}) do n = n + 1 end; return n",
+   "card_err": "local D=_G.DPC_dbg; return D and tostring(D.R.cards_err or '') or ''"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "Card options tour: co-op on with player 2 (and 3 if you can) on pawns, out of combat. Each step shows one look for 20 s; say which you like. The REFramework menu (Insert) has a 'Test settings' window to change them by hand. Press End.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_player_card",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_items",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bg_alpha",
+     "value": 0.8,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "A: cards in a ROW at the bottom middle, game-like palette. Player 2: hold L1 (the card should switch to skills), press a few buttons (lines light up). Press End (20 s)."
+  },
+  {
+   "text": "A: row, game-like palette (hold L1 to see skills)",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "card_err",
+     "agg": "last",
+     "op": "==",
+     "value": "",
+     "label": "cards drew without errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "B: cards STACKED at the bottom middle. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 3,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "B: stacked",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "C: each player's OLD spot. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 1,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "C: old spots",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "D: back to the row; card shows SKILLS ALWAYS. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 1,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "D: skills always",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "E: SKILLS AND ACTIONS together. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 3,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "E: skills and actions",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "F: health / stamina OVER each character (not in the card). Move around a bit. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 2,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "F: bars over the characters",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "G: health / stamina UNDER each character. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 3,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "G: bars under the characters",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "H: bars in the card AND over the character. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 4,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "H: card and over",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "I: item lines only when the D-pad is used or an item is down to 1. Player 2: touch the D-pad once. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_items",
+     "value": 2,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "I: items on demand",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "J: lighter background (40%). Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_items",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bg_alpha",
+     "value": 0.4,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "J: lighter background",
+   "secs": 20
+  },
+  {
+   "text": "Done: back to the defaults (row, game-like, bars in the card). Tell Claude your picks (A-J).",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_items",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bg_alpha",
+     "value": 0.8,
+     "save": false
+    }
+   ]
+  }
+ ]
+}

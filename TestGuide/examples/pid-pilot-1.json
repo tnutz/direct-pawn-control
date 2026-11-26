@@ -1,0 +1,213 @@
+{
+ "id": "pid-pilot-1",
+ "title": "Player-identity pilot: the played pawn is the player for its own code, off vs on (DPC 0.9.177-dev31)",
+ "intro": "About 10 minutes, single player. Not blind: each pawn is played with the pilot off, then on. The pilot only lasts for this session (it goes back off at the end).",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev31",
+  "TestGuide": "2.7"
+ },
+ "settings": [
+  {
+   "mod": "dpc",
+   "key": "pawn_player_identity",
+   "label": "Player-identity pilot"
+  }
+ ],
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_pid-pilot-1.json",
+  "show": [
+   "pid",
+   "swaps_total",
+   "off_thread"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "who": "local D=_G.DPC_dbg; return D and D.state.active and tostring(D.state.pawn_name) or 'Arisen'",
+   "pid": "local D=_G.DPC_dbg; return D and D.cfg.pawn_player_identity and 'ON' or 'off'",
+   "swaps": "local D=_G.DPC_dbg; local P = D and D.R.pid; if not P then return '' end; local t = {}; for k, v in pairs(P.n) do if v > 0 then t[#t + 1] = k .. '=' .. v end end; table.sort(t); return table.concat(t, ' ')",
+   "swaps_total": "local D=_G.DPC_dbg; local P = D and D.R.pid; local n = 0; for _, v in pairs(P and P.n or {}) do n = n + v end; return n",
+   "off_thread": "local D=_G.DPC_dbg; return D and D.R.pid and D.R.pid.off_thread or 0",
+   "hooked": "local D=_G.DPC_dbg; return D and D.R.pid and D.R.pid.hooked or 0",
+   "n0": "local D=_G.DPC_dbg; local pc = D and D.state.pawn_chara; return pc and H.node(pc) or ''"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "PLAYER-IDENTITY PILOT (not blind). Single player, co-op off, open ground, out of combat. Take control of a FIGHTER pawn (F6). Press End.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_player_identity",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/4 FIGHTER, PILOT OFF (as now). Three goblins that can't die appear. Fight as long as you like: attacks, skills, guard (R1) when they swing, dash. Press End to spawn them, End again when done.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 5,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Fighting, pilot off. Press End when done. Remember how guard, dash and skills felt."
+  },
+  {
+   "wait": true,
+   "text": "2/4 FIGHTER, PILOT ON: the game now treats your pawn as the player for its own controls, movement, skills and combat. Same fight. Press End to start.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_player_identity",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 5,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "text": "Checking the pilot is running",
+   "secs": 6,
+   "expect": [
+    {
+     "probe": "hooked",
+     "agg": "max",
+     "op": ">=",
+     "value": 70,
+     "label": "pilot hooks installed"
+    },
+    {
+     "probe": "swaps_total",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "the pawn is treated as the player in its own code"
+    },
+    {
+     "probe": "off_thread",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no swap on another thread"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Fighting, pilot on. Press End when done. What changed: guard / just guard, dash, skills, being hit, anything odd?"
+  },
+  {
+   "wait": true,
+   "text": "3/4 Switch to an ARCHER or MAGE pawn. PILOT OFF. Fight (aimed and hip shots, or spells with targets). Press End to spawn the goblins, End again when done.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_player_identity",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 5,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Fighting, pilot off. Press End when done."
+  },
+  {
+   "wait": true,
+   "text": "4/4 Same pawn, PILOT ON. Same fight. Watch what your shots / spells hit. Press End to start, End again when done.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_player_identity",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 5,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Fighting, pilot on. Press End when done."
+  },
+  {
+   "text": "Done: pilot back off, goblins removed. Tell Claude what changed with the pilot on (better, worse, broken).",
+   "secs": 3,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "whole run: no DPC errors"
+    }
+   ],
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_player_identity",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ]
+}

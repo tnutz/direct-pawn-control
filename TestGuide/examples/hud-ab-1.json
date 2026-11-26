@@ -1,0 +1,25 @@
+{
+ "id": "hud-ab-1",
+ "title": "Player 1's HUD in split screen: squeezed vs fitted (Split Screen 0.2.0-dev23)",
+ "intro": "Two short looks at player 1's view, about 1 minute. Stay in split screen (3 across). Nothing to do but look; press End to go on.",
+ "requires": {
+  "TestGuide": "2.7.6"
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "A. The game's own HUD: full size, but squeezed (oval minimap, narrow text). Look at player 1's view, then press End.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.fit_hud ~= false then S.cfg.fit_hud = false end"
+  },
+  {
+   "wait": true,
+   "text": "B. Fitted: round and readable, along the bottom, but about a third of the size. Look, then press End.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.fit_hud ~= true then S.cfg.fit_hud = true end"
+  },
+  {
+   "wait": true,
+   "text": "Tell Claude which you'd rather play with: A (big, squeezed) or B (small, round). B stays on for now. Press End.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.fit_hud ~= true then S.cfg.fit_hud = true end"
+  }
+ ]
+}

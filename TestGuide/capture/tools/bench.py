@@ -21,7 +21,7 @@ A job (JSON):
                                                                                          reframework\\data\\test_guide\\
     "slot": null,                   a save slot to check (and for "call"); null = whichever save is loaded
     "autoload": "observe",          observe: wait for someone (or the keys below) to load the save; call: DevBench asks
-                                    the game to load the slot (untested guess); keys: the bench presses keys
+                                    the game to load the slot (CLOSES THE GAME on the test PC, 2026-11-24: do not use); keys: the bench presses keys
     "keys": [{"wait": 8}, {"key": "ENTER"}, ...],   for "keys": pressed on the title menu, in order
     "use_running_game": false,      true: use a game that is already running (never killed by the bench)
     "max_crashes": 3, "retry_after_crash": true, "plan_timeout_s": 900, "boot_timeout_s": 300, "hang_s": 90,
@@ -37,7 +37,7 @@ A job (JSON):
                                     happen when the world unloads. DevBench sets the pause menu's own "return to title"
                                     flag (app.ui060101.returnTitle), then the bench presses "title_keys" (default Esc,
                                     which opens that menu; the game then quits to title without saving). Verified by
-                                    hand on Thirteen 2026-11-19.
+                                    hand on the test PC 2026-11-19.
     "title_keys": [{"key": "ESC"}] }               "job_end" or "each_plan": restart the game afterwards so it is back at the save
                                     (only a game the bench started, and only while the save block held)
 
@@ -226,7 +226,16 @@ def focus_game(pid):
     if not found:
         return False
     user32.ShowWindow(found[0], 9)
-    return bool(user32.SetForegroundWindow(found[0]))
+    # Windows refuses SetForegroundWindow to a background process unless it just had input. A tap of Alt (as a
+    # hardware event) counts as that input. 2026-11-24 on the test PC: without it the title-menu Enter went nowhere.
+    for _ in range(3):
+        user32.keybd_event(0x12, 0, 0, 0)       # Alt down
+        user32.keybd_event(0x12, 0, 0x0002, 0)  # Alt up
+        user32.SetForegroundWindow(found[0])
+        time.sleep(0.3)
+        if user32.GetForegroundWindow() == found[0]:
+            return True
+    return False
 
 
 def press(name, hold=0.08):

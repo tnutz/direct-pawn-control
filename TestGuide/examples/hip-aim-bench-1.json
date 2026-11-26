@@ -1,0 +1,747 @@
+{
+ "id": "hip-aim-bench-1",
+ "title": "Archer hip skills: is DPC's hip-aim hold still needed with the input state fix? (DPC 0.9.177-dev6)",
+ "intro": "Runs by itself on the test bench. Plays the Archer pawn (party slot 2) and fires each skill from the hip, with the input state fix and the hip-aim hold switched on and off.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev6",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_hip-aim-bench-1.json",
+  "show": [
+   "who",
+   "fix",
+   "hip",
+   "n1"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "who": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and tostring(s.pawn_name) or 'Arisen'",
+   "job": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and s.pawn_job or 0",
+   "fix": "local D=_G.DPC_dbg; return D and D.cfg.pawn_prev_state ~= false",
+   "hip": "local D=_G.DPC_dbg; return D and D.cfg.pawn_hip_skill_aim ~= false",
+   "n0": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and H.node(pc) or ''",
+   "n1": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; return pc and H.node(pc, 1) or ''",
+   "sk": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "shot": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; if not pc then return false end; local a = tostring(H.node(pc) or '') .. ' ' .. tostring(H.node(pc, 1) or ''); return (a:find('Shoot', 1, true) or a:find('Shot', 1, true) and not a:find('Prepare', 1, true) and not a:find('Ready', 1, true)) and true or false",
+   "cancel": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.active and s.pawn_chara; if not pc then return false end; local a = tostring(H.node(pc) or '') .. ' ' .. tostring(H.node(pc, 1) or ''); return a:find('Cancel', 1, true) and true or false"
+  }
+ },
+ "steps": [
+  {
+   "text": "Getting ready",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "A fix ON, hip aim ON: take the Archer (pawn 2)",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_hip_skill_aim",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": "==",
+     "value": 2,
+     "label": "A fix ON, hip aim ON: playing an Archer"
+    }
+   ]
+  },
+  {
+   "text": "A fix ON, hip aim ON: skill 1 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "A fix ON, hip aim ON: skill 1 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "A fix ON, hip aim ON: skill 1 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "A fix ON, hip aim ON: skill 2 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "A fix ON, hip aim ON: skill 2 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "A fix ON, hip aim ON: skill 2 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "A fix ON, hip aim ON: skill 3 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill3"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "A fix ON, hip aim ON: skill 3 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "A fix ON, hip aim ON: skill 3 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "A fix ON, hip aim ON: skill 4 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill4"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "A fix ON, hip aim ON: skill 4 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "A fix ON, hip aim ON: skill 4 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "A fix ON, hip aim ON: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "A fix ON, hip aim ON: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "B fix ON, hip aim OFF: take the Archer (pawn 2)",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_hip_skill_aim",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": "==",
+     "value": 2,
+     "label": "B fix ON, hip aim OFF: playing an Archer"
+    }
+   ]
+  },
+  {
+   "text": "B fix ON, hip aim OFF: skill 1 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "B fix ON, hip aim OFF: skill 1 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "B fix ON, hip aim OFF: skill 1 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "B fix ON, hip aim OFF: skill 2 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "B fix ON, hip aim OFF: skill 2 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "B fix ON, hip aim OFF: skill 2 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "B fix ON, hip aim OFF: skill 3 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill3"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "B fix ON, hip aim OFF: skill 3 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "B fix ON, hip aim OFF: skill 3 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "B fix ON, hip aim OFF: skill 4 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill4"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "B fix ON, hip aim OFF: skill 4 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "B fix ON, hip aim OFF: skill 4 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "B fix ON, hip aim OFF: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "B fix ON, hip aim OFF: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "C fix OFF, hip aim OFF: take the Archer (pawn 2)",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_hip_skill_aim",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": "==",
+     "value": 2,
+     "label": "C fix OFF, hip aim OFF: playing an Archer"
+    }
+   ]
+  },
+  {
+   "text": "C fix OFF, hip aim OFF: skill 1 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "C fix OFF, hip aim OFF: skill 1 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "C fix OFF, hip aim OFF: skill 1 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "C fix OFF, hip aim OFF: skill 2 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "C fix OFF, hip aim OFF: skill 2 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "C fix OFF, hip aim OFF: skill 2 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "C fix OFF, hip aim OFF: skill 3 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill3"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "C fix OFF, hip aim OFF: skill 3 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "C fix OFF, hip aim OFF: skill 3 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "C fix OFF, hip aim OFF: skill 4 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill4"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "C fix OFF, hip aim OFF: skill 4 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "C fix OFF, hip aim OFF: skill 4 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "C fix OFF, hip aim OFF: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "C fix OFF, hip aim OFF: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "D fix OFF, hip aim ON: take the Archer (pawn 2)",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_hip_skill_aim",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": "==",
+     "value": 2,
+     "label": "D fix OFF, hip aim ON: playing an Archer"
+    }
+   ]
+  },
+  {
+   "text": "D fix OFF, hip aim ON: skill 1 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill1"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "D fix OFF, hip aim ON: skill 1 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "D fix OFF, hip aim ON: skill 1 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "D fix OFF, hip aim ON: skill 2 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill2"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "D fix OFF, hip aim ON: skill 2 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "D fix OFF, hip aim ON: skill 2 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "D fix OFF, hip aim ON: skill 3 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill3"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "D fix OFF, hip aim ON: skill 3 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "D fix OFF, hip aim ON: skill 3 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "D fix OFF, hip aim ON: skill 4 from the hip",
+   "secs": 5.5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.4,
+     "actions": [
+      "Skill4"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "shot",
+     "agg": "any",
+     "label": "D fix OFF, hip aim ON: skill 4 shoots"
+    },
+    {
+     "probe": "cancel",
+     "agg": "frac",
+     "op": "==",
+     "value": false,
+     "min_frac": 0.99,
+     "label": "D fix OFF, hip aim ON: skill 4 never cancelled"
+    }
+   ]
+  },
+  {
+   "text": "D fix OFF, hip aim ON: release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "D fix OFF, hip aim ON: no script errors"
+    }
+   ]
+  },
+  {
+   "text": "Settings back",
+   "secs": 2,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_hip_skill_aim",
+     "value": true,
+     "save": false
+    }
+   ]
+  }
+ ]
+}

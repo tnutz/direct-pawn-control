@@ -1,0 +1,67 @@
+{
+ "id": "split-2",
+ "title": "Split screen, second look (DPC Split Screen 0.1.0-dev2, DPC 0.9.177-dev38)",
+ "intro": "About 3 minutes. Same setup as before: start co-op, player 2 on a controller. If anything goes black, freezes or looks broken, press End and tell Claude; the split stops itself after one error now.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev38",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_split-2.json",
+  "show": [
+   "split",
+   "outid",
+   "errs",
+   "camblk"
+  ],
+  "probes": {
+   "split": "local S=_G.DPC_SplitScreen; return S and (S.active and 'ON' or 'off') or 'not loaded'",
+   "outid": "local S=_G.DPC_SplitScreen; return S and tostring(S.ro_after or '') or ''",
+   "errs": "local S=_G.DPC_SplitScreen; return S and S.st.errors or 0",
+   "lasterr": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.last_error or '') or ''",
+   "halted": "local S=_G.DPC_SplitScreen; return S and tostring(S.halted or '') or ''",
+   "turns": "local S=_G.DPC_SplitScreen; return S and S.st.turns or 0",
+   "frames": "local S=_G.DPC_SplitScreen; return S and S.st.frames or 0",
+   "camblk": "local D=_G.DPC_dbg; return D and D.R.views_cam_n or 0"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "SPLIT SCREEN 2. Start co-op (Ctrl+F6, player 2 holds L3 + R3). Press End once the screen has split."
+  },
+  {
+   "text": "Checking",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "frames",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "two views drawn"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/3 Is player 2's half (right) showing the world now, or still black? Then player 2 turns his right stick: only HIS half should turn, not yours. Press End."
+  },
+  {
+   "wait": true,
+   "text": "2/3 Player 2 walks around with the left stick: does he walk where his view faces? You walk and turn the mouse: does only your half turn? Press End."
+  },
+  {
+   "wait": true,
+   "text": "3/3 End co-op (Ctrl+F6). One normal view again? Press End, then tell Claude what you saw."
+  }
+ ]
+}

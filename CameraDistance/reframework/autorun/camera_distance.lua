@@ -20,7 +20,7 @@
 -- ==============================================================================
 
 local MOD_NAME = "Camera Distance & Framing"
-local MOD_VERSION = "2.9.19"
+local MOD_VERSION = "2.9.20"
 local CONFIG_FILE = "camera_distance_config.json"
 
 -- ==============================================================================
@@ -158,6 +158,11 @@ local DEFAULT_CONFIG = {
     -- Smooth Interpolation
     smooth_transitions = true,
     transition_speed = 6.0,
+
+    -- 2.9.20: the engine's lens vignette (ToneMapping "Kerare": darkens what is more than 10..35 degrees from the view
+    -- centre). On a 32:9 screen the sides are far past 35 degrees, so a dark circle closes in as the view widens.
+    -- 1 = the game's, 2 = off, 3 = scaled to the screen width (as dark at the edges as on a 16:9 screen)
+    lens_vignette = 3,
 
     -- Field of View (FOV)
     fov_enabled = false,
@@ -1094,7 +1099,9 @@ local function camera_tick()
     -- Couch co-op framing: pull back with the Arisen <-> pawn separation and shift toward the midpoint
     poll_coop_status(now)
     local target_coop_extra, target_sx, target_sz = 0.0, 0.0, 0.0
-    if config.coop_framing and state.coop_active and not state.is_suspended and player_pos then
+    -- 2.9.20-dev3: a split-screen mod gives each player a view; framing both in one view would fight it
+    local split_on = _G.DPC_SplitScreen ~= nil and _G.DPC_SplitScreen.active == true
+    if config.coop_framing and state.coop_active and not state.is_suspended and player_pos and not split_on then
         -- 2.9.10: with both players on pawns the camera follows player 1's pawn, not the Arisen: frame from there
         local player_pos = ((state.coop_anchor_idx or -1) >= 0 and get_coop_pawn_position(state.coop_anchor_idx)) or player_pos
         -- 2.9.10: DPC 0.9.171, player 2 on the Arisen: pawn_idx -1 = the other player is the Arisen
@@ -1886,13 +1893,16 @@ end
 
 local function draw_coop_marker()
     if not (config.enabled and config.coop_marker ~= false and state.coop_active) then return end
+    if _G.DPC_SplitScreen and _G.DPC_SplitScreen.active == true then return end -- 2.9.20-dev3: each player has a view
     if marker_hidden() then return end
     local p2 = get_coop_pawn_position()
     -- colours are 0xAABBGGRR: player 2 light blue, player 1 gold (2.9.16 had both yellow-orange)
     local cc = state.coop_colors or {}
     if p2 then draw_edge_marker(p2, (state.coop_name ~= "" and state.coop_name) or "Player 2", cc.p2 or 0xFFFFC040) end
     local p1 = ((state.coop_anchor_idx or -1) >= 0 and get_coop_pawn_position(state.coop_anchor_idx)) or get_player_position()
-    if p1 and (state.coop_idx or 0) ~= -1 then draw_edge_marker(p1, "Player 1", cc.p1 or 0xFF30C8FF) end
+    -- 2.9.20-dev2 (the tester: "P1 going off screen seems to not show a bookmark"): with player 2 on the Arisen (pawn
+    -- index -1) player 1 is on a pawn (the anchor); his marker was skipped along with the Arisen's duplicate
+    if p1 and ((state.coop_anchor_idx or -1) >= 0 or (state.coop_idx or 0) ~= -1) then draw_edge_marker(p1, "Player 1", cc.p1 or 0xFF30C8FF) end
     -- 2.9.18: players 3+ (the tester: "P3 is missing a bookmark when off screen"); colours match DPC's target dots:
     -- P3 green, P4 magenta, P5 red, then white
     local cols = { [3] = 0xFF50E050, [4] = 0xFFF050E0, [5] = 0xFF4040FF }
@@ -1927,6 +1937,61 @@ re.on_frame(function()
             mod = "CameraDistance", version = MOD_VERSION, t = now, errors = dev.errors,
             last_error = dev.last_error, last_error_t = dev.last_error_t, save_ok = dev.save_ok, info = info,
         }) end
+    end
+end)
+
+-- 2.9.20 lens vignette (the tester, 2026-11-24, 32:9: "It's a big circular closing in"; read live with the agent bridge:
+-- ToneMapping Vignetting = Enable, KerareBeginAngle 10, KerareEndAngle 35). Mode 3 widens both angles by how much
+-- wider the screen's half-view is than a 16:9 one at the same vertical FOV, every frame (cheap: two compares), so
+-- the edges darken as on 16:9. The game's values are kept and put back for mode 1 and on script reset.
+local lv = { tm = nil, addr = nil, orig = nil, applied = false }
+local function lens_vignette_tick()
+    local mode = config.lens_vignette or 3
+    if mode == 1 and not lv.applied then return end
+    local cam = sdk.get_primary_camera()
+    if not cam then return end
+    local tm = cam:call("get_GameObject"):call("getComponent(System.Type)", sdk.typeof("via.render.ToneMapping"))
+    if not tm then return end
+    local addr = tm:get_address()
+    if lv.addr ~= addr then
+        lv.addr, lv.tm, lv.applied = addr, tm, false
+        lv.orig = { v = tm:call("getVignetting"), b = tm:call("get_KerareBeginAngle"), e = tm:call("get_KerareEndAngle") }
+    end
+    local o = lv.orig
+    if mode == 1 then
+        tm:call("setVignetting", o.v); tm:call("set_KerareBeginAngle", o.b); tm:call("set_KerareEndAngle", o.e)
+        lv.applied = false
+        return
+    end
+    if mode == 2 then
+        if tm:call("getVignetting") ~= 2 then tm:call("setVignetting", 2) end
+        lv.applied = true
+        return
+    end
+    if tm:call("getVignetting") ~= o.v then tm:call("setVignetting", o.v) end
+    local vf = cam:call("get_FOV") or 36.0
+    if vf < 3.2 then vf = math.deg(vf) end
+    local aspect = state.coop_aspect
+    if not aspect then
+        local ds = imgui.get_display_size()
+        aspect = (ds and ds.y > 0) and (ds.x / ds.y) or (16.0 / 9.0)
+    end
+    local t = math.tan(math.rad(vf * 0.5))
+    local k = math.max(1.0, math.atan(t * aspect) / math.atan(t * 16.0 / 9.0))
+    local b, e = math.min(80.0, o.b * k), math.min(89.0, o.e * k)
+    if math.abs((tm:call("get_KerareEndAngle") or 0) - e) > 0.05 then tm:call("set_KerareEndAngle", e) end
+    if math.abs((tm:call("get_KerareBeginAngle") or 0) - b) > 0.05 then tm:call("set_KerareBeginAngle", b) end
+    lv.applied, lv.k = true, k
+end
+re.on_pre_application_entry("LateUpdateBehavior", function()
+    local ok, err = pcall(lens_vignette_tick)
+    if not ok and not lv.err then lv.err = tostring(err) end
+end)
+re.on_script_reset(function()
+    if lv.tm and lv.orig and lv.applied then
+        pcall(function()
+            lv.tm:call("setVignetting", lv.orig.v); lv.tm:call("set_KerareBeginAngle", lv.orig.b); lv.tm:call("set_KerareEndAngle", lv.orig.e)
+        end)
     end
 end)
 
@@ -2292,6 +2357,10 @@ re.on_draw_ui(function()
         -- 6. Field of View (FOV) & Auto-Suspend Safeguards
         -- ======================================================================
         if imgui.tree_node("Field of View (FOV) & Cutscene Safeguards") then
+            local cv, vv = imgui.combo("Lens vignette (dark screen edges)", config.lens_vignette or 3, { "The game's", "Off", "Scaled to the screen width (ultrawide fix)" })
+            if cv then config.lens_vignette = vv; changed = true end
+            if lv.err then ui_colored("Lens vignette: " .. lv.err, 0xFF5555FF)
+            elseif lv.k and (config.lens_vignette or 3) == 3 then ui_colored(string.format("   widened x%.2f for this screen", lv.k), 0xFFAAAAAA) end
             c, config.fov_enabled = imgui.checkbox("Override Field of View (FOV)", config.fov_enabled)
             if c then
                 changed = true
@@ -2417,5 +2486,21 @@ _G.CameraDistance_API = {
         pcall(save_config)
         return true
     end,
+    -- 2.9.20-dev4: for DPC Split Screen, so players 2-4 can each use one of these presets in their own view
+    presets = function()
+        local out = {}
+        for _, p in ipairs(BUILTIN_PRESETS) do out[#out + 1] = p end
+        for _, p in ipairs(config.custom_presets or {}) do if type(p) == "table" and p.name then out[#out + 1] = p end end
+        return out
+    end,
+    active_preset = function() return config.active_preset_index end,
+    apply_preset = function(idx)
+        local n = #BUILTIN_PRESETS
+        if idx >= 1 and idx <= n then apply_builtin_preset(idx); return true end
+        local cp = (config.custom_presets or {})[idx - n]
+        if type(cp) == "table" then config.active_preset_index = idx; apply_preset_table(cp); return true end
+        return false
+    end,
+    in_combat = function() return state.is_in_combat == true end,
 }
 

@@ -1,0 +1,177 @@
+{
+ "id": "feel-ab-1",
+ "title": "Played pawn feel, blind A/B (DPC 0.9.177-dev6)",
+ "intro": "About 5 minutes. Three parts (melee, mage, archer), each played twice: one round has the new input fix, one doesn't (not shown). Note which round felt better each time.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev7",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_feel-ab-1.json",
+  "show": [
+   "who",
+   "n0",
+   "n1"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "who": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return s and s.active and tostring(s.pawn_name) or 'Arisen'",
+   "job": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return s and s.active and s.pawn_job or 0",
+   "fix": "local D=_G.DPC_dbg; return D and D.cfg.pawn_prev_state ~= false",
+   "pf": "local D=_G.DPC_dbg; return D and D.R.pipfix_n or 0",
+   "dpc_cancels": "local D=_G.DPC_dbg; return D and D.R.cancel_n or 0",
+   "n0": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return pc and H.node(pc) or ''",
+   "n1": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return pc and H.node(pc, 1) or ''",
+   "sk": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "trg": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; local ok, v = pcall(function() return s.pawn_input:get_field('ButtonTriggerFlags') end); return ok and v or 0"
+  }
+ },
+ "steps": [
+  {
+   "secs": 2,
+   "text": "Starting",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "PART 1 MELEE: play the Fighter (or any melee pawn) yourself. A few enemies help. Press End when you're in control."
+  },
+  {
+   "wait": true,
+   "text": "MELEE ROUND 1 of 2. Light combos, light into heavy, attacks into skills, skills into jump / dodge, guard. Mash early to test buffering. Press End to start (40 s)."
+  },
+  {
+   "secs": 40,
+   "text": "ROUND 1: Light combos, light into heavy, attacks into skills, skills into jump / dodge, guard. Mash early to test buffering.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "MELEE ROUND 2 of 2: the same again. Remember which round felt better. Press End (40 s)."
+  },
+  {
+   "secs": 40,
+   "text": "ROUND 2: Light combos, light into heavy, attacks into skills, skills into jump / dodge, guard. Mash early to test buffering.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Which round felt better, 1 or 2 (or same)? Tell Claude after the test. Press End."
+  },
+  {
+   "wait": true,
+   "text": "PART 2 MAGE: switch to the Mage / Sorcerer pawn. Press End when you're in control."
+  },
+  {
+   "wait": true,
+   "text": "MAGE ROUND 1 of 2. Start spells and press L2 mid-chant to cancel; also cast fully; also cancel into another spell or a dodge. Press End to start (40 s)."
+  },
+  {
+   "secs": 40,
+   "text": "ROUND 1: Start spells and press L2 mid-chant to cancel; also cast fully; also cancel into another spell or a dodge.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "MAGE ROUND 2 of 2: the same again. Remember which round felt better. Press End (40 s)."
+  },
+  {
+   "secs": 40,
+   "text": "ROUND 2: Start spells and press L2 mid-chant to cancel; also cast fully; also cancel into another spell or a dodge.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Which round felt better, 1 or 2 (or same)? Tell Claude after the test. Press End."
+  },
+  {
+   "wait": true,
+   "text": "PART 3 ARCHER: switch to the Archer pawn. Press End when you're in control."
+  },
+  {
+   "wait": true,
+   "text": "ARCHER ROUND 1 of 2. Shots from the hip and aimed, skills from the hip and aimed, dodge out of aim. Press End to start (35 s)."
+  },
+  {
+   "secs": 35,
+   "text": "ROUND 1: Shots from the hip and aimed, skills from the hip and aimed, dodge out of aim.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "ARCHER ROUND 2 of 2: the same again. Remember which round felt better. Press End (35 s)."
+  },
+  {
+   "secs": 35,
+   "text": "ROUND 2: Shots from the hip and aimed, skills from the hip and aimed, dodge out of aim.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Which round felt better, 1 or 2 (or same)? Tell Claude after the test. Press End."
+  },
+  {
+   "secs": 2,
+   "text": "Done: fix back on. Tell Claude your picks (melee / mage / archer).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  }
+ ]
+}

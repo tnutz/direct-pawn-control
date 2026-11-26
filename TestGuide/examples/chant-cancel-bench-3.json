@@ -1,0 +1,84 @@
+{
+ "id": "chant-cancel-bench-3",
+ "title": "Chant cancel with the pawn input state fix (DPC 0.9.177-dev5): the game should cancel by itself",
+ "intro": "Runs by itself on the test bench: takes the first Mage or Sorcerer pawn, casts each skill slot twice and presses the cancel button mid-chant through DPC's dev chant_test. The log gets the values the game's cancel check reads.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev5",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_chant-cancel-bench-3.json",
+  "show": [
+   "who",
+   "job",
+   "sk_now"
+  ],
+  "probes": {
+   "who": "local D=_G.DPC_dbg; return D and (D.state.active and ('playing '..tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "job": "local D=_G.DPC_dbg; return D and D.state.active and tostring(D.state.pawn_job) or ''",
+   "sk_now": "local D=_G.DPC_dbg; local pc=D and D.state.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "1/3 Setting up: a still goblin ahead",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 1,
+     "dist": 10,
+     "angle": 0,
+     "still": true,
+     "tough": false
+    }
+   ]
+  },
+  {
+   "text": "2/3 chant_test: Mage / Sorcerer pawn casts each slot, cancel pressed mid-chant (2 rounds)",
+   "secs": 40,
+   "cmds": [
+    {
+     "cmd": "chant_test",
+     "rounds": 2,
+     "press_after": 0.8
+    }
+   ],
+   "expect": [
+    {
+     "probe": "job",
+     "agg": "any",
+     "op": "contains",
+     "value": "",
+     "label": "played a Mage (3) / Sorcerer (6)"
+    },
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "DPC errors"
+    }
+   ]
+  },
+  {
+   "text": "3/3 Back to the Arisen",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ]
+}

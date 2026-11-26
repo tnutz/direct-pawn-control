@@ -1,0 +1,35 @@
+{
+ "id": "chant-cancel",
+ "title": "Chant cancel probe on a played Mage pawn (no hands): launches the game, loads the main save with saving blocked, runs, quits",
+ "plans": [
+  "bench_plans/chant-cancel-bench-1.json"
+ ],
+ "slot": 0,
+ "autoload": "keys",
+ "use_running_game": false,
+ "max_crashes": 2,
+ "retry_after_crash": true,
+ "save_block": "flag",
+ "quit_at_end": true,
+ "keys": [
+  {
+   "wait": 4
+  },
+  {
+   "key": "ENTER"
+  },
+  {
+   "wait": 3
+  },
+  {
+   "key": "ENTER"
+  },
+  {
+   "wait": 3
+  },
+  {
+   "key": "ENTER"
+  }
+ ],
+ "_note": "autoload \"call\" closed the game on the test PC at the title menu (2026-11-24, twice); keys = Enter on Continue like a player"
+}

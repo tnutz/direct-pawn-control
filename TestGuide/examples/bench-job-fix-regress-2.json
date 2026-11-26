@@ -1,0 +1,35 @@
+{
+ "id": "fix-regress-2",
+ "title": "Input state fix regression, every pawn, on vs off (no hands)",
+ "plans": [
+  "bench_plans/fix-regress-bench-2.json"
+ ],
+ "slot": 0,
+ "autoload": "keys",
+ "use_running_game": false,
+ "max_crashes": 2,
+ "retry_after_crash": true,
+ "save_block": "flag",
+ "quit_at_end": true,
+ "keys": [
+  {
+   "wait": 10
+  },
+  {
+   "key": "ENTER"
+  },
+  {
+   "wait": 4
+  },
+  {
+   "key": "ENTER"
+  },
+  {
+   "wait": 3
+  },
+  {
+   "key": "SPACE"
+  }
+ ],
+ "_note": "title keys as the tester pressed them 2026-11-24: past the splash, Enter to the menu, Enter on Continue, Space to confirm the latest save"
+}

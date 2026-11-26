@@ -1,0 +1,141 @@
+{
+ "id": "split-5",
+ "title": "Split screen for 2, 3 and 4 players (DPC Split Screen 0.2.0-dev4, DPC 0.9.177-dev41)",
+ "intro": "About 10 minutes. Frame generation OFF (upscaling is fine). You on keyboard and mouse, then 2-4 controllers (you can hold them yourself). The plan switches the layouts itself; the layout options are also in the Test settings box. If a view goes black or anything breaks, press End and tell Claude.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev41",
+  "TestGuide": "2.7.4"
+ },
+ "settings": [
+  {
+   "mod": "split",
+   "key": "layout",
+   "label": "Layout with 2 players",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Auto",
+    "Side by side",
+    "Top and bottom"
+   ]
+  },
+  {
+   "mod": "split",
+   "key": "layout3",
+   "label": "Layout with 3 players",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Auto",
+    "Three across",
+    "2 x 2 grid"
+   ]
+  },
+  {
+   "mod": "split",
+   "key": "spare",
+   "label": "3 in the grid: fourth quarter",
+   "values": [
+    1,
+    2
+   ],
+   "labels": [
+    "Blank",
+    "Party from above"
+   ]
+  },
+  {
+   "mod": "split",
+   "key": "layout4",
+   "label": "Layout with 4 players",
+   "values": [
+    1,
+    2
+   ],
+   "labels": [
+    "2 x 2 grid",
+    "Four across"
+   ]
+  },
+  {
+   "mod": "split",
+   "key": "menus_keep",
+   "label": "Keep the split in menus"
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_split-5.json",
+  "show": [
+   "split",
+   "kind",
+   "views",
+   "errs"
+  ],
+  "probes": {
+   "split": "local S=_G.DPC_SplitScreen; return S and (S.active and 'ON' or 'off') or 'not loaded'",
+   "kind": "local S=_G.DPC_SplitScreen; return S and tostring(S.kind or '') or ''",
+   "views": "local S=_G.DPC_SplitScreen; local n = 0; for _ in pairs(S and S.views.ex or {}) do n = n + 1 end; return n",
+   "errs": "local S=_G.DPC_SplitScreen; return S and S.st.errors or 0",
+   "lasterr": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.last_error or '') or ''",
+   "paused": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.suspended_by or '') or ''",
+   "menu": "local S=_G.DPC_SplitScreen; return S and tostring(S.menu_open) or ''",
+   "npl": "local D=_G.DPC_dbg; local n = 0; for _ in pairs(D and D.R.npl_gone or {}) do n = n + 1 end; return n"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "SPLIT 5. Frame generation off. Start co-op (Ctrl+F6, player 2 holds L3 + R3). Press End once it splits.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.layout ~= 1 then S.cfg.layout = 1; S.save() end"
+  },
+  {
+   "wait": true,
+   "text": "1/6 TWO PLAYERS. Cards at the bottom of each player's own half; bars only inside the half that sees the character; no game nameplate stretching across the line. Walk near the line, look both ways. Press End."
+  },
+  {
+   "wait": true,
+   "text": "2/6 MENU. Open the pause menu, look (no lines over it), close it. The split should stay. Press End."
+  },
+  {
+   "wait": true,
+   "text": "3/6 THREE ACROSS. A third controller holds L3 + R3. Three views across. Look at all three, then press End.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.layout3 ~= 2 then S.cfg.layout3 = 2; S.save() end"
+  },
+  {
+   "wait": true,
+   "text": "4/6 THREE IN A GRID. Now a 2 x 2 grid; the fourth quarter shows the party from above. Press End.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.layout3 ~= 3 then S.cfg.layout3 = 3; S.save() end; if S and S.cfg.spare ~= 2 then S.cfg.spare = 2; S.save() end"
+  },
+  {
+   "wait": true,
+   "text": "5/6 FOUR PLAYERS. A fourth controller holds L3 + R3: 2 x 2 grid. Then open and close the pause menu ONCE (last time this crashed). Press End if it survived.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.layout4 ~= 1 then S.cfg.layout4 = 1; S.save() end"
+  },
+  {
+   "wait": true,
+   "text": "6/6 FOUR ACROSS. Four narrow views. Then end co-op (Ctrl+F6): one normal view again? Press End and tell Claude what you saw.",
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.layout4 ~= 2 then S.cfg.layout4 = 2; S.save() end"
+  },
+  {
+   "text": "Putting the layouts back",
+   "secs": 2,
+   "each_frame": "local S=_G.DPC_SplitScreen; if S and S.cfg.layout ~= 1 then S.cfg.layout = 1; S.save() end; S.cfg.layout3 = 1; S.cfg.layout4 = 1; S.cfg.spare = 2; S.save()",
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no split-screen errors"
+    }
+   ]
+  }
+ ]
+}

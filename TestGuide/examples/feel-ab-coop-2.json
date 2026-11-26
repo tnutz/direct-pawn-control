@@ -1,0 +1,137 @@
+{
+ "id": "feel-ab-coop-2",
+ "title": "Co-op player 2 feel, blind A/B (DPC 0.9.177-dev20)",
+ "intro": "About 4 minutes, two controllers. Player 2's pawn, melee then mage, each played twice (one round with the fix, not shown).",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev20",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 20,
+  "out": "test_guide/result_feel-ab-coop-2.json",
+  "show": [
+   "who",
+   "coop",
+   "n1"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "who": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return s and s.active and tostring(s.pawn_name) or 'Arisen'",
+   "job": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return s and s.active and s.pawn_job or 0",
+   "fix": "local D=_G.DPC_dbg; return D and D.cfg.pawn_prev_state ~= false",
+   "pf": "local D=_G.DPC_dbg; return D and D.R.pipfix_n or 0",
+   "dpc_cancels": "local D=_G.DPC_dbg; return D and D.R.cancel_n or 0",
+   "n0": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return pc and H.node(pc) or ''",
+   "n1": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return pc and H.node(pc, 1) or ''",
+   "sk": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "trg": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; local ok, v = pcall(function() return s.pawn_input:get_field('ButtonTriggerFlags') end); return ok and v or 0"
+  }
+ },
+ "steps": [
+  {
+   "secs": 2,
+   "text": "Starting",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "CO-OP: start co-op with the second controller (L3+R3 on it) on a melee pawn. Press End when both players are in."
+  },
+  {
+   "wait": true,
+   "text": "CO-OP MELEE (player 2) ROUND 1 of 2. Player 2: light combos, attacks into skills, skills into jump / dodge, guard. Press End to start (40 s)."
+  },
+  {
+   "secs": 40,
+   "text": "ROUND 1: Player 2: light combos, attacks into skills, skills into jump / dodge, guard.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "CO-OP MELEE (player 2) ROUND 2 of 2: the same again. Remember which round felt better. Press End (40 s)."
+  },
+  {
+   "secs": 40,
+   "text": "ROUND 2: Player 2: light combos, attacks into skills, skills into jump / dodge, guard.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Which round felt better, 1 or 2 (or same)? Tell Claude after the test. Press End."
+  },
+  {
+   "wait": true,
+   "text": "CO-OP: player 2 switches to the Mage / Sorcerer pawn. Press End when ready."
+  },
+  {
+   "wait": true,
+   "text": "CO-OP MAGE (player 2) ROUND 1 of 2. Player 2: start spells, L2 mid-chant to cancel, cancel into a dodge or another spell. Press End to start (40 s)."
+  },
+  {
+   "secs": 40,
+   "text": "ROUND 1: Player 2: start spells, L2 mid-chant to cancel, cancel into a dodge or another spell.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "CO-OP MAGE (player 2) ROUND 2 of 2: the same again. Remember which round felt better. Press End (40 s)."
+  },
+  {
+   "secs": 40,
+   "text": "ROUND 2: Player 2: start spells, L2 mid-chant to cancel, cancel into a dodge or another spell.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Which round felt better, 1 or 2 (or same)? Tell Claude after the test. Press End."
+  },
+  {
+   "secs": 2,
+   "text": "Done: fix back on. Tell Claude your picks.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    }
+   ]
+  }
+ ]
+}

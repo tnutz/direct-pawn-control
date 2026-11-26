@@ -1,0 +1,349 @@
+{
+ "id": "buffer-probe-bench-1",
+ "title": "Input buffer windows: Arisen vs played pawns (DPC 0.9.177-dev6)",
+ "intro": "Runs by itself on the test bench. Light-attack taps on the Arisen, then on two played pawns; records which buffer and input-window flags the game's track sets for each.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev6",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 30,
+  "out": "test_guide/result_buffer-probe-bench-1.json",
+  "show": [
+   "who",
+   "a_buf",
+   "p_buf"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "who": "local D=_G.DPC_dbg; local s=D and D.state; return s and s.active and tostring(s.pawn_name) or 'Arisen'",
+   "a_buf": "local ok, r = pcall(function() local t = H.arisen():call('get_Human'):get_field('Track'); if not t then return '' end; local o = {}; for _, n in ipairs({'NormalAttackBuffer','SkillBuffer','ComboAttackBuffer','CatchBuffer','JumpBuffer','EvasionBuffer','CancelBuffer','SpecialCancelBuffer','AllBuffer'}) do if t:get_field(n) then o[#o+1] = n end end; return table.concat(o, ' ') end); return ok and r or 'err'",
+   "a_now": "local ok, r = pcall(function() local t = H.arisen():call('get_Human'):get_field('Track'); if not t then return '' end; local o = {}; for _, n in ipairs({'NormalAttack','Skill','ComboAttack','Jump','Evasion','Cancel','All'}) do if t:get_field(n) then o[#o+1] = n end end; return table.concat(o, ' ') end); return ok and r or 'err'",
+   "a_n0": "return H.node(H.arisen()) or ''",
+   "p_buf": "local ok, r = pcall(function() local t = (function() local D=_G.DPC_dbg; local s=D and D.state; return s and s.active and s.pawn_chara end)():call('get_Human'):get_field('Track'); if not t then return '' end; local o = {}; for _, n in ipairs({'NormalAttackBuffer','SkillBuffer','ComboAttackBuffer','CatchBuffer','JumpBuffer','EvasionBuffer','CancelBuffer','SpecialCancelBuffer','AllBuffer'}) do if t:get_field(n) then o[#o+1] = n end end; return table.concat(o, ' ') end); return ok and r or 'err'",
+   "p_now": "local ok, r = pcall(function() local t = (function() local D=_G.DPC_dbg; local s=D and D.state; return s and s.active and s.pawn_chara end)():call('get_Human'):get_field('Track'); if not t then return '' end; local o = {}; for _, n in ipairs({'NormalAttack','Skill','ComboAttack','Jump','Evasion','Cancel','All'}) do if t:get_field(n) then o[#o+1] = n end end; return table.concat(o, ' ') end); return ok and r or 'err'",
+   "p_n0": "local D=_G.DPC_dbg; local s=D and D.state; return s and s.active and H.node(s.pawn_chara) or ''"
+  }
+ },
+ "steps": [
+  {
+   "text": "Getting ready",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "coop",
+     "on": false
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "Arisen: light attack taps every 0.6 s (buffer flags of the Arisen)",
+   "secs": 7,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "a_buf",
+     "agg": "any",
+     "op": "~=",
+     "value": "",
+     "label": "Arisen: a buffer window opens during attacks"
+    }
+   ]
+  },
+  {
+   "text": "Arisen: rest",
+   "secs": 2
+  },
+  {
+   "text": "Take pawn 1",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 0
+    }
+   ]
+  },
+  {
+   "text": "Pawn 1: light attack taps every 0.6 s",
+   "secs": 7,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "p_buf",
+     "agg": "any",
+     "op": "~=",
+     "value": "",
+     "label": "pawn 1: a buffer window opens during attacks"
+    },
+    {
+     "probe": "p_now",
+     "agg": "any",
+     "op": "~=",
+     "value": "",
+     "label": "pawn 1: an input window opens during attacks"
+    }
+   ]
+  },
+  {
+   "text": "Release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "text": "Take pawn 2",
+   "secs": 4,
+   "cmds": [
+    {
+     "cmd": "possess",
+     "idx": 1
+    }
+   ]
+  },
+  {
+   "text": "Pawn 2: light attack taps every 0.6 s",
+   "secs": 7,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "robot",
+     "who": "pad",
+     "secs": 0.15,
+     "actions": [
+      "AttackS"
+     ]
+    }
+   ],
+   "expect": [
+    {
+     "probe": "p_buf",
+     "agg": "any",
+     "op": "~=",
+     "value": "",
+     "label": "pawn 2: a buffer window opens during attacks"
+    },
+    {
+     "probe": "p_now",
+     "agg": "any",
+     "op": "~=",
+     "value": "",
+     "label": "pawn 2: an input window opens during attacks"
+    }
+   ]
+  },
+  {
+   "text": "Release",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "all",
+     "stop": true
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  }
+ ]
+}

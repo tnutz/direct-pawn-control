@@ -1,0 +1,133 @@
+{
+ "id": "coop-dpad-1",
+ "title": "Co-op D-pad: pawn orders or signals (DPC 0.9.177-dev23)",
+ "intro": "About 3 minutes, co-op with player 2 joined. 'Co-op players' D-pad' in the mod's Co-op: details settings switches the mode by hand.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev23",
+  "TestGuide": "2.7"
+ },
+ "settings": [
+  {
+   "mod": "dpc",
+   "key": "coop_dpad_orders",
+   "label": "Co-op players' D-pad",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Does nothing",
+    "Orders + gesture",
+    "Gesture only"
+   ]
+  }
+ ],
+ "record": {
+  "hz": 4,
+  "out": "test_guide/result_coop-dpad-1.json",
+  "show": [
+   "last",
+   "n",
+   "played"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "mode": "local D=_G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "last": "local D=_G.DPC_dbg; local r = D and D.R.dord_last; return r and (tostring(r.who) .. ': ' .. tostring(r.name) .. ' order=' .. tostring(r.order) .. ' gesture=' .. tostring(r.ges) .. ' node=' .. tostring(r.node)) or 'none'",
+   "n": "local D=_G.DPC_dbg; return D and D.R.dord_n or 0",
+   "played": "local D=_G.DPC_dbg; return D and D.R.dord_played or 0",
+   "order": "local D=_G.DPC_dbg; local pc = D and D.R.dord_pc_obj; return pc and pc:call('get_ActiveOrder') or -1",
+   "dord_mode": "local D=_G.DPC_dbg; return D and D.cfg.coop_dpad_orders"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "Co-op D-pad orders: co-op on with player 2 (3 too if you can), out of combat, weapons sheathed, standing still. Press End.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_dpad_orders",
+     "value": 2,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "REAL ORDERS. Player 2 taps the D-pad (nothing else held), one direction every few seconds: UP (Go), DOWN (Come), LEFT (Wait), RIGHT (Help). Watch: does player 2's character gesture? Do the free pawns obey and answer? Press End (30 s)."
+  },
+  {
+   "text": "Real orders: up, down, left, right",
+   "secs": 30,
+   "expect": [
+    {
+     "probe": "n",
+     "agg": "max",
+     "op": ">=",
+     "value": 4,
+     "label": "four D-pad orders seen"
+    },
+    {
+     "probe": "played",
+     "agg": "max",
+     "op": ">=",
+     "value": 1,
+     "label": "a gesture played"
+    },
+    {
+     "probe": "order",
+     "agg": "max",
+     "op": ">=",
+     "value": 1,
+     "label": "the pawns took an order"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "SIGNALS ONLY. Same again: UP, DOWN, LEFT, RIGHT. The character should gesture, and the pawns should NOT change what they are doing. Press End (25 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_dpad_orders",
+     "value": 3,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "Signals: up, down, left, right",
+   "secs": 25
+  },
+  {
+   "wait": true,
+   "text": "Items still work: player 2 holds L1 and taps DOWN (the stamina item), then holds L1 and taps UP. No gesture should play. Press End (15 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_dpad_orders",
+     "value": 2,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "L1 + D-pad: items, no order",
+   "secs": 15
+  },
+  {
+   "wait": true,
+   "text": "In a fight (optional): find something to fight, and player 2 taps UP (Go) mid-fight. The order should still go out, with no gesture while attacking. Press End (30 s), or skip with Page Down."
+  },
+  {
+   "text": "Orders in combat",
+   "secs": 30
+  },
+  {
+   "text": "Done. Tell Claude: did the gestures look right, did the pawns answer out loud, and which mode do you want as the default?",
+   "secs": 3
+  }
+ ]
+}

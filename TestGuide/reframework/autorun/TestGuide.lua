@@ -59,7 +59,7 @@
 --
 -- Each recorded row gets t (seconds since start), step (1-based) and every probe value (errors -> "ERR: ...").
 
-local VERSION = "2.7.3"
+local VERSION = "2.7.6"
 local DIR = "test_guide/"
 local PLAN_FILE, STATUS_FILE = DIR .. "plan.json", DIR .. "status.json"
 local KEY_READY, KEY_SHIFT = 0x23, 0x10           -- End, Shift
@@ -165,9 +165,15 @@ local function read_dev_status(now)
     if now < gs.dev_next then return end
     gs.dev_next = now + 1.0
     local dev = {}
-    if fs and fs.glob then
+    -- 2.7.6: fs.glob walks all of reframework/data and takes ~40 ms per call (measured 2026-11-25), so the file
+    -- list is found once per script load (Reset Scripts finds new mods); reading each file by name is cheap.
+    if not gs.dev_files and fs and fs.glob then
         local okg, files = pcall(fs.glob, [[dev_status\\.*\.json]])
-        if okg and type(files) == "table" then
+        gs.dev_files = (okg and type(files) == "table") and files or {}
+    end
+    do
+        local files = gs.dev_files or {}
+        do
             for _, f in ipairs(files) do
                 local ok, d = pcall(json.load_file, f)
                 if ok and type(d) == "table" and type(d.mod) == "string" then dev[d.mod] = d end
@@ -302,7 +308,8 @@ end
 
 -- 2.7 (the tester 2026-11-21: "There are so many options now they are very hard to find ... always copy testing options
 -- to the top"): a plan's "settings" list, e.g. { "mod": "cd", "key": "coop_climb_extra", "label": "...", "min": 0,
--- "max": 15 } (mod "cd" = Camera Distance through CameraDistance_API, "dpc" = Direct Pawn Control through DPC_dbg),
+-- "max": 15 } (mod "cd" = Camera Distance through CameraDistance_API, "dpc" = Direct Pawn Control through DPC_dbg,
+-- "split" = DPC Split Screen through DPC_SplitScreen),
 -- is shown in a "Test settings" window while the REFramework menu is open, and at the top of TestGuide's entry.
 -- Changes save in the mod as usual; the values at the end go into the result file ("settings").
 local function setting_access(s)
@@ -312,6 +319,9 @@ local function setting_access(s)
     elseif s.mod == "dpc" then
         local D = rawget(_G, "DPC_dbg")
         if D and D.cfg then return function() return D.cfg[s.key] end, function(v) D.cfg[s.key] = v; if D.save then pcall(D.save) end end end
+    elseif s.mod == "split" then -- 2.7.4: DPC Split Screen (_G.DPC_SplitScreen)
+        local S = rawget(_G, "DPC_SplitScreen")
+        if S and S.cfg then return function() return S.cfg[s.key] end, function(v) S.cfg[s.key] = v; if S.save then pcall(S.save) end end end
     end
     return nil
 end
@@ -522,15 +532,34 @@ local function tick()
             -- v1.5 queue: with nothing waiting, take the first plan in test_guide/queue/ (by file name) whose
             -- id has not run yet. Lets several tests be lined up and run back to back.
             -- (v2.4: not while the bench runs; it hands over its plans one at a time through plan.json)
+            -- 2.7.6: glob costs ~40 ms (see read_dev_status), so the queue folder is listed only at load and when
+            -- test_guide/queue_poke.json changes (write any new value there after dropping plans into queue/).
+            local okp, poke = pcall(json.load_file, DIR .. "queue_poke.json")
+            local pv = (okp and type(poke) == "table") and tostring(poke.id or poke.t or poke[1]) or "none"
+            if gs.queue_files == nil or pv ~= gs.queue_poke then
+                gs.queue_poke = pv
+                gs.queue_files = false
+            end
             if gs.state == "idle" and not gs.auto and fs and fs.glob then
-                local okg, files = pcall(fs.glob, [[test_guide\\queue\\.*\.json]])
+                if not gs.queue_files then
+                    local okg0, f0 = pcall(fs.glob, [[test_guide\\queue\\.*\.json]])
+                    gs.queue_files = (okg0 and type(f0) == "table") and f0 or {}
+                end
+                local okg, files = true, gs.queue_files
                 if okg and type(files) == "table" then
                     table.sort(files)
+                    -- 2.7.5 (found 2026-11-25: a ~105 ms freeze exactly once a second): every idle second this opened and
+                    -- parsed every queued plan (about 120, all already run). A file that was read and not started is
+                    -- skipped from then on (new plans get new file names; a Reset Scripts reads them all once again).
+                    gs.queue_skip = gs.queue_skip or {}
                     for _, f in ipairs(files) do
-                        local okq, q = pcall(json.load_file, f)
-                        if okq and type(q) == "table" then
-                            load_plan(q)
-                            if gs.state ~= "idle" then gs.queue_file = f break end
+                        if not gs.queue_skip[f] then
+                            local okq, q = pcall(json.load_file, f)
+                            if okq and type(q) == "table" then
+                                load_plan(q)
+                                if gs.state ~= "idle" then gs.queue_file = f break end
+                            end
+                            gs.queue_skip[f] = true
                         end
                     end
                 end
@@ -864,6 +893,11 @@ write_status()
 do
     local ok, a = pcall(json.load_file, DIR .. "auto.json")
     if not ok or type(a) ~= "table" then pcall(json.dump_file, DIR .. "auto.json", { on = false }) end
+end
+-- 2.7.6: json.load_file logs an error for a missing file, so make sure the queue poke file exists
+do
+    local okp, poke = pcall(json.load_file, DIR .. "queue_poke.json")
+    if not (okp and type(poke) == "table") then pcall(json.dump_file, DIR .. "queue_poke.json", { id = "init" }) end
 end
 log.info("[TestGuide] v" .. VERSION .. " loaded: drop a plan in reframework/data/test_guide/plan.json")
 

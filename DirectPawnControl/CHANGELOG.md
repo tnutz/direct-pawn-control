@@ -8,7 +8,274 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 
 ## Changelog & Engineering Post-Mortem
 
+### 0.9.177 (2026-11-26): release
+- Released dev61 as 0.9.177 with DPC Split Screen 0.2.0 (early, off by default) and Camera Distance 2.9.20.
+- Not run in game: looting a dead bandit (dev18 / dev19). Split screen known limits: enemy health bars, brightness of views 3-4, shadows (README).
+
+### 0.9.177-dev61 (2026-11-26): release prep, split screen as an early release
+- The co-op camera row labels it "Split screen (early)"; DPC Split Screen 0.2.0-dev24 is off by default and ships in the DPC zips. README / Nexus changelog: split screen section and known limits, plus items missed from dev18-34 (bandits lootable, rumble follows the played pawn, no double bars, lock-on from the pawn).
+- modinfo.ini had `version = ` with spaces since dev45; `build_release.py` reads `^version=`; fixed.
+
+### 0.9.177-dev60 (2026-11-26): co-op D-pad gestures removed
+- dev59 in game (dpad-2) and a last live try: `requestActionCore` priorities 0 / 2 / 3, `ActionManager.requestAction`
+  on layers 0 and 1, the selector's `requestAction`, names GesPointing / GesUpperBody_Pointing / Gesture.GesPointing /
+  NPC.GesPointing / GesComehere: every request accepted, the played Mage never left NormalLocomotion on any layer.
+  The Arisen's and pawns' action trees have no gesture nodes (the HumanActionID Ges* values belong to the NPC / talk
+  actions). Gestures are gone; the D-pad keeps the real orders (the pawns answer aloud). Choice: does nothing /
+  orders the AI pawns. Come still calls them to the Arisen (the game's order is relative to its player).
+
+### 0.9.177-dev59 (2026-11-26): co-op D-pad gestures play
+- Reported: in split-screen co-op the D-pad seemed to do nothing. Test dpad-1 (recorded): every press arrived and
+  every order was accepted (a played pawn even voiced "the vanguard" for Go; the AI Archer came on Come), but no
+  gesture ever played, not even one the test fired itself: the played character stayed in NormalLocomotion. Live,
+  `requestAction` through the action selector was accepted too and still never reached a gesture node. The mod asks
+  for idle locomotion every frame for a played character, which cuts the gesture off. Now the gesture goes through
+  `HumanActionSelector.requestAction` and idle requests for that character pause for 1.4 s (moving cancels it).
+  Not yet seen in game.
+- Also found: Come brings the AI pawns to the Arisen, not to the player who gave it (the game's order is relative
+  to its player). Not changed yet.
+
+### 0.9.177-dev58 (2026-11-26): co-op settings by camera kind
+- Asked: shared-screen-only settings in a section of their own; settings that make sense in both appear in both and
+  apply only to that camera (target markers: shared on, split off). The Co-op folder now has "Both kinds of co-op
+  camera" (cards on, card contents, D-pad, button names, aiming, join glow), "Shared screen only" (card placement,
+  player 1's HUD, target markers, kept glow per player) and "Split screen only" (card placement per view, player 1
+  keeps the game's HUD, target markers `coop_aim_markers_split` (off), kept glow).
+- Enemy health bars in split screen (still wrong in player 1's view, and only drawn there): placed by
+  `app.GUIBase.getScreenPos(vec3, Camera)` (rva 0x344260): view x projection -> 1920 x 1080 design units, then a
+  correction from the camera's aspect ([cam+0x44]) against 16:9. While split, player 1's camera has the view's shape
+  but the HUD is laid out for the screen's, so the bar lands too high and toward the middle. Next: correct that
+  result for the main camera while split (struct return: write the two floats in the post-hook), and draw our own
+  bars in players 2-4's views.
+
+### 0.9.177-dev57 (2026-11-26): join flash in split screen; keyboard start gives the next controller to player 2
+- Asked: player 2 needs the flash when taking over in split screen (nothing else shows it). dev56 now only drops the
+  kept glow while split; the short join glow stays.
+- Asked: if player 1 was on keyboard and mouse, the next controller should just be player 2's; L3 + R3 is for adding
+  players. Co-op started from the keyboard (Ctrl + F6) with two or more controllers: the first one used after the
+  start (any button or stick, per-controller activity times already kept) becomes player 2's, player 1 on keyboard.
+  One controller worked this way already (dev46). `coop_kb_next_pad` (on).
+
+### 0.9.177-dev56 (2026-11-26): no player glow in split screen
+- Asked: don't show and keep the glow in split screen; the players know who they are, it's a shared-screen feature.
+  `coop_glow_split` (off): while the screen is split, no join glow and no kept glow (lit ones go out); back on a
+  shared screen as before.
+
+### 0.9.177-dev55 (2026-11-26): boons reach AI pawns too
+- Reported: in co-op the played Mage's boon only went to player-controlled characters; an AI archer or fighter next
+  to her could not get it. The ally list read `PawnManager.get_PartyPawnList()`, whose items are `app.Pawn`; dev45
+  asked each for `get_Chara`, which app.Pawn does not have (REFramework returned nil, no error), so AI pawns were
+  never candidates. Now `get_CachedCharacter`.
+- Confirmed in game (2026-11-26): the played Mage's boon reaches AI pawns in split-screen co-op.
+
+### 0.9.177-dev54 (2026-11-25): each player's camera in split screen
+- Asked: Camera Distance's presets (Monster Hunter / Wide Combat, ...) work in split screen but only for player 1's
+  view; let each player set their own. Under the split rows in the main choices: "Player 1's camera" (applies
+  Camera Distance's preset, as its own menu does) and "Player 2 / 3 / 4's camera" (Split Screen 0.2.0-dev13 applies
+  the preset to that view, or its own Distance / Height). Needs Camera Distance 2.9.20-dev4 (`presets`,
+  `active_preset`, `apply_preset`, `in_combat` in its API).
+
+### 0.9.177-dev53 (2026-11-25): card placement follows the co-op camera
+- Asked: card options should depend on the co-op camera; "each player's own spot" in a quad view put just two cards
+  near the bottom. Split screen now has its own choice, `card_layout_split`: at the side of each view (default) or
+  its bottom middle. `card_layout` (own spot / row / stack / side) applies to a shared screen only; "own spot" is never
+  used while the screen is split. The Co-op folder shows only the choice for the camera picked in the main choices,
+  as a row of buttons.
+
+### 0.9.177-dev52 (2026-11-25): lower side cards; player 1 keeps the game's HUD in split screen
+- Asked: cards lower (the screen bottom below them is free; the minimap sits lower). Side cards' bottom 0.80 -> 0.97
+  of the screen (or of each view); saved configs still on 0.80 move once (`migrated_card_low`).
+- Asked: in split screen player 1 has a view of their own, so keep the game's own HUD there instead of our card.
+  `card_p1_split_native` (on): while the screen is split, player 1's HUD mode counts as "the game's own" (no card, the
+  game's skills and gauges not hidden). Under Co-op > Player 1's HUD.
+- Not fixed: the game's HUD in player 1's view is laid out for the whole screen and squeezed into the view (oval
+  minimap, narrow text). 69 GUIs; 41 draw to output 1 only, 27 to outputs 1 + 4 (also player 2's view). Next: try
+  each GUI view's `via.gui.View.set_ScreenSize` to the view's shape.
+
+### 0.9.177-dev51 (2026-11-25): one-of-a-few choices as a row of buttons
+- Asked (with a screenshot of another mod's preset buttons): each option a button. The title on its own line, one
+  button per option under it, the picked one in blue, and the picked option's explanation in grey under the row.
+  Co-op camera ("Shared: middle", "Shared: follow P1", "Split screen"), camera turning, the Arisen while you play a
+  pawn, switching characters, the split layouts and sound, and the sound distance choice.
+
+### 0.9.177-dev50 (2026-11-25): split-screen sound from the middle of the players
+- Asked: can split-screen sound come from a central spot instead of player 1? It was player 1's camera (the game's
+  listener) plus an experimental second listener at player 2's camera that does not seem to be heard. With the Split
+  Screen add-on's new "Sound heard from: the middle of the players" (its default), DPC's listener move puts the
+  listener right at the players' middle while the screen is split (no 5 m ear distance; turned as player 1's
+  camera). Shown under the split layouts in the main choices too.
+
+### 0.9.177-dev49 (2026-11-25): co-op cards at the side
+- Asked: move the co-op player cards off to one side so they don't cover the characters; position adjustable in a
+  minor setting. New card layout 4, the default: the cards stack upward from near the left edge (lowest card's
+  bottom at 80 % of the height); in split screen each player's card sits at the side of their own view. Saved
+  configs on the old default (2, a row at the bottom middle) move to it once (`migrated_card_side`). Side (left /
+  right), distance from the edge and height are under Screen.
+
+### 0.9.177-dev48 (2026-11-25): main choices as radio-style boxes
+- Asked: a choice between a few very different options shows every option at once, like radio buttons. REFramework's
+  imgui has no radio_button, so each option is a tick box and ticking one picks it. Co-op camera, co-op camera
+  turning, the Arisen while you play a pawn, switching characters, the split-screen layouts (one line each) and the
+  sound distance choice. Lists with many entries (glow colours, card options) stay drop-downs.
+
+### 0.9.177-dev47 (2026-11-25): settings window reorganised
+- Asked: the most important choices on top so players know they exist; old and minor settings out of the way.
+- Top, always visible ("Main choices"): **Co-op camera**, one list with Camera Distance's two shared views and, when
+  the Split Screen add-on is installed, "Split screen: every player gets their own view" (its 2 / 3 / 4 player
+  layouts right under it); co-op camera turning (hidden while split); two controllers; any combination; the Arisen
+  while you play a pawn; switching characters. Co-op status and the controller buttons follow.
+- Folders, each named for what it holds: Co-op (cards, aiming, glow, colours, rumble), Playing a pawn (looting,
+  reviving, items, screen, Archer), The Arisen fighting on his own, Switching characters (speed and timing), Sound and
+  feel, Keys and controller buttons, Cheats (free arrows moved here), Screen (card look, bars, overlay positions),
+  Connected mods.
+- The card is one box ("A card per player"); the pre-card HUD (separate bars and skill list and their positions) moved
+  to "Show advanced, test and legacy options". No setting was removed (checked by key list). Fake game `ui_draw.py`
+  updated.
+
+### 0.9.177-dev46 (2026-11-25): all Mage support spells aim at the ally you look at
+- Second audit pass (`tools/audit/player_written_fields.py`): fields of app.Character / app.Human that the player's
+  input and aim code writes, and the skill code that reads them. `AimCharacter` is also read by
+  `Job03CastDivineShot.start`, `Job03CastFullRecover.updateFullRecoverEffect` and `Job03CastCureSpot.update`; the
+  dev45 hook now covers those too (one pre / post hook per method, same pick). `R.boon_dbg` keeps the last pick
+  (caster, player number, direction source, each ally's distance and angle) to explain a miss.
+- Reported: the boon reached the archer while one player possessed the mage, not in split-screen co-op. Not
+  explained yet; the trace above is for that.
+
+### 0.9.177-dev45 (2026-11-25): boons go to the ally you look at
+- Reported: a played mage could not put Flame Boon on the archer standing next to her. DD2.exe 4.1
+  `app.Job03CastBoon.setEnchant` (with `getAimTarget` inlined) gives a normal boon to the caster's
+  `Character.<AimCharacter>k__BackingField` (+0x7d8) if set, else to the caster herself (the IsLvEx boon takes the
+  party in range instead). The Arisen's reticle fills AimCharacter with an ally; for a played pawn only DPC's enemy
+  lock-on fills it, so the boon went to her or to an enemy. A pre-hook on `setEnchant` now sets AimCharacter for a
+  played character (not the Arisen) to the ally nearest where that player looks (their split-screen view, player
+  1's camera, or the caster's facing; within 15 m and 40 degrees) and puts the old value back after. Counter
+  `R.boon_n`, last ally `R.boon_last`. Not yet tried in game.
+
+### 0.9.177-dev44 (2026-11-25): world bar label next to its bar
+- The "P1" label of the bars over a character was drawn a long way left of the bar (offset by a share of the HUD width, about 90 px on a 7680-wide screen) and crossed into the next view (screenshot). It now sits just above the bar's left end; in split screen the bar and its label are kept inside the view.
+
+### 0.9.177-dev43 (2026-11-25): nameplates hidden through the game's own alpha
+- dev42 still showed them (read live: each nameplate's top panel `View` invisible, nameplate drawn anyway; they only draw into player 1's output). Disassembly of DD2.exe 4.1 `app.ui022601.updateDisp(bool)` (0x3430b0): every frame it calls `calcAlpha()` and passes the result to `GUIBase.setAlpha`, then `getScreenPos` / `isCheckOnScreen`. A post-hook on `calcAlpha` returns 0 while split, so the game fades every nameplate out itself. `R.npl_alpha_n` counts. For the first ~10 s after load the update hook undoes what dev41 / dev42 may have left (DrawSelf off, View invisible).
+
+### 0.9.177-dev42 (2026-11-25): game nameplates really hidden while split
+- Live (split on, 3 nameplates marked hidden): the game's nameplates were still drawn, and moved wrongly as player 1's camera turned. While split the game's primary camera is player 2's view (UserEditCamera), so the game places nameplates from player 2's camera onto the whole screen; and setting the nameplate GameObject's `DrawSelf` did not hide them. Now the nameplate's top GUI panel (climbed from `HpGauge.Parent` through `get_Parent`) is set invisible while split and visible again after.
+
+### 0.9.177-dev41 (2026-11-25): no game nameplates while split
+- The game places its nameplates (`app.ui022601`) with player 1's camera but draws them over the whole screen; in split screen one near the line stretched across into the next view. While a view provider's views are on, the nameplate GameObjects are hidden (`DrawSelf`, restored when the split ends), in the existing `ui022601.update` hook (`R.npl_split`, `R.npl_gone`).
+
+### 0.9.177-dev40 (2026-11-25): split screen fixes
+- `view_axes(2)`: no merged-pad fallback in two-controller co-op (player 2 has not claimed a controller yet; his stick reaches nobody, so his view should not turn either).
+- `R.primary_cam()`: while a split-screen mod gives a view list, DPC's camera reads use the MainCamera object; the game's primary camera was one of the extra views (`sdk.get_primary_camera()` gave UserEditCamera, then BgCamera; DPC logged the camera 1245 m from the played pawn).
+
+### 0.9.177-dev39 (2026-11-25): split screen, bars and cards per view
+- In the split the world bars and cards bled across the views: `draw.world_to_screen` projects with one camera (the game reported player 2's as primary). API `set_view_list(fn)`: a split-screen mod gives every player's view (pixel rectangle, camera position and rotation, FOV, aspect). DPC projects the world bars itself (`R.vproj`) into each view that sees the character, keeps them inside it, puts each player's card at the bottom of their own view, and player 3+'s interact prompts in their own view. Not yet: target markers, the old player-2 stamina bar, pings.
+- `tools/fakegame/split.py`: projection checks.
+
+### 0.9.177-dev38 (2026-11-24): split screen, player 2's right stick stays his
+- First split-screen test: player 2's right stick turned both views. In two-controller co-op with player 1 on the keyboard the co-op camera-turn mode (`R.cam_turn`) wrote player 2's stick into the Arisen's `AxisR`. While a view provider says its views are on (`set_view_turn(fn, { active = fn })`, `R.views_on`), the main camera's `AxisR` is player 1's controller's, or cleared when only the pad moved (the mouse still turns it). Counter `R.views_cam_n`.
+
+### 0.9.177-dev37 (2026-11-24): API 1.3 for split screen (not run in game)
+- **`DPC_API.set_view_turn(fn, { mod })`**: a split-screen mod gives each player a view, but the game moves a character relative to the main camera. DPC now turns a player's left stick by `fn(chara)` radians (that player's view yaw minus the main view's) before writing it, in all three player-input paths: classic co-op's pawn (`coop.pad_input`), a second played pawn or player 3+ (`R.s2` slots), and player 2 on the Arisen (`R.ar2_src`). One provider; `R.view_turn.n` counts turns.
+- **`DPC_API.view_axes(p)`**: `{ lx, ly, rx, ry, b }` of player `p`'s own controller (read only), so the split-screen mod can turn player 2's camera with his right stick. One controller with player 1 on the keyboard: the merged pad.
+- `has("views")`; API version 1.3. `tools/fakegame/split.py` (with the split-screen script), `api_control.py` accepts 1.3.
+- The add-on: `SplitScreen/` (DPC Split Screen 0.1.0-dev1), built on the findings of DD2CouchCoop's author, shared with us. Camera Distance 2.9.20-dev3 skips its co-op framing and edge marker while the split is on.
+
+### 0.9.177-dev32..36 (2026-11-24): co-op bars, rumble, pilot groups (not run in game unless noted)
+- **dev32 no double bars:** the game's pawn nameplate (`app.ui022601`) draws its own HP bar under the name; with DPC's bars that made two. A post-hook on `ui022601.update` hides `HpGauge.Parent` for played pawns while DPC's world bars are on (`R.npl_hook`).
+- **dev33 bars over the character** by default (`card_bars = 4`; the HUD covered bars at the feet). Migration `card_v < 2`: 5 -> 4.
+- **dev34 rumble follows the played pawn (`pawn_rumble_follow`, on):** `UserPadManager.requestVibration(VibrationPresetRequestData, via.GameObject)` only rumbles when the GameObject's character is `ManualPlayer`. Hook: the Arisen's requests are skipped while a pawn is played, the pawn's are let through as the player's. Counters `R.rmb.n_drop` / `n_pawn`.
+- **dev35 pilot feedback group:** camera fade, pad speaker, reticle shake, status rumble, rumble action, camera reset to lock-on, get-up UI effect.
+- **dev36 pilot combat:** `Human.isEnableFriendOrNeutralHitCommon` and `Hit_AtkCalcDamageEndHandlerOnParty`, so a played pawn hits friendly / neutral characters where the Arisen can (the author's call). DPC keeps its own quick items handler (also his call): the game's item shortcuts stay player-only.
+
+### 0.9.177-dev31 (2026-11-24): player-identity pilot (off by default, not run in game)
+- Background: `claude/player-identity-audit.md` and `tools/audit/`. 316 methods in DD2.exe 4.1 compare something with `CharacterManager.ManualPlayer` ("am I the player?"); a played pawn always gets the non-player answer.
+- **`pawn_player_identity` (off):** while one of 79 of the played pawn's own methods runs, `ManualPlayer` is the pawn, then the Arisen again. It is the dev27 swap, scoped to the call.
+  - Ownership is decided once per object (its `Chara` / `<Character>` / `<CachedCharacter>` / `Human` field, or the pawn's Human / selector address).
+  - Groups: move, spell, skill, combat, interact, human (`cfg.pid_groups`). Swap counters in `R.pid.n`. Main thread only (`thread.get_id`).
+  - The hooks are installed only when the pilot is first switched on.
+  - Left out: the world (weather, fog, terrain loading, spawning), and the input processor (its player branch runs the game's own item shortcuts, which would double up with DPC's quick items).
+- **Expected differences** (read in the disassembly):
+  - turn-in-place before running (`requestLocomotionImpl` asks for idle when the stick points well away from where the character faces);
+  - the dash start speed-up (`updateSpeedUpOnStartDash`);
+  - the strafe speed reset;
+  - guard / just guard / quick shield, damage reactions, spell preparation and vocation skill branches (not read in detail).
+- Fake game: `tools/fakegame/pid.py`. The mock now shares hook storage between pre and post, and has `thread.get_id`. Hand plan `pid-pilot-1`.
+- Seen in the log when the game was quit ([time]): 43 `List<app.Character>.get_Item` `ArgumentOutOfRangeException` and some `get_GameObject` `InvalidOperationException` in 0.7 s while the scene unloaded. Source not identified (DPC or another mod); harmless at exit, to look at.
+
+### 0.9.177-dev28..30 (2026-11-24): release check findings, player 1's card
+From `release-177-1` (the single-player targeting part passed).
+- **dev28 crossed controls:** both-on-characters co-op with player 1 on a pawn and player 2 on the Arisen ("pawns" + `ar2`), player 1 on keyboard and mouse: a controller drove both characters ("jump jumps both").
+  - The flight recorder showed the same flags (`0x20000401000008`) on the Arisen's and player 1's pawn's input.
+  - The `processButton` pad zeroing for this mode only ran with one controller (`R.cp.kb`). With the keyboard paired as player 1's slot it is false. It also compared against `coop.ar_input_addr`, which is only set when classic co-op starts (read live: 0).
+  - Now: in "pawns" mode, the Arisen's and the pawn's own `CharacterInput` both get an empty pad when player 1 is on the keyboard slot, or only player 2's buttons removed when player 1 has a controller.
+- **dev28 card defaults:** dev12's card defaults (palette 2, bars 1, background 0.8) had been saved into configs, so dev22's never applied and the card changed size on L1. Moved once (`card_v`), only where the old default was still set. Same leak as `pawn_input_order`: see `claude/debugging-lessons.md`, lesson 5.
+- **dev29 player 1's HUD in co-op (`card_p1_mode`):** 1 the game's own, 2 the game's own plus a card (the old `card_p1`), 3 a card only.
+  - Mode 3 hides the game's skill palette (`app.ui010201`, after `lateUpdate`), its health / stamina gauge (`app.ui020901`, after `update`) and, from dev30, the pawn order / item shortcut cross (`app.ui020401`, `PNL_Pawncommand`, after `update`), by switching their GameObject `DrawSelf` off. They come back when the mode or co-op ends.
+  - The controller-shaped card is 460 wide.
+- **dev30 keyboard card:** player 1 on keyboard and mouse sees his own keys from the game's key bindings (`R.kbind`, `app.CharacterInput.Action` indices; Come 17, Go 18, Help 19, Wait 20, Lantern 38, RecoverHpItem 39, RecoverStaminaItem 40). The layout is a fixed five rows of two, and the skill page appears while the skill modifier is held.
+  - Item lines show the held modifier (Ctrl+T / L1+Up) and stay grey until it is held, on every card.
+  - Long labels are shortened to fit.
+- Not yet confirmed in game: dev28's controller fix, dev29 mode 3 (confirmed by screenshot except the order cross), dev30's item and order lines.
+
+### 0.9.177-dev24..27 (2026-11-24): a played pawn's lock-on was measured from the Arisen (the targeting bug)
+- **Reported:** while playing the main pawn, normal attacks "turn away from goblins half the time", Blink Strike flew to far targets, and the pawn "is definitely seeming to try to attack the Arisen's target", most often when the goblin in front was knocked down or frozen. The blind feel tests (`feel-abc-1..3`) disagreed with each other because of this; their fix-variant results are not reliable.
+- **Root cause (DD2.exe 4.1, counted live):** every enemy's lock-on entry (`app.LockOnTargetWork`: `DirectionFromPlayer`, `DistanceSQFromPlayer`, `DistanceXZSQFromPlayer`) is measured from `CharacterManager.ManualPlayer` (+0x160, the Arisen; his Transform +0x850, plus 1.3 m). The code is `LockOnTargetManager.calcPlayerPos` / `LockOnTarget.updateWorks`, both inlined. The calls actually entered are `LockOnTarget.lateUpdate` (each enemy, every frame) and `LockOnTargetManager.update` (once a frame), with `LockOnTargetWork.update(vec3)` under them. A played pawn's lock-on ranked and range-checked candidates from where the Arisen stood.
+- **Fix (`pawn_lockon_from_pawn`, on; single player only):** `ManualPlayer` is set to the played pawn for the duration of those two calls and put back right after. dev25 hooked only `calcPlayerPos` and dev26 added `updateWorks`; neither ever ran (counter 0). dev27 hooks `lateUpdate` and `update`: 20,873 swaps in about a minute of play. Confirmed by the tester: "This seems to work!"
+- **Ruled out on the way:**
+  - The pawn AI's attack commands (`app.actinter.cmd.job.AttackBase.updateTarget`, `Job02_HipNormalAttack.updateTarget`, `SkillCombo`, and `TargetAngleController.setDestination` on the pawn) never ran on the played pawn (0 calls in 63 s).
+  - The Arisen's AI already has its own lock-on (`arisen_own_lockon`).
+- **Also read:** `Job01BravesRaid.start` (Blink Strike) takes its lock-on from `getComponent<app.Player>().LockOnCtrl` (Player +0xa8), which is nil on a pawn; it only uses it on a kill (`updateLockOn` to the next target). The same field is read by `Job02ShootHeavyRain`, `Job02ShootRandomShot`, `Job04ParryCounterFinish`, `Job05CanFinishingMove` and `BladeShootController`. Not fixed; to look at if those skills misbehave.
+- **dev24 `pawn_input_order`:** runs a played pawn's processor in a pre-hook on its own `Human.update`, the point where the Arisen's runs, instead of in the Arisen's `app.Player.update`.
+  - Read live: the Arisen and the pawns have the same components in the same order (Character 6, ActionManager 7, Human 16, the Arisen's Player 91). The game runs input from `Character.update`; DPC (v0.7.5) runs a played pawn's input from the Player slot, after the pawn's `Human.update`.
+  - It scored 1/5 in `feel-abc-3`, but that was with the lock-on bug present. Off by default (dev25), and switched off once in saved configs (dev27, `io_off_v`).
+  - To re-test now that lock-on is fixed.
+
+### 0.9.177-dev21..23 (2026-11-24): feel A/B switch, card round 2, co-op D-pad orders
+In game folder, not yet released.
+- **dev21 `pawn_prev_move`** (default on): lets the blind A/B (`feel-abc-1`, `feel-abc-coop-1`) run three rounds: fix off / full / without the move state (`MoveStateInternal`). In the first blind A/B the round without the fix felt better for melee, mage and archer ("dropped inputs", "aim pulled to nowhere"); the move-state restore is the suspect. Results pending.
+- **dev22 cards, round 2:**
+  - New default palette 4, controller-shaped (`R.card_pad_grid`): a 3-column table with a fixed spot per button (L2/R2, L1/R1, the face diamond, chords). Holding the skill shift swaps actions for skills in the same spots, so the card no longer changes height. Held buttons light up.
+  - Bars default to 5 (in the card and under the character); background 0.50.
+  - The world bars are placed at LockScene (head joint +0.55 m over, feet under).
+  - The old co-op bars (`R.stam_calc`, the classic draw, the extra players' labels) are skipped while cards are on, which removes the double bars on players 2+.
+  - `card_p1` gives player 1 the same card (`R.c1_tick`).
+  - D-pad items now need the game's held button for the item shortcut, if the game binds one (`R.qi_pre_mask`, from the Arisen's bindings), as the game itself does; the card's item lines show it ("L1+Up").
+- **dev23 co-op D-pad orders and signals (`coop_dpad_orders`: 1 off, 2 orders + gesture, default; 3 gesture only):**
+  - A co-op player's D-pad tap with no shoulder button or trigger held uses the game's layout: up Go, down Come, left Wait, right Help.
+  - Read live: the game has a single `app.PawnOrderController`, on the `PawnMetaAI` object, shared by every pawn. `tryUpdatePawnOrder(order)` (enum: 1 Come, 2 Go, 3 Help, 4 Wait, 5 HighFive, 6 Explore) sets `NextOrder` and fires the `OnInput*Order` events, so the pawns answer as they do for the Arisen.
+  - The gesture is an `app.HumanActionID` node (`GesPointing`, `GesComehere`, `GesSoothe`, `GesCall`), requested with `ActionManager.requestActionCore(0, name, 0)` only while the character's layer-0 node is a locomotion one. A request made on a fighting pawn was ignored (no harm).
+  - A direction the item shortcut takes as a plain press (no held button bound) stays the item's.
+  - Covers player 2 on a pawn (classic co-op) and players 2+ in the other modes; not player 2 on the Arisen, whose input is the game's own.
+  - Fake game: `coop_n.py` checks that player 3's left tap gives Wait and that nothing goes out while L1 is held.
+  - **Not run in game yet** (`coop-dpad-1` queued): whether the order gestures play their own sound, and whether a gesture looks right with a weapon drawn.
+
+### 0.9.177-dev7..20 (2026-11-24): fixes and co-op features from the tester's hand tests
+Found in one morning of hand play (single player, then co-op with two and three controllers). In game folder, not yet released.
+- **dev7 pick-up was broken in 0.9.176.** 0.9.176-dev5 put the lean lab's `sp.pno` into the pawn interact (`PointNo`); `sp` is nil there, so every loot / gather / pick-up press errored. Back to 0. **dev7 world guard:** a played pawn was dropped twice in one fight for 1.2 s each (`MainFlowManager.IsInGamePhase` false during a level-up / event moment). Only flow phases that load, unload or restart (below 27, 41..50) count now; any other is logged once.
+- **dev8** while a pawn is played in single player, `InteractManager.isEnablePlayerInteract` (the only gate of `updateHighestPriorityObjectForPlayer`) answers false: no prompt over the Arisen and his button can't loot / talk. Co-op leaves it (the Arisen is player 1's). `arisen_no_interact`.
+- **dev9..12 co-op player cards** (`coop_player_card`, `card_layout`, `card_palette`, `card_bars`, `card_items`, `card_bg_alpha`): one card per player 2+: title bar in the player's colour (`R.player_abgr`), HP / stamina, skills with that controller's glyphs, D-pad item line. The game-like palette shows actions, and the skills while the skill shift is held; held buttons light their line. Cards are requested during the frame and drawn together last (`R.card_req`, `R.cards_flush`): row or stack at the bottom middle, or each player's old spot; bars can go over / under each character (world-to-screen). Bar fill colour: the PlotHistogram index differs between ImGui builds, so 36..50 are pushed around the bar.
+- **dev9 D-pad items for players 2+** (`R.qi_pad`, `R.qi_use`, `R.qi_pick`): up = healing, down = stamina (the game's shortcut lists, own bag then the Arisen's), right = the Arisen's lantern. Player 2 on the Arisen had nothing: DPC's player-2 map leaves the item shortcuts out (`COOP_NOT_P2`).
+- **dev11** ending co-op keeps player 1 on his character (`coop_end_keep_p1`): both-pawns mode keeps the possession; classic with player 2 on the Arisen re-takes player 1's pawn as a single-player possession.
+- **dev13 interact for every played pawn** (`R.int_scan` shared, `R.xint_tick` for players 3+ and player 2 in both-pawns mode): own controller's Interact, prompt in the card and at the object. Waking / reviving stay with the main pawn.
+- **dev14 / dev16 keyboard prompts:** the co-op glyph guard (`switchingGamePadKeyboardMouse` pre-hook) was off whenever two-controller co-op was on, so player 2's pad turned player 1's keyboard prompts into pad buttons. It now asks `R.p1_on_kb()` (only an explicit keyboard slot counts: dev14 also counted "no pair yet", which held the game in keyboard mode with unpaired pads and every controller drove the Arisen; fixed in dev16). The camera-stick mode switch (dev39) is put back 0.4 s after the stick is let go; a short flicker while player 2 turns the camera remains (accepted).
+- **dev15** the main pawn's interact prompt is in the player's colour, with the player's button and "Open chest" on `gm80_001*` (`R.int_label_for`).
+- **dev17** Numpad 7 also warps the Arisen while a pawn is played (`party_warp_arisen`).
+- **dev18 / dev19 dead people:** human enemies are not ch2 either, so bandits weren't lootable. dev18 used `Character.EnemyCtrl`, but every character has one (read live with the agent bridge: pawns and a revivable NPC `ch300735` too), which let pawns loot revivable NPCs. dev19: a dead human is loot only when `isHostile(Arisen)`. **Not confirmed on a dead bandit yet.**
+- **dev20 Wakestone revive for player 1** (`pawn_revive_npc`): read from DD2.exe 4.1: `HumanReviveInteractController.startInteractHuman` locks the body, `WakestoneUser.selectUseItemIncludingForgery` picks the item, `requestUseWakestoneToReviveHuman`; `CharacterManager.onUpdate` then calls `useWakestoneIfRequested(ManualPlayer)`, so the Arisen sheathes and plays the revive. Player 1's pawn gets "Revive <name> (Wakestone, by the Arisen)"; first press asks to confirm (2.5 s), the second (out of battle, with a Wakestone or Forgery) warps the Arisen next to the body, holds DPC's Arisen AI 8 s and runs the same InteractManager add / execute the player's button makes, with the Arisen as the interactor. Confirmed in game (revive from a played pawn worked, no crash). The game's own "use a Wakestone?" menu is not shown (DPC's double press replaces it); to look at: whether the game's confirm can be opened instead.
+- Camera Distance 2.9.20-dev1 (same day): lens vignette option; see its MODLOG.
+- Bench tooling (dev6): robot `actions` reach a natively controlled pawn as game input flags (`R.rbf`).
+
+### 0.9.177-dev1..6 (2026-11-24): a played pawn's input sees the frame the Arisen's does
+- Root cause of "the controls feel off" for played pawns (first seen as: a played Mage / Sorcerer can't cancel a chant). Order probe (dev4): the Arisen's `PlayerInputProcessor.update` runs BEFORE his `Human.update` each frame; a played pawn's processor runs AFTER the pawn's. `Human.update` (DD2.exe 4.1) copies `AttackState`, `CustomSkillState` and `MoveStateInternal` into their Prev fields (0x5b8 -> 0x5c8, 0x5cc -> 0x5dc, 0x64c -> 0x654) and resets them to 0; the action graph sets them again later in the frame. So every input check on a played pawn saw "no attack, no skill, no move". `isSkillCancelable` needs `AttackState == 3` with `EachTempStatus.PrevData` bit 38 (PrepareSkill): bit 38 was set, AttackState was 0.
+- Fix (`cfg.pawn_prev_state`, `R.pipfix_*`): a hook on `PlayerInputProcessor.update` for the played pawns' processors only (single player, co-op, the second / extra pawns) puts each Prev value back into the current field for the call and restores the reset value afterwards unless the processor changed it. Not tied to any vocation or skill, so modded vocations get it too.
+- Confirmed on the test bench, no hands: `chant-cancel-bench-3` (Mage pawn, Fire Boon / Celestial Paean / Levin / Palladium, two rounds): inside the game's check `AttackState=3`, and the game ended every spell by itself. DPC's L2 cancel is now a safety net 0.25 s later.
+- Regression (`fix-regress-bench-2`, fix on vs off): Fighter, Archer and Mage pawns played: run, light x3, heavy, vocation action (guard / barrier), skills 1 and 2, jump all behave the same; no errors. `coop-robot-diag-2`: co-op player 2 (Fighter): light, heavy, skill 1 with the fix on and off.
+- Input buffering: `buffer-probe-bench-1` sampled the PlayerTrack flags during light-attack strings. Played pawns get the same buffer windows (NormalAttackBuffer, SkillBuffer, JumpBuffer, EvasionBuffer, ...) as the Arisen: the motion data sets them. `app.Player.updateSequenceBuffer` only adds the "auto buffer" frames (the idle AllBuffer the Arisen shows); the 0.9.176 note that pawns get no buffering was wrong. Nothing to rebuild.
+- Hip-aim hold (`pawn_hip_skill_aim`): `hip-aim-bench-1` couldn't decide whether it is still needed; the Archer in the party has only special arrows, which fire and end normally in all four on / off combinations. Kept.
+- Bench tooling: robot actions now reach a natively controlled pawn as game input flags (`R.rbf`, dev6); before, only the stick did.
+
 ### 0.9.176 (2026-11-23): release (Camera Distance stays 2.9.19)
+- Live on Nexus (both main files at 0.9.176, old ones archived; no description change); public source 2128758.
 - the tester: ship it. Confirmed in game: the lean fix in single player (`lean-lab-3`), L2 chant cancel on a played Mage (Levin, repeatedly, immediate in the release build), take-overs while pawns were running, following and fighting (the stick is the player's at once). **Not run in game:** the co-op version of the lean fix (`coop-lean-1`; pawns rarely lean on demand); Galvanize on a Sorcerer pawn; the one-time settings reset (only where the dev-only trace setting was left on).
 
 ### 0.9.176-dev16..18 (2026-11-23): a taken-over pawn kept running with its AI's last move
@@ -170,7 +437,7 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 - Test: coop-4p-5.
 
 ### 0.9.172-dev37: players 2+ are not carried off; smooth mouse camera with keyboard player 1; overlays hidden in the Rift
-- coop-4p-3-again2 (the tester): player 4 (Mommy) "seems to be trying to get somewhere and control is not handed off to the player". The path-following stop (0.9.131) and the action-command stop (0.9.132 / 0.9.162) only ran for player 1's pawn. `R.s2_carry_stop` does the same for player 2's and players 3+'s pawns, 10 x a second (`sl.navi_stops`, `sl.move_stops`).
+- coop-4p-3-again2 (the tester): player 4 (a hired pawn) "seems to be trying to get somewhere and control is not handed off to the player". The path-following stop (0.9.131) and the action-command stop (0.9.132 / 0.9.162) only ran for player 1's pawn. `R.s2_carry_stop` does the same for player 2's and players 3+'s pawns, 10 x a second (`sl.navi_stops`, `sl.move_stops`).
 - "The camera seems very very rough when the mouse+kb player is in control": with `coop_p1_kb` the camera input was overwritten with the controllers' (zero) share on every frame the mouse didn't move, which breaks the game's mouse smoothing. Now it is left alone unless a controller's right stick is actually pushed (0.3+).
 - "Let's get rid of the co-op camera in the rift ... It does seem to hold co-op mode well even through a trip to the rift": co-op stays on; DPC's overlays hide while `app.FacilityManager.RimStateNow` is neither None (0) nor End (15) (the Rift is the game's "Rim"; `R.rift`, `R.rift_state`). Camera Distance 2.9.18-dev2 drops its co-op camera there.
 - Test: coop-4p-4.
@@ -423,7 +690,7 @@ REFramework Lua script (`reframework/autorun/DirectPawnControl.lua`)
 ### 0.9.171-dev3 (2026-11-20)
 - Fix: the world-loss path forgot the test-enemy list without touching the enemies, so goblins that survived it
   (it also fires on some menu screens) stayed unkillable and Reset Scripts could not find them. They are now made
-  killable before the list is dropped. Three were left this way on Thirteen; removed with dev/bridge/orphan1.lua.
+  killable before the list is dropped. Three were left this way on the test PC; removed with dev/bridge/orphan1.lua.
 
 ### 0.9.171-dev2 (2026-11-20)
 - Fix: player 2's skill palette (any-combination co-op) left its ImGui window open ("Missing End()"). It read
@@ -466,16 +733,16 @@ Built while the tester was away from the game ("build whatever you can in reason
 - dev5: **skills' own slow motion for the played pawn** (`pf_skill_slow`, on). The tester: Riotous Fury slows the world for the Arisen but not for the pawn. `app.SlowAction` has a `PlayerOnly` flag, and the disassembly of `SlowAction.start` (DD2.exe 4.1, RVA 0x620bde0) shows the check is the character's `CharacterID` (Character+0xc4c) against ch000000_00 (0xac525575), not who the player is; with no match it clears `EnableRequestSlow` and skips the slow. Hook on start: for a PlayerOnly action whose cached character is the played pawn, `PlayerOnly` is off for the length of the call (the game's own player path); the Arisen's is cleared afterwards while a pawn is played; a first use (character not cached yet) gets the flag set after the call. **Confirmed** (`skill-slow-1`, 2026-11-19): the tester's Fighter main pawn got the world slow-down with Riotous Fury. All 5 uses went through the after-the-call path (the action's character is not cached before start, so each use is a "first use"); that path is the one that works.
 - Mod API (`api-1`, 2026-11-19, with the dev example mod): ready, possess, release, transition and Arisen-AI-target events all arrived; with `camera.transition` claimed a release ran without a transition; the session override applied and was not saved; a handler that always errors was switched off after 5 errors (shown OFF under Connected mods). dev6: a switch during a running transition now ends that one first (`transition_end` with `interrupted`); in the rapid switching part starts came without ends.
 - Perfect block (`justguard-1`, watch only): the game's perfect-block slow motion (`app.JustGuardHitSlow`) ran for the played Fighter pawn on all 3 perfect blocks, the same as for the Arisen; no player check there, nothing to do.
-- dev7: `coop_start_bring` (off by default, the tester's choice): when co-op starts, player 2's pawn is warped to the Arisen's side if it is more than 6 m away. Asked for after `two-pads-2` on Thirteen: co-op was started while the pawn was being played some way off, and the co-op framing pulled the camera back about 30 m to keep both on screen.
-- dev8: the two-controller claim is kept across Reset Scripts (`DPC_two_pads.json`, the two controllers' addresses, which stay the same while the game runs; "Claim again" clears it). On Thirteen after a Reset Scripts with co-op on, player 2's interface showed but the pad did nothing: two-controller mode was still on (3 devices listed) and waiting for player 2 to hold L1 + L3 again.
-- Two controllers on Thirteen (2026-11-19): with a wired DualSense and a Bluetooth Xbox Series controller (Steam Input off for both), the game listed 2-3 devices but every press from both arrived on one of them, so the two could not be told apart (recorded with a per-device probe). With two DualSense (one wired, one wireless) they came through as separate devices and two-controller co-op **worked** (the tester: "it does work!"). Claiming with L1 + L3 clashed with DPC's own take-control combination (outside co-op it switched pawns).
+- dev7: `coop_start_bring` (off by default, the tester's choice): when co-op starts, player 2's pawn is warped to the Arisen's side if it is more than 6 m away. Asked for after `two-pads-2` on the test PC: co-op was started while the pawn was being played some way off, and the co-op framing pulled the camera back about 30 m to keep both on screen.
+- dev8: the two-controller claim is kept across Reset Scripts (`DPC_two_pads.json`, the two controllers' addresses, which stay the same while the game runs; "Claim again" clears it). On the test PC after a Reset Scripts with co-op on, player 2's interface showed but the pad did nothing: two-controller mode was still on (3 devices listed) and waiting for player 2 to hold L1 + L3 again.
+- Two controllers on the test PC (2026-11-19): with a wired DualSense and a Bluetooth Xbox Series controller (Steam Input off for both), the game listed 2-3 devices but every press from both arrived on one of them, so the two could not be told apart (recorded with a per-device probe). With two DualSense (one wired, one wireless) they came through as separate devices and two-controller co-op **worked** (the tester: "it does work!"). Claiming with L1 + L3 clashed with DPC's own take-control combination (outside co-op it switched pawns).
 - dev9: **player 2 starts co-op from their own controller**: hold L3 + R3 (both stick clicks) for 1.5 s while co-op is off; that controller becomes player 2's and the one used most recently besides it player 1's (another controller must have been used in the last 2 minutes, so a single player never starts it by accident). Player 2 holding L3 + R3 for 3 s ends co-op. The claim inside co-op is L3 + R3 too (1 s). `coop_pad_join`, on.
-- dev10: after controllers were swapped / turned off on Thirteen the Arisen stopped answering both DualSense controllers while the keyboard still worked. A probe showed the controllers' presses reaching the game's device, the game's input mode stuck on keyboard/mouse (`UserInputManager.HIDInputMode` 1) and the Arisen's input empty. `pad_mode_fix` (on): with no co-op and no pawn played, a controller in use for 0.3 s while the mode is keyboard/mouse and the Arisen gets nothing sets the mode to controller (0), as the game does itself; at most every 3 s, logged. Settings: "Reset controllers" (forgets both controllers' roles and sets controller mode). Test `pads-recover-1` (started with End).
+- dev10: after controllers were swapped / turned off on the test PC the Arisen stopped answering both DualSense controllers while the keyboard still worked. A probe showed the controllers' presses reaching the game's device, the game's input mode stuck on keyboard/mouse (`UserInputManager.HIDInputMode` 1) and the Arisen's input empty. `pad_mode_fix` (on): with no co-op and no pawn played, a controller in use for 0.3 s while the mode is keyboard/mouse and the Arisen gets nothing sets the mode to controller (0), as the game does itself; at most every 3 s, logged. Settings: "Reset controllers" (forgets both controllers' roles and sets controller mode). Test `pads-recover-1` (started with End).
 - dev11: `pad_mode_fix` off by default. `pads-recover-1/-2`: it did switch the game to controller mode (the keyboard switched it back as soon as it was used), but the Arisen still got nothing from either controller, while a played pawn (DPC reads the controller itself) worked. So the stuck point is the game's own pad-to-action step for the Arisen, not the input mode; cause not found yet (the `processButton` watch counted every input object in the game, about 10 000 calls a second, so it could not single out the Arisen's). Next time: filter to the Arisen's `app.UserInput` and read the game's pad assignment (`UserInputManager.getCurrentCharacterPadAssign`). Restarting the game is the known way out.
-- **Crash, quitting to title without saving** (Thirteen, 2026-11-19, dev10; no pawn played, no co-op; possession had ended 2.5 min before). 60 ms after DPC logged "World is loading". Access violation reading address 0 at DD2.exe+0x5246c38: engine code that pushes an object onto a list and then reads the object's type header, which was 0, i.e. an object that was already freed or zeroed. It looks like the game's memory clean-up walking a reference to a dead object, the usual sign of something holding a reference the game did not expect. REFramework's hook trampoline is on the stack. Not attributed: DPC hands the game objects of its own (the Arisen's own lock-on controller, add_ref'd; the bow aim setting, add_ref'd), and Thirteen also runs other script mods (loot locator, Pawn Tactical Wheel, campfire waypoints, ...). Dump: `reframework_crash.dmp` in the game folder (Thirteen). Next: a bench job that quits to title and reloads in a loop, switching DPC parts off one at a time (the title menu's `app.ui060101.returnTitle` / `app.ui060804.returnTitle` may do the quit).
-- **Two PlayStation controllers work in co-op** (Thirteen, 2026-11-19, dev11). Player 1 stays the Arisen: switching player 1 to a pawn is "any combination" (roadmap W2.3), not built.
+- **Crash, quitting to title without saving** (the test PC, 2026-11-19, dev10; no pawn played, no co-op; possession had ended 2.5 min before). 60 ms after DPC logged "World is loading". Access violation reading address 0 at DD2.exe+0x5246c38: engine code that pushes an object onto a list and then reads the object's type header, which was 0, i.e. an object that was already freed or zeroed. It looks like the game's memory clean-up walking a reference to a dead object, the usual sign of something holding a reference the game did not expect. REFramework's hook trampoline is on the stack. Not attributed: DPC hands the game objects of its own (the Arisen's own lock-on controller, add_ref'd; the bow aim setting, add_ref'd), and the test PC also runs other script mods (loot locator, Pawn Tactical Wheel, campfire waypoints, ...). Dump: `reframework_crash.dmp` in the game folder (the test PC). Next: a bench job that quits to title and reloads in a loop, switching DPC parts off one at a time (the title menu's `app.ui060101.returnTitle` / `app.ui060804.returnTitle` may do the quit).
+- **Two PlayStation controllers work in co-op** (the test PC, 2026-11-19, dev11). Player 1 stays the Arisen: switching player 1 to a pawn is "any combination" (roadmap W2.3), not built.
 - dev12: with two controllers DPC read its own combinations only from player 2's controller. Player 1 can now end co-op too: L3 + R3 held 3 s on either controller, or the "start / stop co-op" combination (if set) on player 1's controller. Character cycling stays with player 2 (the tester: "let's have player 2 do their own character cycling"). Untested.
-- **Mixed pair (PS5 wired + Xbox wireless):** the tester saw the Xbox left stick move the Arisen only *while* the PS5 left stick was also moved. Looks like the game's merged controller takes the stick from one device but only when the other is active; not measured. Watch-only plan `mixed-pads-1` (per device: buttons, stick, raw stick, type; merged device; last input device; the Arisen's stick) queued on Thirteen.
+- **Mixed pair (PS5 wired + Xbox wireless):** the tester saw the Xbox left stick move the Arisen only *while* the PS5 left stick was also moved. Looks like the game's merged controller takes the stick from one device but only when the other is active; not measured. Watch-only plan `mixed-pads-1` (per device: buttons, stick, raw stick, type; merged device; last input device; the Arisen's stick) queued on the test PC.
 - `mixed-pads-1` result: the game lists 4 controllers (the wired PS5, a second DualSense with a resting stick at -0.18, i.e. the wireless PS5 still paired or a stale entry, the Xbox, and an empty XInput slot). The merged device combines all of them (step 6: L = 1.00,1.00 from PS5 forward + Xbox right). **The Arisen reads only one controller:** `app.UserPadManager`'s active pad (the wired PS5). With the Xbox alone the Arisen got nothing, even while the Xbox was the game's "last input device"; with both, he took exactly the PS5's stick. The game did not move the active pad to the Xbox by itself. Likely explains the earlier "stuck controllers" (KB works, no pad): the active pad was a controller nobody held.
 - dev13: `pad_active_follow` (on): when the game's active controller has been idle 1.5 s and another one is used, DPC makes that one active (`UserPadManager.changeActiveUserPad`); in two-controller co-op it keeps player 1's controller active. "Reset controllers" also makes the most recently used controller active. Plan `pads-active-1` queued. Untested.
 - dev13 live ([time]): the Xbox drove the Arisen when picked up (4 switches). But the idle second DualSense (resting stick drifting to -0.25) had also taken the active slot once, which would leave the Arisen deaf again. dev13b: "in use" now means a button or a stick past half way (`R.tp_used`), also for the co-op join.

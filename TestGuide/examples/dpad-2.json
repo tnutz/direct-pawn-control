@@ -1,0 +1,51 @@
+{
+ "id": "dpad-2",
+ "title": "Co-op D-pad orders and gestures (DPC 0.9.177-dev59)",
+ "intro": "Press Reset Scripts first. About 3 minutes, in split-screen co-op as now (player 1 Arisen, player 2 Mage, player 3 Fighter, the Archer a normal AI pawn). Stand together near the Archer. Each step says who presses what; watch, then press End.",
+ "requires": {
+  "TestGuide": "2.7.6"
+ },
+ "record": {
+  "hz": 10,
+  "out": "test_guide/result_dpad-2.json",
+  "show": [
+   "presses",
+   "last",
+   "played",
+   "p2node"
+  ],
+  "probes": {
+   "presses": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return R and R.dord_n or 0",
+   "last": "local R=_G.DPC_dbg and _G.DPC_dbg.R; local l=R and R.dord_last; return l and (l.who..' '..l.name..' order='..tostring(l.order)..' gesture='..tostring(l.ges)) or ''",
+   "played": "local R=_G.DPC_dbg and _G.DPC_dbg.R; return R and R.dord_played or 0",
+   "p2node": "local R=_G.DPC_dbg and _G.DPC_dbg.R; local c=R and R.players()[2]; if not c then return '' end; return c:call('get_ActionManager'):get_field('Fsm'):call('getCurrentNodeName(System.UInt32)',0) or ''"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "Ready: everyone close together, the Archer (AI) nearby, nobody holding any button. Press End."
+  },
+  {
+   "wait": true,
+   "text": "1/4 PLAYER 2 (Mage): tap the D-pad LEFT once (Wait). Watch: does the Mage do a gesture? Does the Archer stop or say something? Press End."
+  },
+  {
+   "wait": true,
+   "text": "2/4 PLAYER 3 (Fighter): tap the D-pad UP once (Go). Watch: does the Fighter point? Does the Archer run ahead or say something? Press End."
+  },
+  {
+   "wait": true,
+   "text": "3/4 PLAYER 2: walk about 10 steps away from the Archer, then tap the D-pad DOWN once (Come). Does the Archer come to you? Press End."
+  },
+  {
+   "secs": 8,
+   "text": "4/4 HANDS OFF. Watch PLAYER 2's Mage: the test makes her do the 'come here' wave by itself, twice.",
+   "each_frame": "local R=_G.DPC_dbg and _G.DPC_dbg.R; local c=R and R.players()[2]; if not c then return end\n_G.DT_w2=_G.DT_w2 or {t=os.clock(),n=0}\nlocal w=_G.DT_w2\nif w.n<2 and os.clock()-w.t>=(w.n==0 and 0.5 or 3.0) then\n  w.n=w.n+1; w.t=os.clock()\n  pcall(function() DPC_GES_HOLD[c:call('get_HumanActionSelector'):get_address()]=os.clock()+1.4; c:call('get_HumanActionSelector'):call('requestAction(System.String, System.UInt32)','GesComehere',0xFFFFFFFF) end)\nend"
+  },
+  {
+   "wait": true,
+   "text": "Done. Tell Claude what you saw at each step (gesture yes / no, Archer reacted yes / no). Press End."
+  }
+ ]
+}

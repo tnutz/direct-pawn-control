@@ -1,0 +1,512 @@
+{
+ "id": "feel-abc-1",
+ "title": "Played pawn feel, blind, three rounds with goblins (DPC 0.9.177-dev21)",
+ "intro": "About 10 minutes. Three parts (melee, mage, archer), each played three times against three goblins that can't die. The setting changes on each round's 'press End' screen, so everything you do in a round counts for that round. Rank the rounds per part.",
+ "_order_hidden": {
+  "MELEE": [
+   "full",
+   "off",
+   "nomove"
+  ],
+  "MAGE": [
+   "nomove",
+   "full",
+   "off"
+  ],
+  "ARCHER": [
+   "off",
+   "nomove",
+   "full"
+  ]
+ },
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev21",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 30,
+  "out": "test_guide/result_feel-abc-1.json",
+  "show": [
+   "who",
+   "n0",
+   "n1"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "coop": "local ok, d = pcall(json.load_file, 'DPC_coop.json'); return ok and d and d.active == true",
+   "who": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return s and s.active and tostring(s.pawn_name) or 'Arisen'",
+   "fix": "local D=_G.DPC_dbg; if not D then return '' end; if D.cfg.pawn_prev_state == false then return 'off' end; return D.cfg.pawn_prev_move == false and 'nomove' or 'full'",
+   "pf": "local D=_G.DPC_dbg; return D and D.R.pipfix_n or 0",
+   "dpc_cancels": "local D=_G.DPC_dbg; return D and D.R.cancel_n or 0",
+   "n0": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return pc and H.node(pc) or ''",
+   "n1": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; return pc and H.node(pc, 1) or ''",
+   "sk": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; local ok,v=pcall(function() return pc:call('get_Human'):call('get_CustomSkillState') end); return ok and v or 0",
+   "on": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; local ok, v = pcall(function() return s.pawn_input:get_field('ButtonOnFlags') end); return ok and v or 0",
+   "yaw": "local D=_G.DPC_dbg; local s=D and D.state; local pc=s and s.pawn_chara; local ok, v = pcall(function() local q = pc:call('get_Transform'):call('get_Rotation'); return math.deg(math.atan(2*(q.w*q.y + q.x*q.z), 1 - 2*(q.y*q.y + q.x*q.x))) end); return ok and v or 0"
+  }
+ },
+ "steps": [
+  {
+   "secs": 2,
+   "text": "Starting",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "PART 1 MELEE: play the Fighter (or any melee pawn) yourself. Press End when you're in control."
+  },
+  {
+   "wait": true,
+   "text": "MELEE ROUND 1 of 3: three goblins that can't die are coming. Press End when you're ready (40 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 40,
+   "text": "MELEE ROUND 1: fight the goblins: light combos, light into heavy, attacks into skills, skills into jump / dodge, guard. Press early to test buffering."
+  },
+  {
+   "wait": true,
+   "text": "MELEE: remember how round 1 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "MELEE ROUND 2 of 3: three goblins that can't die are coming. Press End when you're ready (40 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 40,
+   "text": "MELEE ROUND 2: fight the goblins: light combos, light into heavy, attacks into skills, skills into jump / dodge, guard. Press early to test buffering."
+  },
+  {
+   "wait": true,
+   "text": "MELEE: remember how round 2 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "MELEE ROUND 3 of 3: three goblins that can't die are coming. Press End when you're ready (40 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 40,
+   "text": "MELEE ROUND 3: fight the goblins: light combos, light into heavy, attacks into skills, skills into jump / dodge, guard. Press early to test buffering."
+  },
+  {
+   "wait": true,
+   "text": "MELEE: remember how round 3 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "MELEE: which round felt best, which worst? Tell Claude after the test. Press End."
+  },
+  {
+   "wait": true,
+   "text": "PART 2 MAGE: switch to the Mage / Sorcerer pawn. Press End when you're in control."
+  },
+  {
+   "wait": true,
+   "text": "MAGE ROUND 1 of 3: three goblins that can't die are coming. Press End when you're ready (40 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 40,
+   "text": "MAGE ROUND 1: fight with spells: aim, cast, cancel with L2 mid-chant, cancel into a dodge or another spell."
+  },
+  {
+   "wait": true,
+   "text": "MAGE: remember how round 1 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "MAGE ROUND 2 of 3: three goblins that can't die are coming. Press End when you're ready (40 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 40,
+   "text": "MAGE ROUND 2: fight with spells: aim, cast, cancel with L2 mid-chant, cancel into a dodge or another spell."
+  },
+  {
+   "wait": true,
+   "text": "MAGE: remember how round 2 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "MAGE ROUND 3 of 3: three goblins that can't die are coming. Press End when you're ready (40 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 40,
+   "text": "MAGE ROUND 3: fight with spells: aim, cast, cancel with L2 mid-chant, cancel into a dodge or another spell."
+  },
+  {
+   "wait": true,
+   "text": "MAGE: remember how round 3 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "MAGE: which round felt best, which worst? Tell Claude after the test. Press End."
+  },
+  {
+   "wait": true,
+   "text": "PART 3 ARCHER: switch to the Archer pawn. Press End when you're in control."
+  },
+  {
+   "wait": true,
+   "text": "ARCHER ROUND 1 of 3: three goblins that can't die are coming. Press End when you're ready (35 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 35,
+   "text": "ARCHER ROUND 1: fight with the bow: shots from the hip and aimed, skills, dodge out of aim."
+  },
+  {
+   "wait": true,
+   "text": "ARCHER: remember how round 1 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "ARCHER ROUND 2 of 3: three goblins that can't die are coming. Press End when you're ready (35 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 35,
+   "text": "ARCHER ROUND 2: fight with the bow: shots from the hip and aimed, skills, dodge out of aim."
+  },
+  {
+   "wait": true,
+   "text": "ARCHER: remember how round 2 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "ARCHER ROUND 3 of 3: three goblins that can't die are coming. Press End when you're ready (35 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 7,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "secs": 35,
+   "text": "ARCHER ROUND 3: fight with the bow: shots from the hip and aimed, skills, dodge out of aim."
+  },
+  {
+   "wait": true,
+   "text": "ARCHER: remember how round 3 felt (1 / 2 / 3). Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "ARCHER: which round felt best, which worst? Tell Claude after the test. Press End."
+  },
+  {
+   "secs": 2,
+   "text": "Done: fix back on, test goblins removed. Tell Claude your picks.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "pawn_prev_state",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "pawn_prev_move",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ]
+}

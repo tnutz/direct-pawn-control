@@ -1,0 +1,244 @@
+{
+ "id": "coop-177-full-1",
+ "title": "Co-op full check (DPC 0.9.177-dev20): join, fight, items, looting, player 3, player 2 on the Arisen, prompts, ending co-op, revive",
+ "intro": "About 6 minutes. Player 1 on keyboard and mouse, one or two friends on controllers. Each step waits for End (keyboard) before it starts.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev20",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_coop-177-full-1.json",
+  "show": [
+   "mode",
+   "p1",
+   "p2",
+   "players",
+   "items",
+   "loots"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "mode": "local D=_G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "p1": "local D=_G.DPC_dbg; return D and D.R.cp and D.R.cp.on and tostring(D.R.cp.char[1]) or (D.state.active and ('pawn ' .. tostring(D.state.pawn_name)) or 'arisen')",
+   "p2": "local D=_G.DPC_dbg; return D and D.R.cp and D.R.cp.on and tostring(D.R.cp.char[2]) or ''",
+   "players": "local D=_G.DPC_dbg; local n = 0; if D and D.coop.active then n = 2 elseif D and D.R.cp and D.R.cp.on then n = 2 end; for _ in pairs(D and D.R.np and D.R.np.slots or {}) do n = n + 1 end; return n",
+   "played": "local D=_G.DPC_dbg; return D and D.state.active and tostring(D.state.pawn_name) or 'Arisen'",
+   "items": "local D=_G.DPC_dbg; return D and (D.R.item_n or 0) or 0",
+   "loots": "local D=_G.DPC_dbg; return D and (D.R.int_n or 0) or 0",
+   "hid": "local m = sdk.get_managed_singleton('app.UserInputManager'); return m and m:call('get_HIDInputMode') or -1",
+   "card_err": "local D=_G.DPC_dbg; return D and tostring(D.R.cards_err or '') or ''",
+   "rev": "local D=_G.DPC_dbg; return D and D.R.int_rev and tostring(D.R.int_rev.name or D.R.int_rev.id) or ''",
+   "brain": "local D=_G.DPC_dbg; return D and tostring(D.brain.mode) or ''"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "Get ready: player 1 on keyboard and mouse as the Arisen, co-op off, full party, a controller for player 2 (and one for player 3 if you have it). Somewhere with loot or a chest nearby helps. Press End.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true
+    },
+    {
+     "cmd": "release"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/9 Player 2: hold L3 + R3 on your controller to join. Press End once player 2 is in."
+  },
+  {
+   "text": "Checking that player 2 joined",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "players",
+     "agg": "max",
+     "op": ">=",
+     "value": 2,
+     "label": "player 2 joined"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "2/9 Player 2 fights: light and heavy attacks, two skills (L1 + a face button), jump, guard / vocation action. 20 s after End."
+  },
+  {
+   "text": "PLAYER 2: attacks, skills, jump, vocation action (20 s)",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "player 2 fighting: no DPC errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "3/9 Player 2: press D-pad DOWN (stamina item) and D-pad UP (healing item) once each. Watch the card's item line. Press End, then do it (10 s)."
+  },
+  {
+   "text": "PLAYER 2: D-pad down, then D-pad up",
+   "secs": 10,
+   "expect": [
+    {
+     "probe": "items",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "player 2 used an item (count of uses)"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "4/9 Player 2: walk your pawn up to a corpse, a chest or a pickup; the prompt shows in your colour with your button. Press End, then use it (20 s)."
+  },
+  {
+   "text": "PLAYER 2: loot / open / pick up",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "loots",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "player 2's pawn looted or used something"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "5/9 Player 3 (skip with End if you have no third controller): hold L3 + R3 to join, then press D-pad down, and loot something. Press End to start (25 s)."
+  },
+  {
+   "text": "PLAYER 3: join, D-pad item, loot",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "players",
+     "agg": "max",
+     "op": ">=",
+     "value": 3,
+     "label": "player 3 joined (skip if no third controller)"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "player 3: no DPC errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "6/9 Player 2: L1 + left stick click until you are on the Arisen. Then D-pad DOWN once as the Arisen. Press End, then do it (20 s)."
+  },
+  {
+   "text": "PLAYER 2 on the Arisen: D-pad down",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "p2",
+     "agg": "any",
+     "op": "contains",
+     "value": "arisen",
+     "label": "player 2 reached the Arisen"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "7/9 Player 1 (keyboard): you are on a pawn now. Walk to a gather point or loot. Player 2: press buttons and wiggle the LEFT stick (not the right). The keyboard prompt (F) should stay. Press End, then do it (15 s)."
+  },
+  {
+   "text": "PLAYER 1's prompts stay keyboard while player 2 presses buttons",
+   "secs": 15,
+   "expect": [
+    {
+     "probe": "hid",
+     "agg": "frac",
+     "op": "==",
+     "value": 1,
+     "min_frac": 0.9,
+     "label": "the game stayed in keyboard / mouse mode (prompts)"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "8/9 Player 1: press Numpad 7 (warp everyone to you). Then end co-op with Ctrl + F6. Press End, then do both (15 s)."
+  },
+  {
+   "text": "Numpad 7, then Ctrl + F6",
+   "secs": 15,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "==",
+     "value": "off",
+     "label": "co-op ended"
+    },
+    {
+     "probe": "played",
+     "agg": "last",
+     "op": "~=",
+     "value": "Arisen",
+     "label": "player 1 kept his pawn after co-op ended"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "9/9 Only if a dead person who can be revived is nearby (the Arisen would see 'Revive'): with your pawn next to them, press Interact once (the prompt asks to confirm), then again. The Arisen should come and revive them. Otherwise press End to skip. Press End to start (25 s)."
+  },
+  {
+   "text": "Wakestone revive from the pawn (optional)",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "rev",
+     "agg": "any",
+     "op": "~=",
+     "value": "",
+     "label": "a revivable person was found (skip if none nearby)"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "revive: no DPC errors"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude how each part went.",
+   "secs": 3,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "whole run: no DPC errors"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,401 @@
+{
+ "id": "coop-cards-2",
+ "title": "Co-op player cards, round 2: controller-shaped palette, bars under, player 1's card (DPC 0.9.177-dev22)",
+ "intro": "About 5 minutes, co-op with at least player 2 running. Settings changed here are for this session only. The 'Test settings' window (REFramework menu) lets you change them by hand.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev22",
+  "TestGuide": "2.7"
+ },
+ "settings": [
+  {
+   "mod": "dpc",
+   "key": "card_layout",
+   "label": "Cards go",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Each player's spot",
+    "Row, bottom middle",
+    "Stack, bottom middle"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_palette",
+   "label": "Card shows",
+   "values": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "labels": [
+    "Skills always",
+    "Like the game, list",
+    "Skills and actions",
+    "Controller-shaped"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_bars",
+   "label": "Health / stamina",
+   "values": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "labels": [
+    "In the card",
+    "Over",
+    "Under",
+    "Card and over",
+    "Card and under"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_items",
+   "label": "Item lines",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Always",
+    "On demand",
+    "Never"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_bg_alpha",
+   "label": "Card background",
+   "min": 0.1,
+   "max": 1.0
+  },
+  {
+   "mod": "dpc",
+   "key": "card_p1",
+   "label": "Player 1 gets a card too"
+  }
+ ],
+ "record": {
+  "hz": 2,
+  "out": "test_guide/result_coop-cards-2.json",
+  "show": [
+   "mode",
+   "players",
+   "hud_err"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "mode": "local D=_G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "players": "local D=_G.DPC_dbg; local n = 0; if D and (D.coop.active or (D.R.cp and D.R.cp.on)) then n = 2 end; for _ in pairs(D and D.R.np and D.R.np.slots or {}) do n = n + 1 end; return n",
+   "card_err": "local D=_G.DPC_dbg; return D and tostring(D.R.cards_err or '') or ''",
+   "hud_err": "local D=_G.DPC_dbg; local e = ''; for _, v in pairs({ D.R.c2view, D.R.c1view, D.R.ar2_view, D.R.s2 }) do if v and v.hud_err then e = tostring(v.hud_err) end end; return e"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "Card options, round 2: co-op on with player 2 (and 3 if you can), out of combat. Each look lasts 20 s; say which you like. Press End.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_player_card",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 4,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 5,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_items",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bg_alpha",
+     "value": 0.5,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_p1",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "A (new default): row at the bottom middle, CONTROLLER-SHAPED palette, bars in the card and UNDER each character, lighter cards. Player 2: hold L1 (skills appear in the same places, the card must not change size), press buttons (they light up). Press End (20 s)."
+  },
+  {
+   "text": "A: controller-shaped, card + under",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "card_err",
+     "agg": "last",
+     "op": "==",
+     "value": "",
+     "label": "cards drew without errors"
+    },
+    {
+     "probe": "hud_err",
+     "agg": "last",
+     "op": "==",
+     "value": "",
+     "label": "no card errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "B: same, STACKED. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 3,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "B: stacked",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "C: back to the row; the LIST palette (dev12) to compare. Hold L1 again. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 2,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "C: list palette",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "D: controller-shaped again; bars UNDER the characters only (not in the card). Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 4,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 3,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "D: under only",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "E: bars in the card only. Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 1,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "E: card only",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "F: PLAYER 1 GETS A CARD TOO (bars card + under). Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 5,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_p1",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "F: player 1's card",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "card_err",
+     "agg": "last",
+     "op": "==",
+     "value": "",
+     "label": "cards drew without errors"
+    },
+    {
+     "probe": "hud_err",
+     "agg": "last",
+     "op": "==",
+     "value": "",
+     "label": "no card errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "G: item lines only on demand (touch the D-pad, or an item at 1). Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_p1",
+     "value": false,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_items",
+     "value": 2,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "G: items on demand",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "H: even lighter cards (30%). Press End (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_items",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bg_alpha",
+     "value": 0.3,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "H: 30% background",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "I: D-pad items: player 2 presses D-pad DOWN alone (nothing should happen if the game wants L1 held), then L1 + D-pad DOWN (the stamina item). Press End (15 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_bg_alpha",
+     "value": 0.5,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "I: D-pad alone, then with L1",
+   "secs": 15
+  },
+  {
+   "text": "Done: the new defaults are back (A). Tell Claude your picks.",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_player_card",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_layout",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_palette",
+     "value": 4,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bars",
+     "value": 5,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_items",
+     "value": 1,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_bg_alpha",
+     "value": 0.5,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "card_p1",
+     "value": false,
+     "save": false
+    }
+   ]
+  }
+ ]
+}

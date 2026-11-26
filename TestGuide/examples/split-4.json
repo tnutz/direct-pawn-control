@@ -1,0 +1,67 @@
+{
+ "id": "split-4",
+ "title": "Split screen for 2, 3 and 4 players (DPC Split Screen 0.2.0-dev4, DPC 0.9.177-dev41)",
+ "intro": "About 10 minutes. Frame generation OFF (upscaling is fine). You on keyboard and mouse, then 2-4 controllers (you can hold them yourself). If a view goes black or anything breaks, press End and tell Claude.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev41",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_split-4.json",
+  "show": [
+   "split",
+   "kind",
+   "errs"
+  ],
+  "probes": {
+   "split": "local S=_G.DPC_SplitScreen; return S and (S.active and 'ON' or 'off') or 'not loaded'",
+   "kind": "local S=_G.DPC_SplitScreen; return S and tostring(S.kind or '') or ''",
+   "views": "local S=_G.DPC_SplitScreen; local n = 0; for _ in pairs(S and S.views.ex or {}) do n = n + 1 end; return n",
+   "errs": "local S=_G.DPC_SplitScreen; return S and S.st.errors or 0",
+   "lasterr": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.last_error or '') or ''",
+   "paused": "local S=_G.DPC_SplitScreen; return S and tostring(S.st.suspended_by or '') or ''",
+   "menu": "local S=_G.DPC_SplitScreen; return S and tostring(S.menu_open) or ''",
+   "fg": "local S=_G.DPC_SplitScreen; return S and tostring(S.fg.on) or ''"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "SPLIT 3. Frame generation off. Start co-op with player 2 as usual. Press End once it splits."
+  },
+  {
+   "wait": true,
+   "text": "1/5 BARS AND CARDS. Each player's card should sit at the bottom of their own half, and the bars over each character only inside the half that sees him (no bleeding across the line). Look at both halves. Press End."
+  },
+  {
+   "wait": true,
+   "text": "2/5 MENU. Open the pause menu, look, close it. The split should stay (no one-view flash). Press End."
+  },
+  {
+   "wait": true,
+   "text": "3/5 THREE PLAYERS. A third controller holds L3 + R3 to join. On your wide screen: three across. Is player 3's view showing the world (not black)? Does his right stick turn only his view, his left stick walk him where his view faces? Then open the REFramework menu (Insert) > Script Generated UI > DPC Split Screen 0.2.0-dev4 and set 'Layout with 3 players' to '2 x 2 grid': the fourth quarter shows the party from above. Press End."
+  },
+  {
+   "wait": true,
+   "text": "4/5 FOUR PLAYERS. A fourth controller joins (L3 + R3). 2 x 2 grid: are all four views drawing? Try 'Layout with 4 players: Four across' too (same place). Also watch for anything stretching across a line. Press End."
+  },
+  {
+   "wait": true,
+   "text": "5/5 End co-op (Ctrl+F6): one normal view again? Press End, then tell Claude what you saw, view by view."
+  },
+  {
+   "text": "Checking",
+   "secs": 3,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "no split-screen errors"
+    }
+   ]
+  }
+ ]
+}

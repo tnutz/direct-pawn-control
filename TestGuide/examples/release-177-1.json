@@ -1,0 +1,420 @@
+{
+ "id": "release-177-1",
+ "title": "Release check, DPC 0.9.177 + Camera Distance 2.9.20: targeting, co-op cards, items, D-pad orders, loot, ending co-op",
+ "intro": "About 15 minutes. Single player first (a pawn fight), then co-op with player 1 on keyboard and mouse and player 2 on a controller. Settings switched here last only for this session; your saved ones are untouched.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev27",
+  "TestGuide": "2.7"
+ },
+ "settings": [
+  {
+   "mod": "dpc",
+   "key": "coop_dpad_orders",
+   "label": "Co-op players' D-pad",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Does nothing",
+    "Orders + gesture",
+    "Gesture only"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_palette",
+   "label": "Card shows",
+   "values": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "labels": [
+    "Skills always",
+    "Like the game, list",
+    "Skills and actions",
+    "Controller-shaped"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_bars",
+   "label": "Health / stamina",
+   "values": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "labels": [
+    "In the card",
+    "Over",
+    "Under",
+    "Card and over",
+    "Card and under"
+   ]
+  },
+  {
+   "mod": "dpc",
+   "key": "card_layout",
+   "label": "Cards go",
+   "values": [
+    1,
+    2,
+    3
+   ],
+   "labels": [
+    "Each player's spot",
+    "Row, bottom middle",
+    "Stack, bottom middle"
+   ]
+  }
+ ],
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_release-177-1.json",
+  "show": [
+   "fix",
+   "mode",
+   "players",
+   "lop",
+   "dord_last"
+  ],
+  "probes": {
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors",
+   "mode": "local D=_G.DPC_dbg; return D and D.R.cp and ((D.R.cp.on and D.R.cp.mode) or (D.coop.active and 'classic') or 'off')",
+   "players": "local D=_G.DPC_dbg; local n = 0; if D and (D.coop.active or (D.R.cp and D.R.cp.on)) then n = 2 end; for _ in pairs(D and D.R.np and D.R.np.slots or {}) do n = n + 1 end; return n",
+   "played": "local D=_G.DPC_dbg; return D and D.state.active and tostring(D.state.pawn_name) or 'Arisen'",
+   "lop": "local D=_G.DPC_dbg; return D and D.R.lop_n or 0",
+   "items": "local D=_G.DPC_dbg; return D and (D.R.item_n or 0) or 0",
+   "loots": "local D=_G.DPC_dbg; return D and (D.R.int_n or 0) or 0",
+   "dord_n": "local D=_G.DPC_dbg; return D and D.R.dord_n or 0",
+   "dord_played": "local D=_G.DPC_dbg; return D and D.R.dord_played or 0",
+   "dord_last": "local D=_G.DPC_dbg; local r = D and D.R.dord_last; return r and (tostring(r.name) .. ' order=' .. tostring(r.order) .. ' gesture=' .. tostring(r.ges)) or ''",
+   "card_err": "local D=_G.DPC_dbg; local e = tostring(D and D.R.cards_err or ''); for _, v in pairs({ D.R.c2view, D.R.c1view, D.R.ar2_view }) do if v and v.hud_err then e = e .. tostring(v.hud_err) end end; return e",
+   "hid": "local m = sdk.get_managed_singleton('app.UserInputManager'); return m and m:call('get_HIDInputMode') or -1",
+   "fix": "local D=_G.DPC_dbg; if not D then return '' end; return (D.cfg.pawn_input_order and 'order ' or '') .. (D.cfg.pawn_prev_state == false and 'prev-off' or 'prev-on') .. (D.cfg.pawn_lockon_from_pawn and ' lockon-pawn' or '')"
+  }
+ },
+ "steps": [
+  {
+   "wait": true,
+   "text": "RELEASE CHECK 0.9.177. Part 1, single player. Start as the Arisen, co-op off, full party, out of combat, on open ground. Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "1/10 Take control of a melee pawn (F6, or hold D-pad up). Press End when you're playing them."
+  },
+  {
+   "wait": true,
+   "text": "2/10 Three goblins that can't die appear in front of you. Fight about 30 s: normal attacks, a dash skill (Blink Strike or similar), and switch goblins. Your attacks should go to the goblin you face. Press End to spawn them.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 3,
+     "dist": 5,
+     "angle": 0,
+     "still": false,
+     "tough": true,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "text": "Fight: attacks go to the goblin you face",
+   "secs": 30,
+   "expect": [
+    {
+     "probe": "lop",
+     "agg": "max",
+     "op": ">",
+     "value": 1000,
+     "label": "lock-on measured from your pawn"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "single-player fight: no DPC errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Was the targeting right? (Remember it.) Press End.",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "Part 2, co-op. Player 1 on keyboard and mouse, player 2 on a controller. Player 2: hold L3 + R3 to join. Press End once player 2 is in.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_two_pads",
+     "value": true,
+     "save": false
+    },
+    {
+     "cmd": "set",
+     "key": "coop_pad_join",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "Checking that player 2 joined",
+   "secs": 4,
+   "expect": [
+    {
+     "probe": "players",
+     "agg": "max",
+     "op": ">=",
+     "value": 2,
+     "label": "player 2 joined"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "3/10 THE CARDS (new defaults): a row at the bottom middle, buttons laid out like a controller, bars in the card and under each character. Player 2: hold L1 (skills appear in the same spots; the card must not change size), press a few buttons (they light up). No double bars under player 2. Press End (20 s)."
+  },
+  {
+   "text": "Cards: hold L1, press buttons",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "card_err",
+     "agg": "last",
+     "op": "==",
+     "value": "",
+     "label": "cards drew without errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "4/10 ITEMS: player 2 taps D-pad DOWN alone (no item: it needs L1, as in the game), then holds L1 and taps DOWN (the stamina item). Press End, then do it (15 s)."
+  },
+  {
+   "text": "Items: Down alone, then L1 + Down",
+   "secs": 15,
+   "expect": [
+    {
+     "probe": "items",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "player 2 used an item with L1"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "5/10 ORDERS: player 2 taps the D-pad alone: UP (Go), DOWN (Come), LEFT (Wait), RIGHT (Help), a few seconds apart, standing still. Player 2's character should gesture and the free pawns obey and answer. Press End, then do it (25 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_dpad_orders",
+     "value": 2,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "Orders: up, down, left, right",
+   "secs": 25,
+   "expect": [
+    {
+     "probe": "dord_n",
+     "agg": "max",
+     "op": ">=",
+     "value": 4,
+     "label": "four D-pad orders seen"
+    },
+    {
+     "probe": "dord_played",
+     "agg": "max",
+     "op": ">=",
+     "value": 1,
+     "label": "a gesture played"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "6/10 SIGNALS: same again, but now only the gesture (the pawns keep doing what they were doing). Press End, then do it (20 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_dpad_orders",
+     "value": 3,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "Signals: up, down, left, right",
+   "secs": 20
+  },
+  {
+   "wait": true,
+   "text": "7/10 FIGHT AND LOOT: two ordinary goblins appear. Player 2 kills them, then loots a body (prompt in player 2's colour). A dead bandit, if there is one nearby, should be lootable too. Press End to spawn them.",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "coop_dpad_orders",
+     "value": 2,
+     "save": false
+    },
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "spawn",
+     "enemy": 1,
+     "count": 2,
+     "dist": 5,
+     "angle": 0,
+     "still": false,
+     "tough": false,
+     "around": "pawn"
+    }
+   ]
+  },
+  {
+   "text": "Player 2: kill and loot",
+   "secs": 45,
+   "expect": [
+    {
+     "probe": "loots",
+     "agg": "max",
+     "op": ">",
+     "value": 0,
+     "label": "player 2 looted something"
+    },
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "co-op fight: no DPC errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "8/10 PLAYER 1's CARD: player 1 now has the same card as player 2. Look at it. Press End (15 s).",
+   "cmds": [
+    {
+     "cmd": "despawn"
+    },
+    {
+     "cmd": "set",
+     "key": "card_p1",
+     "value": true,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "Player 1's card",
+   "secs": 15,
+   "expect": [
+    {
+     "probe": "card_err",
+     "agg": "last",
+     "op": "==",
+     "value": "",
+     "label": "player 1's card drew without errors"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "9/10 KEYBOARD PROMPTS: player 1 walks to something to pick up or open; player 2 presses buttons. Player 1's prompt should stay a keyboard key. Press End, then do it (15 s).",
+   "cmds": [
+    {
+     "cmd": "set",
+     "key": "card_p1",
+     "value": false,
+     "save": false
+    }
+   ]
+  },
+  {
+   "text": "Player 1's prompts stay keyboard",
+   "secs": 15,
+   "expect": [
+    {
+     "probe": "hid",
+     "agg": "frac",
+     "op": "==",
+     "value": 1,
+     "min_frac": 0.9,
+     "label": "the game stayed in keyboard / mouse mode"
+    }
+   ]
+  },
+  {
+   "wait": true,
+   "text": "10/10 ENDING CO-OP: player 1 takes control of a pawn (F6), then ends co-op with Ctrl + F6. Player 1 should stay on that pawn. Press End, then do it (20 s)."
+  },
+  {
+   "text": "End co-op: player 1 keeps the pawn",
+   "secs": 20,
+   "expect": [
+    {
+     "probe": "mode",
+     "agg": "last",
+     "op": "==",
+     "value": "off",
+     "label": "co-op ended"
+    },
+    {
+     "probe": "played",
+     "agg": "last",
+     "op": "~=",
+     "value": "Arisen",
+     "label": "player 1 kept the pawn"
+    }
+   ]
+  },
+  {
+   "text": "Done. Tell Claude: was targeting right, and are the card defaults and the D-pad default (orders + gesture) what you want?",
+   "secs": 3,
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "max",
+     "op": "==",
+     "value": 0,
+     "label": "whole run: no DPC errors"
+    }
+   ],
+   "cmds": [
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ]
+}

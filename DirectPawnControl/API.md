@@ -29,8 +29,8 @@ Always pass `{ mod = "Your mod's name" }` in `opts`: that is the name players se
 
 Check for a feature before you rely on it: `DPC_API.has("events")`, `"claims"`, `"overrides"`, `"players"`,
 `"coop2pads"`, `"players_n"` (1.1: co-op with players 3 and up), `"characters"` (1.1: offering characters to players),
-`"control"` (1.2: `possess` / `release_pawn`). `DPC_API.version` is the API version ("1.2"), `DPC_API.dpc_version`
-the mod's version.
+`"control"` (1.2: `possess` / `release_pawn`), `"views"` (1.3: `set_view_turn` / `view_axes`). `DPC_API.version` is the
+API version ("1.3"), `DPC_API.dpc_version` the mod's version.
 
 ## Questions
 
@@ -102,6 +102,16 @@ DPC_API.remove_character(h)   -- a player on it lets go first
 
 The character needs the usual human components (an `app.Human` with a job) to be played. It is offered only to players 3
 and up; players 1 and 2 keep to the party.
+
+## Views: split screen (1.3)
+
+The game moves a character relative to the main camera. A mod that gives a player their own view (split screen)
+tells DPC how far to turn that player's left stick:
+
+| Call | Does |
+|---|---|
+| `set_view_turn(fn, { mod = "My Mod" })` | `fn(chara)` returns the angle in radians (that player's view yaw minus the main view's yaw) or nil. DPC turns the stick of whoever plays `chara` by it before the game reads it. One provider; `set_view_turn(nil)` removes it |
+| `view_axes(p)` | `{ lx, ly, rx, ry, b }` of player `p`'s own controller, read only (for turning their view with the right stick), or nil when they have none (keyboard). With one controller and player 1 on the keyboard, player 2's is the game's merged pad |
 
 ## Claims: taking over something DPC does
 

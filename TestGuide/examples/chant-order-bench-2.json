@@ -1,0 +1,82 @@
+{
+ "id": "chant-order-bench-2",
+ "title": "Update order: Human.update vs the input processor, for the Arisen and a played Mage pawn (DPC 0.9.177-dev4)",
+ "intro": "No hands. The Arisen swings for a few seconds with the order probe on; then the first Mage / Sorcerer pawn is taken and chants with the probe on.",
+ "requires": {
+  "DirectPawnControl": "0.9.177-dev4",
+  "TestGuide": "2.7"
+ },
+ "record": {
+  "hz": 5,
+  "out": "test_guide/result_chant-order-bench-2.json",
+  "show": [
+   "who"
+  ],
+  "probes": {
+   "who": "local D=_G.DPC_dbg; return D and (D.state.active and ('playing '..tostring(D.state.pawn_name)) or 'Arisen') or ''",
+   "errs": "local ok, d = pcall(json.load_file, 'dev_status/DirectPawnControl.json'); return ok and d and d.errors"
+  }
+ },
+ "steps": [
+  {
+   "text": "1/4 Setting up",
+   "secs": 2,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  },
+  {
+   "text": "2/4 Arisen attacks, order probe on",
+   "secs": 5,
+   "cmds": [
+    {
+     "cmd": "robot",
+     "who": "arisen",
+     "secs": 4,
+     "actions": [
+      "AttackS"
+     ]
+    },
+    {
+     "cmd": "order_probe",
+     "secs": 3
+    }
+   ]
+  },
+  {
+   "text": "3/4 Mage pawn chants (chant_test), order probe on during the first chant",
+   "secs": 20,
+   "cmds": [
+    {
+     "cmd": "chant_test",
+     "rounds": 1,
+     "press_after": 1.2
+    }
+   ],
+   "expect": [
+    {
+     "probe": "errs",
+     "agg": "last",
+     "label": "DPC errors"
+    }
+   ]
+  },
+  {
+   "text": "4/4 Back to the Arisen",
+   "secs": 3,
+   "cmds": [
+    {
+     "cmd": "release"
+    },
+    {
+     "cmd": "despawn"
+    }
+   ]
+  }
+ ]
+}

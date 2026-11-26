@@ -28,6 +28,7 @@ An REFramework Lua mod for **Dragon's Dogma 2** that provides complete control o
   - Save and manage your own custom named presets directly in the UI.
 - **Field of View (FOV) Control**:
   - Optional base FOV override (`35°–110°`) with an optional dynamic **Combat FOV Boost**, automatically restoring vanilla FOV when disabled or during cutscenes.
+  - **Ultrawide lens vignette fix** (2.9.20, on by default): the game darkens the screen edges by angle from the view centre, which on a 21:9 or 32:9 screen becomes a dark circle closing in. The fix scales it to the screen's width so the edges look as they do on 16:9. Also: the game's own, or off.
 - **Smart Auto-Suspend Safeguards**:
   - Automatically suspends camera overrides and smoothly blends back to vanilla framing during Pause/Fullscreen Menus, Cutscenes, NPC Dialogues, and Bow/Magick Bow Aiming.
 - **Quick-Zoom Hotkeys, Mouse Wheel & Gamepad Support** (all off by default; tick them under "Optional extras" in the settings):
